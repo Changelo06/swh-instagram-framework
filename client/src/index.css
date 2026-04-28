@@ -1,0 +1,162 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-navy-950 text-slate-100 font-sans antialiased;
+    background-image:
+      radial-gradient(circle at 15% -10%, rgba(212, 175, 55, 0.08), transparent 50%),
+      radial-gradient(circle at 90% 110%, rgba(39, 77, 122, 0.35), transparent 55%);
+    background-attachment: fixed;
+  }
+}
+
+@layer components {
+  .gold-text {
+    @apply text-gold-500;
+  }
+  .gold-border {
+    @apply border-gold-500/40;
+  }
+  .card {
+    @apply bg-navy-900/70 border border-gold-500/15 rounded-xl backdrop-blur-sm;
+    box-shadow: 0 1px 0 rgba(212, 175, 55, 0.06) inset, 0 8px 24px -12px rgba(0, 0, 0, 0.6);
+  }
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
+           bg-gold-500 text-navy-950 font-semibold rounded-lg text-sm
+           hover:bg-gold-400 disabled:opacity-40 disabled:cursor-not-allowed
+           transition-all;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 6px 16px -8px rgba(212, 175, 55, 0.5);
+  }
+  .btn-gold:hover:not(:disabled) {
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 8px 20px -6px rgba(212, 175, 55, 0.6);
+    transform: translateY(-1px);
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2
+           border border-gold-500/30 text-gold-500 rounded-lg text-sm
+           hover:bg-gold-500/10 hover:border-gold-500/50
+           disabled:opacity-40 disabled:cursor-not-allowed
+           transition-colors;
+  }
+}
+
+/* Markdown report styling */
+.report h1, .report h2, .report h3, .report h4 {
+  @apply font-serif text-gold-500 mt-8 mb-3;
+}
+.report h1 { @apply text-3xl border-b border-gold-500/30 pb-2; }
+.report h2 { @apply text-2xl; }
+.report h3 { @apply text-xl text-gold-400; }
+.report h4 { @apply text-lg text-gold-400; }
+.report p  { @apply text-slate-200 leading-relaxed mb-4; }
+.report ul { @apply list-disc list-inside mb-4 space-y-1 text-slate-200; }
+.report ol { @apply list-decimal list-inside mb-4 space-y-1 text-slate-200; }
+.report li { @apply leading-relaxed; }
+.report strong { @apply text-gold-400 font-semibold; }
+.report em { @apply text-slate-300; }
+.report blockquote {
+  @apply border-l-2 border-gold-500/50 pl-4 my-4 italic text-slate-300;
+}
+.report code {
+  @apply font-mono text-sm bg-navy-800 px-1.5 py-0.5 rounded text-gold-400;
+}
+.report pre {
+  @apply bg-navy-800/80 border border-gold-500/20 rounded-lg p-4 overflow-x-auto my-4;
+}
+.report pre code {
+  @apply bg-transparent p-0 text-slate-200;
+}
+.report table {
+  @apply w-full my-4 text-sm border-collapse;
+}
+.report th {
+  @apply text-left bg-navy-800 text-gold-400 font-semibold px-3 py-2 border border-gold-500/20;
+}
+.report td {
+  @apply px-3 py-2 border border-gold-500/15 text-slate-200;
+}
+.report hr {
+  @apply border-gold-500/20 my-8;
+}
+.report a {
+  @apply text-gold-400 underline hover:text-gold-300;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { @apply bg-navy-950; }
+::-webkit-scrollbar-thumb { @apply bg-navy-700 rounded; }
+::-webkit-scrollbar-thumb:hover { @apply bg-gold-700; }
+
+/* Recharts: tame default font + tooltip cursor */
+.recharts-tooltip-wrapper { outline: none; }
+.recharts-default-tooltip {
+  background-color: #0a1628 !important;
+  border: 1px solid rgba(212, 175, 55, 0.3) !important;
+  border-radius: 6px !important;
+}
+/* Force readable colors on tooltip children — recharts inlines dark
+   defaults on the label and item rows. */
+.recharts-default-tooltip .recharts-tooltip-label {
+  color: #e6c768 !important;
+  font-weight: 600 !important;
+  margin-bottom: 4px !important;
+}
+.recharts-default-tooltip .recharts-tooltip-item,
+.recharts-default-tooltip .recharts-tooltip-item-list,
+.recharts-default-tooltip .recharts-tooltip-item-name,
+.recharts-default-tooltip .recharts-tooltip-item-separator,
+.recharts-default-tooltip .recharts-tooltip-item-value,
+.recharts-default-tooltip .recharts-tooltip-item-unit {
+  color: #e2e8f0 !important;
+}
+.recharts-cartesian-axis-tick-value { font-family: "Inter", system-ui, sans-serif; }
+
+/* Subtle entrance for cards / panels */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.card { animation: fadeUp 240ms ease-out; }
+
+/* Streaming bar — used as an indeterminate progress indicator while the
+   agent is finalizing its response. Slides a partial-fill segment across
+   the track on a loop. */
+@keyframes progressStream {
+  0%   { left: -33%; }
+  100% { left: 100%; }
+}
+.progress-stream {
+  animation: progressStream 1.4s linear infinite;
+}
+
+/* PDF print path: html2pdf.js renders the .report element. Make sure
+   the dark background and gold text translate cleanly to the PDF page. */
+.report.pdf-export {
+  background: #0a1628;
+  padding: 24px;
+}
+
+/* Compact markdown variant — used inside expandable cards (e.g. top-3 breakdowns) */
+.report.report-compact h1,
+.report.report-compact h2,
+.report.report-compact h3,
+.report.report-compact h4 {
+  @apply mt-3 mb-2 text-base;
+}
+.report.report-compact h1 { @apply text-lg pb-1 border-b-0; }
+.report.report-compact h2 { @apply text-base; }
+.report.report-compact p { @apply mb-2 text-sm; }
+.report.report-compact ul,
+.report.report-compact ol { @apply mb-2 text-sm; }
+.report.report-compact li { @apply text-sm; }
+
+/* Tab content scroll body — slim scrollbar */
+.framework-scroll::-webkit-scrollbar { width: 6px; }
+.framework-scroll::-webkit-scrollbar-thumb { @apply bg-gold-700/40 rounded; }
