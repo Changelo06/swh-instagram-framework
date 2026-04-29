@@ -9,7 +9,39 @@ Web app that turns a Sort Feed CSV export into a complete, evidence-based **SWH 
 
 ---
 
-## Quick start
+## One-click launcher (recommended)
+
+Requires **Node.js 20+** ([download](https://nodejs.org/)).
+
+1. Clone or download this repo.
+2. Open `server/.env.example`, copy it to `server/.env`, paste your real API keys
+   (the launcher will do this for you on first run and prompt you to fill them in).
+3. **Double-click the launcher for your OS:**
+   - **Windows** — `SWH-Framework.cmd`
+   - **macOS** — `SWH-Framework.command` (right-click → Open the first time, to bypass Gatekeeper)
+   - **Linux** — run `./SWH-Framework.command` from a terminal
+
+The launcher will:
+- install dependencies on first run (`npm install` in `server/` and `client/`)
+- build the React UI to `client/dist/`
+- start the Express server in production mode (it serves the UI **and** the API on the same port)
+- open your default browser to `http://localhost:3001/`
+
+Press `Ctrl+C` (or close the terminal window) to stop the app.
+
+You can also run the same flow from a terminal:
+
+```bash
+npm start          # full setup + build + launch
+npm run start:fast # skip setup/build (assumes already done)
+```
+
+---
+
+## Manual / dev mode
+
+For active development you usually want hot-reload. Run the client and server in
+separate terminals:
 
 ### 1. Install dependencies
 

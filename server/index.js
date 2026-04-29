@@ -524,6 +524,24 @@ app.post("/api/analyze", async (req, res) => {
   }
 });
 
+// In production (one-click launcher), the express server also serves the
+// built React app from `client/dist/`. In dev, Vite serves the client on
+// :5173 and proxies /api/* here.
+const CLIENT_DIST = path.resolve(__dirname, "..", "client", "dist");
+const SERVE_CLIENT =
+  process.env.SERVE_CLIENT === "1" ||
+  process.env.NODE_ENV === "production" ||
+  fs.existsSync(path.join(CLIENT_DIST, "index.html"));
+
+if (SERVE_CLIENT && fs.existsSync(CLIENT_DIST)) {
+  app.use(express.static(CLIENT_DIST));
+  // SPA fallback for any non-/api route — uses a regex to dodge Express 5's
+  // path-to-regexp wildcard parsing changes.
+  app.get(/^\/(?!api\/).*/, (_req, res) => {
+    res.sendFile(path.join(CLIENT_DIST, "index.html"));
+  });
+}
+
 app.get("/api/health", (_req, res) => {
   const anthropicConfigured = !!process.env.ANTHROPIC_API_KEY;
   const groqConfigured = !!GROQ_API_KEY;
@@ -545,6 +563,9 @@ app.get("/api/health", (_req, res) => {
 
 app.listen(PORT, () => {
   console.log(`SWH server listening on http://localhost:${PORT}`);
+  if (SERVE_CLIENT && fs.existsSync(CLIENT_DIST)) {
+    console.log(`Client UI:    http://localhost:${PORT}/  (served from client/dist)`);
+  }
   console.log(`Claude model: ${MODEL}`);
   console.log(`Groq Whisper model: ${GROQ_MODEL} (${GROQ_API_KEY ? "configured" : "MISSING KEY"})`);
 });
