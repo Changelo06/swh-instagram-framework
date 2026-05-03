@@ -396,7 +396,7 @@ app.post("/api/transcribe", async (req, res) => {
 });
 
 app.post("/api/analyze", async (req, res) => {
-  const { rows, filename, scriptCount, mode } = req.body || {};
+  const { rows, filename, scriptCount, mode, dna, dnaFilename } = req.body || {};
   if (!Array.isArray(rows) || rows.length === 0) {
     return res.status(400).json({ error: "rows[] required" });
   }
@@ -406,6 +406,7 @@ app.post("/api/analyze", async (req, res) => {
 
   const scriptsOnly = mode === "scripts-only";
   const fastMode = mode === "fast";
+  const reelBlueprint = mode === "reel-blueprint";
   const scriptCountClamped = Math.min(
     5,
     Math.max(1, Number.isFinite(Number(scriptCount)) ? Math.floor(Number(scriptCount)) : 3)
@@ -420,6 +421,124 @@ app.post("/api/analyze", async (req, res) => {
     const { _audioUrl, _audioSourceField, ...rest } = r;
     return { ...rest, transcript: t };
   });
+
+  if (reelBlueprint) {
+    const target = rowsForClaude[0];
+    const dnaText =
+      typeof dna === "string" && dna.trim().length > 0
+        ? dna.trim().slice(0, 30000)
+        : null;
+
+    const userMessageRB = [
+      `# SINGLE-REEL SCRIPT BLUEPRINT REQUEST`,
+      ``,
+      `You are NOT analyzing a dataset. You are doing a focused deep-dive on a SINGLE reel and producing ${scriptCountClamped} replicable script variation${scriptCountClamped > 1 ? "s" : ""}.`,
+      ``,
+      `## TARGET REEL`,
+      ``,
+      `<target_reel>`,
+      JSON.stringify(target, null, 2),
+      `</target_reel>`,
+      ``,
+      `Source dataset: ${filename || "unknown.csv"}`,
+      target.timestamp ? `Posted at: ${target.timestamp}` : ``,
+      target.url ? `URL: ${target.url}` : ``,
+      target[TRANSCRIPT_FIELD]
+        ? `Groq Whisper transcript captured (${String(target[TRANSCRIPT_FIELD]).length} chars).`
+        : `No transcript captured — analyze caption + metadata only.`,
+      dnaText
+        ? `\nA DNA brief was uploaded by the operator (filename: ${dnaFilename || "dna"}). The variations MUST reshape the target reel's voice / style / constraints toward this DNA, while keeping the structural blueprint of the source.\n\n<dna_brief>\n${dnaText}\n</dna_brief>\n`
+        : ``,
+      ``,
+      `## OUTPUT FORMAT`,
+      ``,
+      `Stream raw markdown — DO NOT use the <<<PART…>>> markers, do not wrap in JSON, do not use code fences around the whole response.`,
+      ``,
+      `Produce these sections in this exact order, using \`##\` for top-level headings:`,
+      ``,
+      `## WHY IT WENT VIRAL`,
+      `Concrete reasoning grounded in the reel's metrics, hook, structure, timing, and caption signals.`,
+      ``,
+      `## POSTING METADATA`,
+      `Bullet points covering: when posted (date), day of week, time of day if available, post type (reel/clip/video), duration, audio source (original vs licensed) if known, hashtags used.`,
+      ``,
+      `## CAPTION BREAKDOWN`,
+      `The full caption verbatim (in a blockquote), then a per-line analysis of caption beats, character/emoji choices, line breaks, and CTAs embedded in the caption.`,
+      ``,
+      `## WORD-LEVEL ANALYSIS`,
+      `If a transcript exists: identify hook words (first 3-5s), pivot words, payoff words. If no transcript: do this on the caption only and explicitly note "transcript not available".`,
+      ``,
+      `## EMOTIONAL WEIGHT MAP`,
+      `Plot the emotional arc across the reel: OPEN (0-3s) → BUILD → MID → PAYOFF → CLOSE. Name the dominant emotion at each beat and the SWITCH triggers between them.`,
+      ``,
+      `## LENGTH + DURATION ANALYSIS`,
+      `Why this length works for this hook + topic. Include the duration in seconds and benchmark it against typical Instagram reel windows (0-15s / 15-30s / 30-60s / 60-120s+).`,
+      ``,
+      `## STRUCTURAL BLUEPRINT`,
+      `The reusable beat-by-beat skeleton of this reel: HOOK → PROOF → ESCALATION → PAYOFF → CTA (or whatever the actual structure is). Each beat as a single line.`,
+      ``,
+      `## CTAs`,
+      `Every CTA detected (in caption + transcript) — explicit and implicit. Where each lands in the reel timeline.`,
+      ``,
+      `## HOOK VARIATIONS`,
+      `5 alternative opening lines that preserve the original hook's mechanism but swap the topical surface.`,
+      ``,
+      `## SCRIPT VARIATIONS (×${scriptCountClamped})`,
+      `Produce exactly ${scriptCountClamped} full script variation${scriptCountClamped > 1 ? "s" : ""}. Each variation must:`,
+      `- have a numbered heading: "### Variation 1", "### Variation 2", etc.`,
+      `- include shot directions in [brackets]`,
+      `- include all spoken lines and on-screen text`,
+      `- close with a clearly labeled CTA line`,
+      `- preserve the structural blueprint above${dnaText ? `, but rewrite voice + tone to match the uploaded DNA brief` : ``}`,
+      `- vary by topical angle, not by structure — same skeleton, different surface`,
+      ``,
+      `Keep the entire output in markdown. Do not announce yourself or describe what you are about to do — start directly with "## WHY IT WENT VIRAL".`,
+    ].filter(Boolean).join("\n");
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders?.();
+
+    const sendRB = (event, data) => {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const stream = await anthropic.messages.stream({
+        model: MODEL,
+        max_tokens: 16000,
+        system: [
+          {
+            type: "text",
+            text: SYSTEM_PROMPT,
+            cache_control: { type: "ephemeral" },
+          },
+        ],
+        messages: [{ role: "user", content: userMessageRB }],
+      });
+
+      for await (const event of stream) {
+        if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
+          sendRB("delta", { text: event.delta.text });
+        }
+      }
+
+      const final = await stream.finalMessage();
+      sendRB("done", {
+        stopReason: final.stop_reason,
+        usage: final.usage,
+      });
+      res.end();
+    } catch (e) {
+      console.error(e);
+      sendRB("error", { message: e.message || "Claude API error" });
+      res.end();
+    }
+    return;
+  }
 
   const userMessage = [
     `Apify Instagram CSV export attached below as JSON.`,

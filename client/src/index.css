@@ -22,6 +22,12 @@
   .gold-border {
     @apply border-gold-500/40;
   }
+  .eyebrow {
+    @apply inline-block text-[11px] font-medium uppercase tracking-[0.22em] text-gold-500;
+  }
+  .gold-rule {
+    @apply h-px w-full bg-gold-rule;
+  }
   .card {
     @apply bg-navy-900/70 border border-gold-500/15 rounded-xl backdrop-blur-sm;
     box-shadow: 0 1px 0 rgba(212, 175, 55, 0.06) inset, 0 8px 24px -12px rgba(0, 0, 0, 0.6);
@@ -94,6 +100,545 @@
 ::-webkit-scrollbar-thumb { @apply bg-navy-700 rounded; }
 ::-webkit-scrollbar-thumb:hover { @apply bg-gold-700; }
 
+/* ============================================================
+   DASHBOARD ("/app") STYLE LAYER
+   Pure black surface + vibrant rainbow accents.
+   These classes are scoped to .dash-root so the landing page
+   stays untouched. Components on /app must reference them
+   directly (.panel, .btn-vibe, etc.).
+   ============================================================ */
+
+.dash-root {
+  background: #000;
+  color: #f1f5f9;
+  min-height: 100vh;
+  position: relative;
+}
+/* Subtle vibrant ambient glow at top-center and bottom-right */
+.dash-root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(168, 85, 247, 0.10), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(236, 72, 153, 0.06), transparent 60%);
+  z-index: 0;
+}
+.dash-root > * {
+  position: relative;
+  z-index: 1;
+}
+/* Override the body's scrollbar track on dashboard */
+.dash-root::-webkit-scrollbar-track,
+.dash-root *::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+.dash-root *::-webkit-scrollbar-thumb {
+  background: #262626;
+}
+.dash-root *::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #ec4899, #a855f7);
+}
+
+/* Panels — flat dark cards used on the dashboard */
+.panel {
+  @apply bg-ink-900 border border-white/[0.08] rounded-xl;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 8px 32px -16px rgba(0, 0, 0, 0.8);
+}
+.panel-elevated {
+  @apply bg-ink-800 border border-white/10 rounded-xl;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 24px 48px -24px rgba(168, 85, 247, 0.15),
+    0 8px 24px -12px rgba(0, 0, 0, 0.8);
+}
+.panel-hover {
+  transition: border-color 200ms ease, transform 200ms ease, background 200ms ease;
+}
+.panel-hover:hover {
+  border-color: rgba(236, 72, 153, 0.35);
+  background: #141414;
+}
+
+/* Vibrant buttons */
+.btn-vibe {
+  @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 font-semibold rounded-lg text-sm
+         text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all;
+  background: linear-gradient(135deg, #ec4899 0%, #a855f7 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.2) inset,
+    0 8px 24px -8px rgba(168, 85, 247, 0.5);
+}
+.btn-vibe:hover:not(:disabled) {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.25) inset,
+    0 12px 32px -8px rgba(236, 72, 153, 0.6);
+  transform: translateY(-1px);
+}
+.btn-vibe-ghost {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm
+         text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  background: rgba(168, 85, 247, 0.08);
+}
+.btn-vibe-ghost:hover:not(:disabled) {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.6);
+  color: #fff;
+}
+
+/* Vibrant text utilities */
+.vibe-text {
+  background: linear-gradient(90deg, #ec4899, #a855f7, #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.vibe-text-sunset {
+  background: linear-gradient(90deg, #fbbf24, #f97316, #ef4444);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Medal styles for top-3 reel boxes */
+.medal-tile {
+  position: relative;
+  border-radius: 14px;
+  padding: 1px;
+  background: linear-gradient(160deg, var(--medal-from), var(--medal-to));
+  box-shadow: 0 12px 32px -16px var(--medal-glow, rgba(0, 0, 0, 0.8));
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.medal-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 40px -18px var(--medal-glow, rgba(0, 0, 0, 0.8));
+}
+.medal-tile-inner {
+  background: linear-gradient(180deg, #0e0e0e 0%, #050505 100%);
+  border-radius: 13px;
+  padding: 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.medal-gold {
+  --medal-from: #fde68a;
+  --medal-to: #b45309;
+  --medal-glow: rgba(251, 191, 36, 0.45);
+}
+.medal-silver {
+  --medal-from: #f1f5f9;
+  --medal-to: #64748b;
+  --medal-glow: rgba(203, 213, 225, 0.35);
+}
+.medal-bronze {
+  --medal-from: #fdba74;
+  --medal-to: #7c2d12;
+  --medal-glow: rgba(217, 119, 6, 0.4);
+}
+
+/* Tiles 4-10: vibrant rainbow gradient slices */
+.rank-tile {
+  position: relative;
+  border-radius: 12px;
+  padding: 1px;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.rank-tile:hover {
+  transform: translateY(-2px);
+}
+.rank-tile-inner {
+  background: #0e0e0e;
+  border-radius: 11px;
+  padding: 14px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Inputs / form-ish elements on dashboard */
+.dash-input {
+  @apply bg-ink-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-100
+         placeholder:text-slate-500 focus:outline-none focus:border-vibe-purple/60
+         transition-colors;
+}
+
+/* Dashboard tab indicators */
+.dash-tab-indicator {
+  background: linear-gradient(90deg, #ec4899, #a855f7);
+  height: 2px;
+  border-radius: 2px;
+}
+
+/* ============================================================
+   TACTICAL TELEMETRY LAYER (.tac-*)
+   Industrial-brutalist, dark substrate, hazard-red accent.
+   Active design system for the entire app.
+   Rules:
+   - border-radius: 0 — never overridden inside .tac-root
+   - No drop shadows, no glows, no gradient fills
+   - Depth comes from border contrast + background offset
+   - Animate transform/opacity only — never w/h/top/left
+   ============================================================ */
+
+.tac-root {
+  /* Theme tokens — overridden by .tac-theme-light below.
+     Brand accents (signal blue, status green, etc) stay constant. */
+  --tac-bg: #0A0A0A;
+  --tac-surface: #1A1A1A;
+  --tac-surface2: #0D0D0D;
+  --tac-border: #2A2A2A;
+  --tac-dim: #3A3A3A;
+  --tac-mute: #6B6B6B;
+  --tac-fg: #EAEAEA;
+
+  background: var(--tac-bg);
+  color: var(--tac-fg);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100dvh;
+  position: relative;
+  -webkit-font-smoothing: antialiased;
+  transition: background 180ms ease;
+}
+
+/* Light / low-cortisol gray mode. Slight light gray substrate, panels
+   sit one shade darker for depth. Brand colors keep their hex. */
+.tac-root.tac-theme-light {
+  --tac-bg: #d4d4d4;
+  --tac-surface: #c0c0c0;
+  --tac-surface2: #cccccc;
+  --tac-border: #9a9a9a;
+  --tac-dim: #777777;
+  --tac-mute: #4a4a4a;
+  --tac-fg: #1a1a1a;
+}
+
+.tac-root.tac-theme-light .tac-scanlines {
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.03) 0px,
+    rgba(0, 0, 0, 0.03) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: multiply;
+}
+
+/* Force every descendant to lose rounding — non-negotiable per spec */
+.tac-root *,
+.tac-root *::before,
+.tac-root *::after {
+  border-radius: 0 !important;
+}
+
+/* CRT scanline overlay — fixed, pointer-events-none, top of viewport.
+   Never applied to scrolling containers (GPU repaint cost). */
+.tac-scanlines {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.045) 0px,
+    rgba(255, 255, 255, 0.045) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: overlay;
+  z-index: 1;
+}
+
+/* Display type — Archivo Black, uppercase, tight tracking */
+.tac-display {
+  font-family: "Archivo Black", Impact, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.tac-label {
+  font-family: "JetBrains Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--tac-mute);
+}
+.tac-meta {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--tac-mute);
+}
+
+/* Panels — flat surface, single 1px border, no rounding */
+.tac-panel {
+  background: var(--tac-surface);
+  border: 1px solid var(--tac-border);
+}
+.tac-panel-inset {
+  background: var(--tac-surface2);
+  border: 1px solid var(--tac-border);
+}
+.tac-panel-active {
+  border: 2px solid #4f8dfe;
+}
+
+/* Razor-thin compartmentalization grid (gap method, no borders) */
+.tac-grid-divider {
+  display: grid;
+  gap: 1px;
+  background: var(--tac-border);
+}
+.tac-grid-divider > * {
+  background: var(--tac-surface);
+}
+
+/* Buttons — rectangular, mono, uppercase */
+.tac-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--tac-surface);
+  border: 1px solid var(--tac-border);
+  color: var(--tac-fg);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, transform 80ms ease;
+  user-select: none;
+}
+.tac-btn:hover {
+  border-color: #4f8dfe;
+}
+.tac-btn:active {
+  transform: translateY(1px) scale(0.98);
+}
+.tac-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.tac-btn:disabled:hover {
+  border-color: var(--tac-border);
+}
+
+/* Accent button — hazard red */
+.tac-btn-accent {
+  background: #4f8dfe;
+  border-color: #4f8dfe;
+  color: var(--tac-bg);
+}
+.tac-btn-accent:hover {
+  background: #7aaeff;
+  border-color: #7aaeff;
+}
+
+/* Inputs */
+.tac-input {
+  background: var(--tac-bg);
+  border: 1px solid var(--tac-border);
+  color: var(--tac-fg);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  padding: 8px 12px;
+  width: 100%;
+  outline: none;
+  transition: border-color 120ms ease;
+}
+.tac-input:focus {
+  border-color: #4f8dfe;
+}
+.tac-input::placeholder {
+  color: var(--tac-dim);
+}
+
+/* Status indicators */
+.tac-dot-status {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #4AF626;
+  animation: tac-pulse 1.6s ease-in-out infinite;
+}
+.tac-dot-error {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #ef4444;
+}
+.tac-dot-mute {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: var(--tac-mute);
+}
+
+/* ASCII bracket framing for empty / upload / instruction states */
+.tac-frame {
+  position: relative;
+  border: 1px dashed var(--tac-border);
+  padding: 48px;
+}
+.tac-frame::before,
+.tac-frame::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid #4f8dfe;
+}
+.tac-frame::before {
+  top: -1px;
+  left: -1px;
+  border-right: 0;
+  border-bottom: 0;
+}
+.tac-frame::after {
+  top: -1px;
+  right: -1px;
+  border-left: 0;
+  border-bottom: 0;
+}
+.tac-frame > .tac-frame-corner-bl,
+.tac-frame > .tac-frame-corner-br {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid #4f8dfe;
+}
+.tac-frame > .tac-frame-corner-bl {
+  bottom: -1px;
+  left: -1px;
+  border-right: 0;
+  border-top: 0;
+}
+.tac-frame > .tac-frame-corner-br {
+  bottom: -1px;
+  right: -1px;
+  border-left: 0;
+  border-top: 0;
+}
+
+/* Crosshair marker (corner / overlay decoration) */
+.tac-crosshair {
+  position: relative;
+  width: 12px;
+  height: 12px;
+}
+.tac-crosshair::before,
+.tac-crosshair::after {
+  content: "";
+  position: absolute;
+  background: #4f8dfe;
+}
+.tac-crosshair::before {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  transform: translateY(-50%);
+}
+.tac-crosshair::after {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform: translateX(-50%);
+}
+
+/* Skeleton — shimmer via background-position on transform (never w/h) */
+.tac-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--tac-surface) 0%,
+    var(--tac-border) 50%,
+    var(--tac-surface) 100%
+  );
+  background-size: 200% 100%;
+  animation: tac-shimmer 1.6s ease-in-out infinite;
+}
+
+/* Active row / cell highlight */
+.tac-active-cell {
+  position: relative;
+}
+.tac-active-cell::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 2px solid #4f8dfe;
+  pointer-events: none;
+}
+
+/* Inline error banner — left accent bar, no modal */
+.tac-error-banner {
+  background: #1f1212;
+  border: 1px solid var(--tac-border);
+  border-left: 3px solid #ef4444;
+  padding: 12px 16px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  color: var(--tac-fg);
+}
+
+/* Custom scrollbar (tactical) — applies inside .tac-root */
+.tac-root *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.tac-root *::-webkit-scrollbar-track {
+  background: var(--tac-bg);
+}
+.tac-root *::-webkit-scrollbar-thumb {
+  background: var(--tac-border);
+}
+.tac-root *::-webkit-scrollbar-thumb:hover {
+  background: #4f8dfe;
+}
+
+/* Selection */
+.tac-root ::selection {
+  background: #4f8dfe;
+  color: var(--tac-bg);
+}
+
+/* Hazard red text utility */
+.tac-accent { color: #4f8dfe; }
+.tac-status { color: #4AF626; }
+.tac-mute   { color: var(--tac-mute); }
+.tac-fg     { color: var(--tac-fg); }
+
+/* Marquee track for sparkline carousels (seamless x-loop) */
+.tac-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: tac-marquee 32s linear infinite;
+  will-change: transform;
+}
+
+/* Loader spin (used by settings recheck + connection probe icons) */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Typewriter / blinking cursor */
+.tac-cursor::after {
+  content: "_";
+  display: inline-block;
+  margin-left: 2px;
+  color: #4f8dfe;
+  animation: tac-blink 1s steps(2) infinite;
+}
+
 /* Recharts: tame default font + tooltip cursor */
 .recharts-tooltip-wrapper { outline: none; }
 .recharts-default-tooltip {
@@ -124,6 +669,52 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 .card { animation: fadeUp 240ms ease-out; }
+
+/* Reveal-on-scroll: applied via <Reveal> wrapper.
+   Hidden until data-revealed flips to true. */
+.reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 600ms ease-out, transform 600ms ease-out;
+  will-change: opacity, transform;
+}
+.reveal[data-revealed="true"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal { transition: none; transform: none; opacity: 1; }
+}
+
+/* Hero-field ambient gradient — drop-in for hero backdrop */
+.hero-field {
+  background: radial-gradient(ellipse at top, rgba(212, 175, 55, 0.10), transparent 60%);
+}
+
+/* Faux device tilt for sample report preview (desktop only) */
+@media (min-width: 768px) {
+  .device-tilt {
+    transform: perspective(1600px) rotateX(1.5deg);
+    transform-origin: top center;
+  }
+}
+
+/* Shimmer overlay used sparingly on hero accent + sample-report CTA */
+.gold-shimmer-bg {
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(246, 230, 168, 0.45) 50%,
+    transparent 70%
+  );
+  background-size: 250% 100%;
+  background-position: -200% 0;
+  animation: goldShimmerLoop 5s ease-in-out infinite;
+}
+@keyframes goldShimmerLoop {
+  0%, 100% { background-position: -200% 0; }
+  50%      { background-position: 200% 0; }
+}
 
 /* Streaming bar — used as an indeterminate progress indicator while the
    agent is finalizing its response. Slides a partial-fill segment across

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   Bar,
   BarChart,
@@ -16,84 +17,84 @@ import {
 } from "recharts";
 import {
   aggregateStats,
-  audioOriginalVsLicensed,
   captionSnippet,
   engagement,
   engagementRate,
   engagementScatter,
   tierDistribution,
-  topByEngagement,
-  topHashtags,
+  uploadCadence,
   viewsByDayOfWeek,
   viewsByDuration,
   views,
 } from "../lib/insights.js";
+import Top10Reels from "./Top10Reels.jsx";
 
-const GOLD = "#d4af37";
-const GOLD_DIM = "#947420";
-const NAVY_GRID = "#1d3a60";
-const TEXT = "#cbd5e1";
+// ---- vibrant chart palette ----
+const VIBE_PINK = "#EC4899";
+const VIBE_PURPLE = "#A855F7";
+const VIBE_INDIGO = "#6366F1";
+const VIBE_BLUE = "#3B82F6";
+const VIBE_AMBER = "#FBBF24";
+const VIBE_ORANGE = "#F97316";
+
+const GRID = "rgba(255,255,255,0.06)";
+const TEXT = "#94a3b8";
 
 const tooltipStyle = {
-  backgroundColor: "#0a1628",
-  border: "1px solid rgba(212,175,55,0.3)",
-  borderRadius: "6px",
+  backgroundColor: "#0a0a0a",
+  border: "1px solid rgba(168,85,247,0.35)",
+  borderRadius: "10px",
   fontSize: "12px",
-  color: "#e2e8f0",
+  color: "#f1f5f9",
+  boxShadow: "0 12px 32px -8px rgba(0,0,0,0.8)",
 };
-
-// Recharts renders the tooltip label + item rows with their own inline
-// styles (defaults are dark text on a light background). Override both
-// so they're readable on the dark navy tooltip.
-const tooltipLabelStyle = { color: "#e6c768", fontWeight: 600, marginBottom: 4 };
+const tooltipLabelStyle = { color: "#EC4899", fontWeight: 600, marginBottom: 4 };
 const tooltipItemStyle = { color: "#e2e8f0" };
+
+function reelUrl(row) {
+  if (row?.url) return row.url;
+  if (row?.shortCode) return `https://www.instagram.com/reel/${row.shortCode}/`;
+  return null;
+}
+
+function formatCompact(n) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
 
 export default function InsightsPanel({ rows }) {
   if (!rows?.length) return null;
 
   const stats = aggregateStats(rows);
-  const top10 = topByEngagement(rows, 10);
   const tiers = tierDistribution(rows);
   const byDuration = viewsByDuration(rows);
   const byDay = viewsByDayOfWeek(rows);
-  const audio = audioOriginalVsLicensed(rows);
-  const tags = topHashtags(rows, 12);
-  const scatter = engagementScatter(rows);
+  const cadence = uploadCadence(rows);
+
+  // Enrich scatter data with the original row reference so we can link
+  // each point through to its reel URL.
+  const scatter = useMemo(() => {
+    const enriched = engagementScatter(rows);
+    return enriched.map((p, i) => ({ ...p, _row: rows[p.idx] || rows[i] }));
+  }, [rows]);
+
+  const onScatterClick = (data) => {
+    const url = reelUrl(data?._row);
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <KpiRow stats={stats} totalPosts={rows.length} />
 
-      <ChartCard title="Top 10 reels by engagement" subtitle="Likes + comments per post">
-        <ResponsiveContainer width="100%" height={320}>
-          <BarChart data={top10} margin={{ top: 5, right: 10, left: 0, bottom: 70 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={NAVY_GRID} vertical={false} />
-            <XAxis
-              dataKey="caption"
-              tick={{ fill: TEXT, fontSize: 10 }}
-              interval={0}
-              angle={-30}
-              textAnchor="end"
-              tickFormatter={(v) => (v ? String(v).slice(0, 22) + (v.length > 22 ? "…" : "") : "")}
-            />
-            <YAxis tick={{ fill: TEXT, fontSize: 11 }} />
-            <Tooltip
-              contentStyle={tooltipStyle}
-              labelStyle={tooltipLabelStyle}
-              itemStyle={tooltipItemStyle}
-              formatter={(v) => [v.toLocaleString(), "Engagement"]}
-              labelFormatter={(label, items) => {
-                const row = items?.[0]?.payload;
-                return row ? captionSnippet(row, 80) : label;
-              }}
-            />
-            <Bar dataKey={(r) => engagement(r)} fill={GOLD} radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartCard>
+      <Top10Reels rows={rows} />
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        <ChartCard title="Performance tiers" subtitle="By view count, SWH 20/60/20 split">
+      <div className="grid lg:grid-cols-2 gap-5">
+        <ChartCard
+          title="Performance tiers"
+          subtitle="By view count · SWH 20/60/20 split"
+        >
           <ResponsiveContainer width="100%" height={280}>
             <PieChart>
               <Pie
@@ -102,7 +103,7 @@ export default function InsightsPanel({ rows }) {
                 nameKey="name"
                 innerRadius={70}
                 outerRadius={110}
-                stroke="#0a1628"
+                stroke="#000"
                 strokeWidth={2}
                 paddingAngle={2}
               >
@@ -120,33 +121,52 @@ export default function InsightsPanel({ rows }) {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Original vs licensed audio" subtitle="Average views per post">
+        <ChartCard
+          title="Upload cadence"
+          subtitle="Number of posts by day of week"
+        >
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={audio} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={NAVY_GRID} vertical={false} />
-              <XAxis dataKey="type" tick={{ fill: TEXT, fontSize: 12 }} />
+            <BarChart data={cadence} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+              <defs>
+                <linearGradient id="grad-cadence" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={VIBE_PINK} stopOpacity={0.95} />
+                  <stop offset="100%" stopColor={VIBE_PURPLE} stopOpacity={0.85} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
+              <XAxis dataKey="day" tick={{ fill: TEXT, fontSize: 12 }} />
               <YAxis tick={{ fill: TEXT, fontSize: 11 }} />
               <Tooltip
                 contentStyle={tooltipStyle}
                 labelStyle={tooltipLabelStyle}
                 itemStyle={tooltipItemStyle}
-                formatter={(v, _k, item) => [
-                  v.toLocaleString(),
-                  `Avg views (${item?.payload?.count ?? 0} posts)`,
-                ]}
+                formatter={(v) => [v, "Posts"]}
               />
-              <Bar dataKey="avgViews" fill={GOLD} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="posts" fill="url(#grad-cadence)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
       </div>
 
-      <ChartCard title="Average views by duration" subtitle="Where the algorithm rewards length">
+      <ChartCard
+        title="Average views by duration"
+        subtitle="Where the algorithm rewards length"
+      >
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={byDuration} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={NAVY_GRID} vertical={false} />
+            <defs>
+              <linearGradient id="grad-duration" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={VIBE_AMBER} stopOpacity={0.95} />
+                <stop offset="60%" stopColor={VIBE_ORANGE} stopOpacity={0.9} />
+                <stop offset="100%" stopColor={VIBE_PINK} stopOpacity={0.85} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
             <XAxis dataKey="bucket" tick={{ fill: TEXT, fontSize: 12 }} />
-            <YAxis tick={{ fill: TEXT, fontSize: 11 }} />
+            <YAxis
+              tick={{ fill: TEXT, fontSize: 11 }}
+              tickFormatter={(v) => formatCompact(v)}
+            />
             <Tooltip
               contentStyle={tooltipStyle}
               labelStyle={tooltipLabelStyle}
@@ -156,17 +176,29 @@ export default function InsightsPanel({ rows }) {
                 `Avg views (${item?.payload?.count ?? 0} posts)`,
               ]}
             />
-            <Bar dataKey="avgViews" fill={GOLD} radius={[4, 4, 0, 0]} />
+            <Bar dataKey="avgViews" fill="url(#grad-duration)" radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
 
-      <ChartCard title="Average views by day of week" subtitle="Best posting windows">
+      <ChartCard
+        title="Average views by day of week"
+        subtitle="Best posting windows"
+      >
         <ResponsiveContainer width="100%" height={260}>
           <BarChart data={byDay} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={NAVY_GRID} vertical={false} />
+            <defs>
+              <linearGradient id="grad-dow" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={VIBE_PURPLE} stopOpacity={0.95} />
+                <stop offset="100%" stopColor={VIBE_INDIGO} stopOpacity={0.85} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
             <XAxis dataKey="day" tick={{ fill: TEXT, fontSize: 12 }} />
-            <YAxis tick={{ fill: TEXT, fontSize: 11 }} />
+            <YAxis
+              tick={{ fill: TEXT, fontSize: 11 }}
+              tickFormatter={(v) => formatCompact(v)}
+            />
             <Tooltip
               contentStyle={tooltipStyle}
               labelStyle={tooltipLabelStyle}
@@ -176,103 +208,95 @@ export default function InsightsPanel({ rows }) {
                 `Avg views (${item?.payload?.posts ?? 0} posts)`,
               ]}
             />
-            <Bar dataKey="avgViews" fill={GOLD} radius={[4, 4, 0, 0]} />
+            <Bar dataKey="avgViews" fill="url(#grad-dow)" radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        <ChartCard title="Views vs engagement rate" subtitle="High-resonance posts cluster top-left">
-          <ResponsiveContainer width="100%" height={300}>
-            <ScatterChart margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={NAVY_GRID} />
-              <XAxis
-                type="number"
-                dataKey="x"
-                name="Views"
-                tick={{ fill: TEXT, fontSize: 11 }}
-                tickFormatter={(v) => formatCompact(v)}
-              />
-              <YAxis
-                type="number"
-                dataKey="y"
-                name="Engagement %"
-                tick={{ fill: TEXT, fontSize: 11 }}
-                tickFormatter={(v) => `${v}%`}
-              />
-              <ZAxis type="number" dataKey="duration" range={[40, 240]} name="Duration (s)" />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                labelStyle={tooltipLabelStyle}
-                itemStyle={tooltipItemStyle}
-                cursor={{ strokeDasharray: "3 3" }}
-                formatter={(value, key) => {
-                  if (key === "x") return [value.toLocaleString(), "Views"];
-                  if (key === "y") return [`${value}%`, "Engagement"];
-                  if (key === "duration") return [`${value}s`, "Duration"];
-                  return [value, key];
-                }}
-                labelFormatter={(_, items) => {
-                  const cap = items?.[0]?.payload?.caption;
-                  return cap && cap !== "(no caption)" ? `“${cap}”` : "(no caption)";
-                }}
-              />
-              <Scatter data={scatter} fill={GOLD} fillOpacity={0.7} />
-            </ScatterChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Top hashtags" subtitle="Frequency × average views">
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart
-              data={tags}
-              layout="vertical"
-              margin={{ top: 5, right: 20, left: 70, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke={NAVY_GRID} horizontal={false} />
-              <XAxis type="number" tick={{ fill: TEXT, fontSize: 11 }} />
-              <YAxis
-                type="category"
-                dataKey="tag"
-                tick={{ fill: TEXT, fontSize: 11 }}
-                tickFormatter={(v) => `#${v}`}
-                width={70}
-              />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                labelStyle={tooltipLabelStyle}
-                itemStyle={tooltipItemStyle}
-                formatter={(v, _k, item) => [
-                  v,
-                  `Used in ${v} posts (${(item?.payload?.avgViews || 0).toLocaleString()} avg views)`,
-                ]}
-              />
-              <Bar dataKey="count" fill={GOLD_DIM} radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </div>
+      <ChartCard
+        title="Views vs engagement rate"
+        subtitle="Click any point to open the reel · dot size = duration"
+      >
+        <ResponsiveContainer width="100%" height={340}>
+          <ScatterChart margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+            <XAxis
+              type="number"
+              dataKey="x"
+              name="Views"
+              tick={{ fill: TEXT, fontSize: 11 }}
+              tickFormatter={(v) => formatCompact(v)}
+            />
+            <YAxis
+              type="number"
+              dataKey="y"
+              name="Engagement %"
+              tick={{ fill: TEXT, fontSize: 11 }}
+              tickFormatter={(v) => `${v}%`}
+            />
+            <ZAxis type="number" dataKey="duration" range={[40, 240]} name="Duration (s)" />
+            <Tooltip
+              contentStyle={tooltipStyle}
+              labelStyle={tooltipLabelStyle}
+              itemStyle={tooltipItemStyle}
+              cursor={{ strokeDasharray: "3 3", stroke: "rgba(168,85,247,0.4)" }}
+              formatter={(value, key) => {
+                if (key === "x") return [value.toLocaleString(), "Views"];
+                if (key === "y") return [`${value}%`, "Engagement"];
+                if (key === "duration") return [`${value}s`, "Duration"];
+                return [value, key];
+              }}
+              labelFormatter={(_, items) => {
+                const cap = items?.[0]?.payload?.caption;
+                return cap && cap !== "(no caption)" ? `“${cap}”` : "(no caption)";
+              }}
+            />
+            <Scatter
+              data={scatter}
+              fill={VIBE_PINK}
+              fillOpacity={0.85}
+              stroke={VIBE_PURPLE}
+              strokeWidth={1}
+              onClick={onScatterClick}
+              style={{ cursor: "pointer" }}
+            />
+          </ScatterChart>
+        </ResponsiveContainer>
+      </ChartCard>
     </div>
   );
 }
 
 function KpiRow({ stats, totalPosts }) {
   const items = [
-    { label: "Posts analyzed", value: totalPosts.toLocaleString() },
-    { label: "Avg views", value: stats.avgViews.toLocaleString() },
-    { label: "Median views", value: stats.medianViews.toLocaleString() },
-    { label: "Avg engagement", value: stats.avgEngagement.toLocaleString() },
-    { label: "Avg eng. rate", value: `${stats.avgEngRate}%` },
+    { label: "Posts analyzed", value: totalPosts.toLocaleString(), hue: "#EC4899" },
+    { label: "Avg views", value: formatCompact(stats.avgViews), hue: "#A855F7" },
+    { label: "Median views", value: formatCompact(stats.medianViews), hue: "#6366F1" },
+    { label: "Avg engagement", value: formatCompact(stats.avgEngagement), hue: "#3B82F6" },
+    { label: "Avg eng. rate", value: `${stats.avgEngRate}%`, hue: "#FBBF24" },
   ];
   return (
     <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
       {items.map((it) => (
         <div
           key={it.label}
-          className="bg-navy-900/60 border border-gold-500/15 rounded-lg p-4"
+          className="panel p-4 relative overflow-hidden"
         >
-          <div className="text-xs text-slate-400 uppercase tracking-wider">{it.label}</div>
-          <div className="text-2xl font-serif text-gold-400 mt-1 leading-none">{it.value}</div>
+          <div
+            className="absolute inset-x-0 top-0 h-px"
+            style={{
+              background: `linear-gradient(90deg, transparent, ${it.hue}, transparent)`,
+            }}
+          />
+          <div className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-semibold">
+            {it.label}
+          </div>
+          <div
+            className="text-2xl font-serif mt-1 leading-none font-bold"
+            style={{ color: it.hue }}
+          >
+            {it.value}
+          </div>
         </div>
       ))}
     </div>
@@ -281,18 +305,14 @@ function KpiRow({ stats, totalPosts }) {
 
 function ChartCard({ title, subtitle, children }) {
   return (
-    <div className="card p-5">
+    <div className="panel p-5">
       <div className="mb-4">
-        <div className="font-serif text-base text-gold-400">{title}</div>
-        {subtitle && <div className="text-xs text-slate-500 mt-0.5">{subtitle}</div>}
+        <div className="font-serif text-base text-white">{title}</div>
+        {subtitle && (
+          <div className="text-xs text-slate-500 mt-0.5">{subtitle}</div>
+        )}
       </div>
       {children}
     </div>
   );
-}
-
-function formatCompact(n) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
 }

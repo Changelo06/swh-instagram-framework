@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-navy-950 text-slate-100 font-sans antialiased;
+    background-image:
+      radial-gradient(circle at 15% -10%, rgba(212, 175, 55, 0.08), transparent 50%),
+      radial-gradient(circle at 90% 110%, rgba(39, 77, 122, 0.35), transparent 55%);
+    background-attachment: fixed;
+  }
+}
+
+@layer components {
+  .gold-text {
+    @apply text-gold-500;
+  }
+  .gold-border {
+    @apply border-gold-500/40;
+  }
+  .card {
+    @apply bg-navy-900/70 border border-gold-500/15 rounded-xl backdrop-blur-sm;
+  }
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
+           bg-gold-500 text-navy-950 font-semibold rounded-lg
+           hover:bg-gold-400 disabled:opacity-40 disabled:cursor-not-allowed
+           transition-colors;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2
+           border border-gold-500/30 text-gold-500 rounded-lg
+           hover:bg-gold-500/10 disabled:opacity-40 disabled:cursor-not-allowed
+           transition-colors;
+  }
+}
+
+/* Markdown report styling */
+.report h1, .report h2, .report h3, .report h4 {
+  @apply font-serif text-gold-500 mt-8 mb-3;
+}
+.report h1 { @apply text-3xl border-b border-gold-500/30 pb-2; }
+.report h2 { @apply text-2xl; }
+.report h3 { @apply text-xl text-gold-400; }
+.report h4 { @apply text-lg text-gold-400; }
+.report p  { @apply text-slate-200 leading-relaxed mb-4; }
+.report ul { @apply list-disc list-inside mb-4 space-y-1 text-slate-200; }
+.report ol { @apply list-decimal list-inside mb-4 space-y-1 text-slate-200; }
+.report li { @apply leading-relaxed; }
+.report strong { @apply text-gold-400 font-semibold; }
+.report em { @apply text-slate-300; }
+.report blockquote {
+  @apply border-l-2 border-gold-500/50 pl-4 my-4 italic text-slate-300;
+}
+.report code {
+  @apply font-mono text-sm bg-navy-800 px-1.5 py-0.5 rounded text-gold-400;
+}
+.report pre {
+  @apply bg-navy-800/80 border border-gold-500/20 rounded-lg p-4 overflow-x-auto my-4;
+}
+.report pre code {
+  @apply bg-transparent p-0 text-slate-200;
+}
+.report table {
+  @apply w-full my-4 text-sm border-collapse;
+}
+.report th {
+  @apply text-left bg-navy-800 text-gold-400 font-semibold px-3 py-2 border border-gold-500/20;
+}
+.report td {
+  @apply px-3 py-2 border border-gold-500/15 text-slate-200;
+}
+.report hr {
+  @apply border-gold-500/20 my-8;
+}
+.report a {
+  @apply text-gold-400 underline hover:text-gold-300;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { @apply bg-navy-950; }
+::-webkit-scrollbar-thumb { @apply bg-navy-700 rounded; }
+::-webkit-scrollbar-thumb:hover { @apply bg-gold-700; }

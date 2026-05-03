@@ -97,3 +97,51 @@ export function detectHandle(posts) {
   }
   return "creator";
 }
+
+// Read the handle off a single row, falling back through the same candidate
+// columns the single-handle detector uses. Used to bucket rows per creator.
+export function rowHandle(row) {
+  if (!row) return "";
+  const candidates = ["ownerUsername", "owner_username", "username", "handle"];
+  for (const k of candidates) {
+    const v = row[k] || (row._raw && row._raw[k]);
+    if (v) return String(v).replace(/^@/, "").toLowerCase();
+  }
+  const u = row.url || row.postUrl;
+  if (u) {
+    const m = String(u).match(/instagram\.com\/([^/?#]+)\//i);
+    if (m && m[1] && !["p", "reel", "tv"].includes(m[1].toLowerCase())) {
+      return m[1].toLowerCase();
+    }
+  }
+  return "";
+}
+
+// Group parsed rows by creator handle. Returns an array of
+// { handle, displayHandle, rows, count } sorted by row count desc.
+// Rows that don't expose a recognizable handle are bucketed under "unknown".
+export function groupByCreator(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+  const buckets = new Map();
+  for (const r of rows) {
+    const h = rowHandle(r) || "unknown";
+    if (!buckets.has(h)) buckets.set(h, []);
+    buckets.get(h).push(r);
+  }
+  return Array.from(buckets.entries())
+    .map(([handle, bucketRows]) => ({
+      handle,
+      displayHandle: handle === "unknown" ? "unattributed" : handle,
+      rows: bucketRows,
+      count: bucketRows.length,
+    }))
+    .sort((a, b) => b.count - a.count);
+}
+
+// Convenience wrapper: how many distinct creators are in this dataset?
+// Excludes the "unknown" bucket from the count when other buckets exist.
+export function distinctCreatorCount(rows) {
+  const groups = groupByCreator(rows);
+  const named = groups.filter((g) => g.handle !== "unknown");
+  return named.length || groups.length;
+}

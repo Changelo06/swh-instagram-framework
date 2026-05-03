@@ -67,10 +67,23 @@ export function performanceTiers(rows) {
 export function tierDistribution(rows) {
   const { top, mid, low } = performanceTiers(rows);
   return [
-    { name: "Top 20%", value: top.length, fill: "#d4af37" },
-    { name: "Mid 60%", value: mid.length, fill: "#274d7a" },
-    { name: "Low 20%", value: low.length, fill: "#152a47" },
+    { name: "Top 20%", value: top.length, fill: "#EC4899" },
+    { name: "Mid 60%", value: mid.length, fill: "#A855F7" },
+    { name: "Low 20%", value: low.length, fill: "#3B82F6" },
   ];
+}
+
+// Upload cadence — how many posts per day-of-week.
+// Distinct from viewsByDayOfWeek (which is performance per day).
+export function uploadCadence(rows) {
+  const buckets = DAY_NAMES.map((day) => ({ day, posts: 0 }));
+  for (const r of rows) {
+    if (!r.timestamp) continue;
+    const d = new Date(r.timestamp);
+    if (isNaN(d.getTime())) continue;
+    buckets[d.getDay()].posts += 1;
+  }
+  return buckets;
 }
 
 export function viewsByDuration(rows) {
