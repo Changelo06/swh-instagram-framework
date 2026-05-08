@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X, Warning, ArrowRight, Crosshair } from "@phosphor-icons/react";
+import { Check, X, Warning, ArrowRight } from "@phosphor-icons/react";
 import { useCsv, STAGE } from "../state/CsvContext.jsx";
 
 export default function ValidationGate() {
@@ -20,8 +20,7 @@ export default function ValidationGate() {
     return () => clearTimeout(t);
   }, [stage, revealedCount, layers.length]);
 
-  // Esc anywhere on the gate cancels back to the idle upload screen — matches
-  // operator expectation that any modal honors Escape.
+  // Esc anywhere on the gate cancels back to the idle upload screen.
   useEffect(() => {
     if (stage !== STAGE.VALIDATING) return;
     const onKey = (e) => {
@@ -50,7 +49,8 @@ export default function ValidationGate() {
           position: "fixed",
           inset: 0,
           zIndex: 40,
-          background: "rgba(10, 10, 10, 0.85)",
+          background: "rgba(10, 11, 14, 0.7)",
+          backdropFilter: "blur(2px)",
           display: "grid",
           placeItems: "center",
           padding: 24,
@@ -61,23 +61,20 @@ export default function ValidationGate() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 12, opacity: 0 }}
           transition={{ type: "spring", stiffness: 220, damping: 26 }}
-          className="tac-frame"
           style={{
             position: "relative",
-            background: "var(--tac-surface2)",
-            border: "1px dashed var(--tac-border)",
-            padding: 0,
+            background: "var(--tac-surface)",
+            border: "1px solid var(--tac-border)",
+            borderRadius: 12,
             width: "100%",
             maxWidth: 520,
+            overflow: "hidden",
+            boxShadow: "0 24px 48px -16px rgba(0, 0, 0, 0.6)",
           }}
         >
-          <span className="tac-frame-corner-bl" />
-          <span className="tac-frame-corner-br" />
-
           <header
             style={{
-              padding: "16px 20px",
-              borderBottom: "1px solid var(--tac-border)",
+              padding: "20px 24px 16px",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -85,64 +82,71 @@ export default function ValidationGate() {
             }}
           >
             <div>
-              <div className="tac-label">VALIDATION GATE</div>
               <div
-                className="tac-display"
-                style={{ fontSize: 18, color: "var(--tac-fg)", marginTop: 4 }}
+                style={{
+                  fontFamily:
+                    '"Inter", ui-sans-serif, system-ui, sans-serif',
+                  fontSize: 17,
+                  fontWeight: 600,
+                  color: "var(--tac-fg)",
+                  lineHeight: 1.2,
+                }}
               >
-                EXAMINING SCHEMA
+                Validating dataset
+              </div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "var(--tac-mute)",
+                  marginTop: 2,
+                }}
+              >
+                Checking which columns the framework needs.
               </div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Crosshair size={18} weight="regular" color="#4f8dfe" />
-              <button
-                type="button"
-                onClick={reset}
-                aria-label="Cancel and discard upload"
-                title="Cancel · discard upload (Esc)"
-                style={{
-                  background: "transparent",
-                  border: "1px solid var(--tac-border)",
-                  color: "var(--tac-mute)",
-                  padding: 6,
-                  cursor: "pointer",
-                  display: "grid",
-                  placeItems: "center",
-                  transition: "color 120ms, border-color 120ms",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "#ef4444";
-                  e.currentTarget.style.borderColor = "#ef4444";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = "var(--tac-mute)";
-                  e.currentTarget.style.borderColor = "var(--tac-border)";
-                }}
-              >
-                <X size={13} weight="regular" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={reset}
+              aria-label="Cancel and discard upload"
+              title="Cancel · discard upload (Esc)"
+              className="tac-btn"
+              style={{ padding: 6 }}
+            >
+              <X size={14} weight="regular" />
+            </button>
           </header>
 
           <div
             style={{
-              padding: "10px 20px",
+              padding: "8px 24px",
+              borderTop: "1px solid var(--tac-border)",
               borderBottom: "1px solid var(--tac-border)",
               display: "flex",
               justifyContent: "space-between",
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 10,
+              gap: 12,
+              fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+              fontSize: 12,
               color: "var(--tac-mute)",
-              letterSpacing: "0.06em",
             }}
           >
-            <span style={{ color: "var(--tac-fg)" }} title={filename}>
+            <span
+              title={filename}
+              style={{
+                color: "var(--tac-fg)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                maxWidth: 280,
+              }}
+            >
               {filename || "no_dataset.csv"}
             </span>
-            <span>{totalRows.toLocaleString()} ROWS</span>
+            <span style={{ fontVariantNumeric: "tabular-nums" }}>
+              {totalRows.toLocaleString()} rows
+            </span>
           </div>
 
-          <div style={{ padding: "12px 8px" }}>
+          <div style={{ padding: "12px 16px" }}>
             {layers.map((layer, idx) => (
               <Layer
                 key={layer.id}
@@ -155,59 +159,54 @@ export default function ValidationGate() {
 
           <footer
             style={{
-              padding: "14px 20px",
+              padding: "16px 24px 20px",
               borderTop: "1px solid var(--tac-border)",
               display: "grid",
-              gap: 10,
+              gap: 12,
             }}
           >
             <div
               style={{
                 display: "flex",
-                justifyContent: "space-between",
-                fontFamily: '"JetBrains Mono", monospace',
-                fontSize: 10,
-                letterSpacing: "0.08em",
+                gap: 6,
+                flexWrap: "wrap",
               }}
             >
-              <span style={{ color: "#4AF626" }}>{passCount} PASS</span>
-              <span
-                style={{
-                  color: failCount === 0 ? "var(--tac-mute)" : "#ef4444",
-                }}
-              >
-                {failCount} MISS
-              </span>
-              <span
-                style={{
-                  color: criticalFail ? "#ef4444" : "var(--tac-mute)",
-                }}
-              >
-                {criticalFail} CRITICAL
-              </span>
+              <span className="tac-pill tac-pill--ok">{passCount} pass</span>
+              {failCount > 0 && (
+                <span className="tac-pill tac-pill--warn">
+                  {failCount} missing
+                </span>
+              )}
+              {criticalFail > 0 && (
+                <span className="tac-pill tac-pill--err">
+                  {criticalFail} critical
+                </span>
+              )}
             </div>
 
             {allRevealed && criticalFail > 0 && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 10,
-                  padding: "10px 12px",
-                  background: "#1f1212",
-                  border: "1px solid var(--tac-border)",
-                  borderLeft: "3px solid #ef4444",
-                  fontFamily: '"JetBrains Mono", monospace',
-                  fontSize: 11,
-                  color: "var(--tac-fg)",
-                  lineHeight: 1.5,
-                }}
-              >
-                <Warning size={13} weight="regular" color="#ef4444" style={{ marginTop: 1, flexShrink: 0 }} />
-                <span>
-                  {criticalFail} critical column{criticalFail > 1 ? "s" : ""} missing.
-                  Affected widgets will mark as MISSING but the dashboard will still load.
-                </span>
+              <div className="tac-error-banner">
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 10,
+                  }}
+                >
+                  <Warning
+                    size={14}
+                    weight="regular"
+                    color="var(--tac-danger)"
+                    style={{ marginTop: 2, flexShrink: 0 }}
+                  />
+                  <span style={{ lineHeight: 1.5 }}>
+                    {criticalFail} critical column
+                    {criticalFail > 1 ? "s" : ""} missing. Affected widgets
+                    will mark their values as missing, but the dashboard will
+                    still load.
+                  </span>
+                </div>
               </div>
             )}
 
@@ -225,12 +224,12 @@ export default function ValidationGate() {
                 style={{
                   justifyContent: "center",
                   padding: "10px 14px",
-                  fontWeight: 600,
+                  fontSize: 13,
                 }}
                 title="Discard the upload and return to the dropzone (Esc)"
               >
-                <X size={12} weight="bold" />
-                CANCEL
+                <X size={13} weight="regular" />
+                Cancel
               </button>
               <button
                 type="button"
@@ -240,13 +239,13 @@ export default function ValidationGate() {
                 style={{
                   justifyContent: "center",
                   padding: "10px 14px",
-                  opacity: allRevealed ? 1 : 0.4,
+                  fontSize: 13,
+                  opacity: allRevealed ? 1 : 0.5,
                   cursor: allRevealed ? "pointer" : "wait",
-                  fontWeight: 600,
                 }}
               >
-                {allRevealed ? "PROCEED → DASHBOARD" : "SCANNING..."}
-                {allRevealed && <ArrowRight size={12} weight="bold" />}
+                {allRevealed ? "Continue to dashboard" : "Scanning…"}
+                {allRevealed && <ArrowRight size={13} weight="bold" />}
               </button>
             </div>
           </footer>
@@ -258,14 +257,11 @@ export default function ValidationGate() {
 
 function Layer({ layer, visible, index }) {
   const pct = Math.round(layer.coverage * 100);
-  const color =
-    layer.pass && pct === 100
-      ? "#4AF626"
-      : layer.pass
-      ? "var(--tac-fg)"
-      : layer.critical
-      ? "#ef4444"
-      : "#fbbf24";
+  const passColor = "var(--tac-success)";
+  const warnColor = layer.critical ? "var(--tac-danger)" : "var(--tac-warning)";
+  const color = layer.pass ? passColor : warnColor;
+  const status = layer.pass ? "Pass" : layer.critical ? "Missing" : "Optional";
+  const variant = layer.pass ? "ok" : layer.critical ? "err" : "warn";
 
   return (
     <motion.div
@@ -280,43 +276,52 @@ function Layer({ layer, visible, index }) {
         gridTemplateColumns: "16px 1fr auto auto",
         alignItems: "center",
         gap: 12,
-        padding: "8px 12px",
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 11,
-        borderLeft: `2px solid ${visible ? color : "transparent"}`,
-        transition: "border-color 120ms",
+        padding: "8px 8px",
+        fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+        fontSize: 13,
       }}
     >
       {visible ? (
         layer.pass ? (
-          <Check size={12} weight="bold" color={color} />
+          <Check size={14} weight="bold" color={color} />
         ) : (
-          <X size={12} weight="bold" color={color} />
+          <X size={14} weight="bold" color={color} />
         )
       ) : (
         <span style={{ color: "var(--tac-dim)" }}>·</span>
       )}
-      <span style={{ color: visible ? "var(--tac-fg)" : "var(--tac-dim)" }}>
+      <span
+        style={{
+          color: visible ? "var(--tac-fg)" : "var(--tac-dim)",
+        }}
+      >
         {layer.label}
+        {layer.critical && (
+          <span
+            style={{
+              marginLeft: 6,
+              fontSize: 11,
+              color: "var(--tac-mute)",
+            }}
+          >
+            — required
+          </span>
+        )}
       </span>
       <span
         style={{
           color: visible ? "var(--tac-mute)" : "var(--tac-dim)",
           fontVariantNumeric: "tabular-nums",
+          fontSize: 12,
         }}
       >
         {visible ? `${pct}%` : "—"}
       </span>
       <span
-        style={{
-          fontSize: 9,
-          color: visible ? color : "var(--tac-dim)",
-          letterSpacing: "0.1em",
-          minWidth: 38,
-          textAlign: "right",
-        }}
+        className={visible ? `tac-pill tac-pill--${variant}` : "tac-pill"}
+        style={{ visibility: visible ? "visible" : "hidden" }}
       >
-        {visible ? (layer.pass ? "PASS" : layer.critical ? "FAIL" : "WARN") : ""}
+        {visible ? status : ""}
       </span>
     </motion.div>
   );

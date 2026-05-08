@@ -57,32 +57,43 @@ function Sidebar({ collapsed, onToggleCollapsed, onOpenSettings }) {
       >
         <div
           style={{
-            width: 24,
-            height: 24,
-            background: "#4f8dfe",
+            width: 26,
+            height: 26,
+            background: "var(--tac-accent)",
+            borderRadius: 6,
             display: "grid",
             placeItems: "center",
-            color: "var(--tac-bg)",
-            fontFamily: '"Archivo Black", Impact, sans-serif',
-            fontSize: 14,
-            letterSpacing: "-0.04em",
+            color: "#ffffff",
+            fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+            fontWeight: 700,
+            fontSize: 13,
             flexShrink: 0,
           }}
         >
           S
         </div>
         <SlideLabel collapsed={collapsed}>
-          <div className="tac-display" style={{ fontSize: 12 }}>SWH</div>
           <div
             style={{
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 9,
-              color: "var(--tac-mute)",
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
+              fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+              fontWeight: 600,
+              fontSize: 13,
+              color: "var(--tac-fg)",
+              lineHeight: 1.2,
             }}
           >
-            UNIT D-01
+            SWH Framework
+          </div>
+          <div
+            style={{
+              fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+              fontSize: 11,
+              color: "var(--tac-mute)",
+              lineHeight: 1.2,
+              marginTop: 1,
+            }}
+          >
+            Instagram analytics
           </div>
         </SlideLabel>
       </div>
@@ -181,41 +192,41 @@ const NavItem = memo(function NavItem({
         position: "relative",
         display: "flex",
         alignItems: "center",
-        gap: 14,
-        padding: collapsed ? "10px 0" : "10px 16px",
+        gap: 12,
+        padding: collapsed ? "9px 0" : "9px 14px",
+        marginLeft: collapsed ? 0 : 8,
+        marginRight: collapsed ? 0 : 8,
+        borderRadius: 6,
         justifyContent: collapsed ? "center" : "flex-start",
         background: isActive ? "var(--tac-surface)" : "transparent",
-        borderLeft: isActive ? "2px solid #4f8dfe" : "2px solid transparent",
         color: isActive ? "var(--tac-fg)" : "var(--tac-mute)",
         textDecoration: "none",
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 11,
-        textTransform: "uppercase",
-        letterSpacing: "0.08em",
-        fontWeight: 500,
+        fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+        fontSize: 13,
+        fontWeight: isActive ? 500 : 400,
+        letterSpacing: 0,
+        textTransform: "none",
         transition: "color 120ms, background 120ms",
       })}
-      onMouseDown={(e) => {
-        e.currentTarget.style.transform = "scale(0.97)";
-      }}
-      onMouseUp={(e) => {
-        e.currentTarget.style.transform = "scale(1)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "scale(1)";
-      }}
     >
-      <Icon size={16} weight="regular" />
+      <Icon
+        size={16}
+        weight="regular"
+        style={{ flexShrink: 0 }}
+      />
       <SlideLabel collapsed={collapsed}>
         <span style={{ flex: 1 }}>{label}</span>
         {badge && (
           <span
             style={{
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 9,
-              color: "#4f8dfe",
-              border: "1px solid var(--tac-border)",
-              padding: "1px 4px",
+              fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+              fontVariantNumeric: "tabular-nums",
+              fontSize: 11,
+              fontWeight: 500,
+              color: "var(--tac-mute)",
+              background: "var(--tac-surface2)",
+              borderRadius: 9999,
+              padding: "1px 7px",
             }}
           >
             {badge}
@@ -236,22 +247,32 @@ function FooterAction({ collapsed, onClick, Icon, label }) {
         display: "flex",
         alignItems: "center",
         gap: 12,
-        padding: collapsed ? "10px 0" : "10px 12px",
+        padding: collapsed ? "9px 0" : "9px 12px",
+        borderRadius: 6,
         justifyContent: collapsed ? "center" : "flex-start",
         background: "transparent",
         border: "none",
         color: "var(--tac-mute)",
         cursor: onClick ? "pointer" : "default",
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 11,
-        textTransform: "uppercase",
-        letterSpacing: "0.08em",
-        transition: "color 120ms",
+        fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+        fontSize: 13,
+        fontWeight: 400,
+        letterSpacing: 0,
+        textTransform: "none",
+        transition: "color 120ms, background 120ms",
       }}
-      onMouseEnter={(e) => onClick && (e.currentTarget.style.color = "var(--tac-fg)")}
-      onMouseLeave={(e) => (e.currentTarget.style.color = "var(--tac-mute)")}
+      onMouseEnter={(e) => {
+        if (onClick) {
+          e.currentTarget.style.color = "var(--tac-fg)";
+          e.currentTarget.style.background = "var(--tac-surface)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.color = "var(--tac-mute)";
+        e.currentTarget.style.background = "transparent";
+      }}
     >
-      <Icon size={14} weight="regular" />
+      <Icon size={15} weight="regular" />
       <SlideLabel collapsed={collapsed}>{label}</SlideLabel>
     </button>
   );

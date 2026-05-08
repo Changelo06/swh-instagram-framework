@@ -50,12 +50,6 @@ function ShellInner() {
         transition: "padding-left 180ms cubic-bezier(0.2, 0.8, 0.2, 1)",
       }}
     >
-      <div
-        className="tac-scanlines"
-        aria-hidden
-        style={{ zIndex: 1 }}
-      />
-
       <Sidebar
         collapsed={collapsed}
         onToggleCollapsed={() => setCollapsed((c) => !c)}

@@ -1,44 +1,25 @@
 import { memo, useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  ArrowSquareOut,
-  Eye,
-  Heart,
-  ChatCircle,
-  Pulse,
-  Trophy,
-  Medal,
-} from "@phosphor-icons/react";
+import { ArrowSquareOut } from "@phosphor-icons/react";
 import WidgetFrame from "./WidgetFrame.jsx";
 
 const SORTS = [
-  { id: "views", label: "VIEWS", icon: Eye, getter: (r) => num(r.videoViewCount) || num(r.videoPlayCount) },
-  { id: "likes", label: "LIKES", icon: Heart, getter: (r) => num(r.likesCount) },
-  { id: "comments", label: "COMMENTS", icon: ChatCircle, getter: (r) => num(r.commentsCount) },
-  { id: "engagement", label: "ENGAGEMENT", icon: Pulse, getter: (r) => num(r.likesCount) + num(r.commentsCount) },
+  {
+    id: "views",
+    label: "Views",
+    getter: (r) => num(r.videoViewCount) || num(r.videoPlayCount),
+  },
+  { id: "likes", label: "Likes", getter: (r) => num(r.likesCount) },
+  {
+    id: "comments",
+    label: "Comments",
+    getter: (r) => num(r.commentsCount),
+  },
+  {
+    id: "engagement",
+    label: "Engagement",
+    getter: (r) => num(r.likesCount) + num(r.commentsCount),
+  },
 ];
-
-// Podium tints for rank 1/2/3 — color does the talking, no labels.
-const PODIUM = {
-  1: {
-    bg: "#1f1a08",
-    border: "#fbbf24",
-    rule: "#fbbf24",
-    accent: "#fbbf24",
-  },
-  2: {
-    bg: "#1c1c1c",
-    border: "#cbd5e1",
-    rule: "#cbd5e1",
-    accent: "#cbd5e1",
-  },
-  3: {
-    bg: "#1d150c",
-    border: "#d97706",
-    rule: "#d97706",
-    accent: "#d97706",
-  },
-};
 
 function Top10ReelsGrid({ rows = [], missing = false }) {
   const [sortId, setSortId] = useState("views");
@@ -52,329 +33,218 @@ function Top10ReelsGrid({ rows = [], missing = false }) {
   }, [rows, sort]);
 
   return (
-    <WidgetFrame name="TOP 10 REELS" type="RANKED">
-      <div style={{ display: "grid", gridTemplateRows: "auto 1fr", gap: 10 }}>
+    <WidgetFrame
+      name="Top 10 reels"
+      action={
+        <SortTabs sortId={sortId} onSortChange={setSortId} />
+      }
+    >
+      {missing ? (
         <div
+          className="tac-empty-grid"
           style={{
-            display: "flex",
-            gap: 1,
-            background: "var(--tac-border)",
+            display: "grid",
+            placeItems: "center",
+            padding: 32,
             border: "1px solid var(--tac-border)",
+            borderRadius: 8,
+            fontFamily:
+              '"Inter", ui-sans-serif, system-ui, sans-serif',
+            fontSize: 13,
+            color: "var(--tac-danger)",
+            textAlign: "center",
+            lineHeight: 1.6,
           }}
         >
-          {SORTS.map((s) => {
-            const active = s.id === sortId;
-            const Icon = s.icon;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setSortId(s.id)}
-                style={{
-                  flex: 1,
-                  background: active ? "var(--tac-bg)" : "var(--tac-surface2)",
-                  border: "none",
-                  borderTop: active ? "2px solid #4f8dfe" : "2px solid transparent",
-                  color: active ? "var(--tac-fg)" : "var(--tac-mute)",
-                  padding: "8px 10px",
-                  fontFamily: '"JetBrains Mono", monospace',
-                  fontSize: 10,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                  transition: "color 120ms",
-                }}
-              >
-                <Icon size={11} weight="regular" />
-                {s.label}
-              </button>
-            );
-          })}
+          Missing required columns
+          <br />
+          <span style={{ color: "var(--tac-mute)", fontSize: 12 }}>
+            Top-10 ranking needs view + url columns.
+          </span>
         </div>
-
-        {missing ? (
-          <div
-            style={{
-              display: "grid",
-              placeItems: "center",
-              padding: 32,
-              background: "var(--tac-surface2)",
-              border: "1px dashed var(--tac-border)",
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 11,
-              color: "#ef4444",
-              letterSpacing: "0.06em",
-              textAlign: "center",
-              lineHeight: 1.6,
-            }}
-          >
-            // MISSING REQUIRED COLUMNS
-            <br />
-            <span style={{ color: "var(--tac-mute)" }}>
-              top-10 ranking needs view + url columns
-            </span>
-          </div>
-        ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2, 1fr)",
-              gap: 1,
-              background: "var(--tac-border)",
-            }}
-          >
-            <AnimatePresence initial={false}>
-              {top.map((reel, idx) => (
-                <ReelCard
-                  key={reel.shortCode || reel.id || reel._idx}
-                  reel={reel}
-                  rank={idx + 1}
-                  sort={sort}
-                />
-              ))}
-            </AnimatePresence>
-          </div>
-        )}
-      </div>
+      ) : (
+        <table className="tac-table">
+          <thead>
+            <tr>
+              <th style={{ width: 40 }}>#</th>
+              <th>Caption</th>
+              <th className="num" style={{ width: 90 }}>
+                Views
+              </th>
+              <th className="num" style={{ width: 80 }}>
+                Likes
+              </th>
+              <th className="num" style={{ width: 80 }}>
+                Comments
+              </th>
+              <th className="num" style={{ width: 70 }}>
+                Duration
+              </th>
+              <th style={{ width: 60 }} />
+            </tr>
+          </thead>
+          <tbody>
+            {top.map((reel, idx) => (
+              <ReelRow
+                key={reel.shortCode || reel.id || reel._idx}
+                reel={reel}
+                rank={idx + 1}
+                sortId={sortId}
+              />
+            ))}
+          </tbody>
+        </table>
+      )}
     </WidgetFrame>
   );
 }
 
-const ReelCard = memo(function ReelCard({ reel, rank, sort }) {
-  const url = reelUrl(reel);
-  const primary = sort.getter(reel);
-  const PrimaryIcon = sort.icon;
-  const podium = PODIUM[rank];
+function SortTabs({ sortId, onSortChange }) {
+  return (
+    <div style={{ display: "flex", gap: 4 }}>
+      {SORTS.map((s) => {
+        const active = s.id === sortId;
+        return (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => onSortChange(s.id)}
+            style={{
+              background: "transparent",
+              border: "none",
+              borderBottom: `2px solid ${
+                active ? "var(--tac-accent)" : "transparent"
+              }`,
+              color: active ? "var(--tac-fg)" : "var(--tac-mute)",
+              padding: "6px 10px",
+              fontFamily:
+                '"Inter", ui-sans-serif, system-ui, sans-serif',
+              fontSize: 13,
+              fontWeight: active ? 500 : 400,
+              cursor: "pointer",
+              transition: "color 120ms, border-color 120ms",
+            }}
+          >
+            {s.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
+const ReelRow = memo(function ReelRow({ reel, rank, sortId }) {
+  const url = reelUrl(reel);
   const views = num(reel.videoViewCount) || num(reel.videoPlayCount);
   const likes = num(reel.likesCount);
   const comments = num(reel.commentsCount);
   const duration = num(reel.videoDuration);
   const caption = (reel.caption || "").trim().replace(/\s+/g, " ");
-  const captionShort = caption.length > 110 ? caption.slice(0, 109) + "…" : caption;
+  const captionShort =
+    caption.length > 80 ? caption.slice(0, 79) + "…" : caption;
+
+  const isFirst = rank === 1;
+  const accentColor = (col) =>
+    sortId === col ? "var(--tac-fg)" : "var(--tac-fg)";
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ type: "spring", stiffness: 280, damping: 28 }}
-      style={{
-        background: podium ? podium.bg : "var(--tac-surface)",
-        padding: 12,
-        display: "grid",
-        gridTemplateRows: "auto auto auto",
-        gap: 10,
-        position: "relative",
-        minHeight: 150,
-        borderTop: podium ? `2px solid ${podium.border}` : "none",
-      }}
+    <tr
+      style={
+        isFirst
+          ? {
+              boxShadow: "inset 3px 0 0 var(--tac-accent)",
+            }
+          : undefined
+      }
     >
-      <div
+      <td
+        className="num"
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
+          fontWeight: isFirst ? 600 : 500,
+          color: isFirst ? "var(--tac-accent)" : "var(--tac-mute)",
+          fontFamily:
+            '"Inter", ui-sans-serif, system-ui, sans-serif',
         }}
       >
-        <RankBadge rank={rank} podium={podium} />
-        {url ? (
+        {rank}
+      </td>
+      <td
+        title={caption}
+        style={{
+          maxWidth: 360,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          color: caption ? "var(--tac-fg)" : "var(--tac-dim)",
+        }}
+      >
+        {captionShort || "(no caption)"}
+      </td>
+      <td
+        className="num"
+        style={{
+          color: accentColor("views"),
+          fontWeight: sortId === "views" ? 600 : 400,
+        }}
+      >
+        {fmt(views)}
+      </td>
+      <td
+        className="num"
+        style={{
+          color: accentColor("likes"),
+          fontWeight: sortId === "likes" ? 600 : 400,
+        }}
+      >
+        {fmt(likes)}
+      </td>
+      <td
+        className="num"
+        style={{
+          color: accentColor("comments"),
+          fontWeight: sortId === "comments" ? 600 : 400,
+        }}
+      >
+        {fmt(comments)}
+      </td>
+      <td className="num" style={{ color: "var(--tac-mute)" }}>
+        {duration ? `${duration.toFixed(0)}s` : "—"}
+      </td>
+      <td style={{ textAlign: "right" }}>
+        {url && (
           <a
             href={url}
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Open reel"
             style={{
-              color: "var(--tac-mute)",
               display: "inline-flex",
               alignItems: "center",
               gap: 4,
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 9,
-              letterSpacing: "0.1em",
+              fontSize: 12,
+              color: "var(--tac-mute)",
               textDecoration: "none",
-              border: "1px solid var(--tac-border)",
               padding: "2px 6px",
-              transition: "border-color 120ms, color 120ms",
+              borderRadius: 4,
+              transition: "color 120ms, background 120ms",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#4f8dfe";
-              e.currentTarget.style.color = "var(--tac-fg)";
+              e.currentTarget.style.color = "var(--tac-accent)";
+              e.currentTarget.style.background = "var(--tac-surface2)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "var(--tac-border)";
               e.currentTarget.style.color = "var(--tac-mute)";
+              e.currentTarget.style.background = "transparent";
             }}
           >
-            OPEN
-            <ArrowSquareOut size={9} weight="regular" />
+            Open
+            <ArrowSquareOut size={12} weight="regular" />
           </a>
-        ) : (
-          <span
-            style={{
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 9,
-              color: "var(--tac-dim)",
-              border: "1px solid var(--tac-border)",
-              padding: "2px 6px",
-            }}
-          >
-            NO URL
-          </span>
         )}
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          gap: 8,
-          paddingBottom: 8,
-          borderBottom: `1px solid ${podium ? podium.rule : "var(--tac-border)"}`,
-        }}
-      >
-        <PrimaryIcon
-          size={12}
-          weight="regular"
-          color={podium ? podium.accent : "#4f8dfe"}
-        />
-        <span
-          className="tac-display"
-          style={{ fontSize: 22, color: podium ? podium.accent : "var(--tac-fg)" }}
-        >
-          {fmt(primary)}
-        </span>
-        <span
-          style={{
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 9,
-            color: "var(--tac-mute)",
-            letterSpacing: "0.1em",
-            marginLeft: "auto",
-          }}
-        >
-          {sort.label}
-        </span>
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: 6,
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 9,
-        }}
-      >
-        <Stat icon={Eye} value={views} label="VWS" active={sort.id === "views"} accent={podium?.accent} />
-        <Stat icon={Heart} value={likes} label="LKS" active={sort.id === "likes"} accent={podium?.accent} />
-        <Stat icon={ChatCircle} value={comments} label="CMT" active={sort.id === "comments"} accent={podium?.accent} />
-        <Stat
-          icon={null}
-          value={duration ? `${duration.toFixed(0)}s` : "—"}
-          label="DUR"
-          isText
-        />
-      </div>
-
-      <div
-        style={{
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 10,
-          color: "var(--tac-mute)",
-          lineHeight: 1.45,
-          paddingTop: 6,
-          borderTop: "1px solid var(--tac-border)",
-          minHeight: 38,
-        }}
-        title={caption}
-      >
-        {captionShort || <span style={{ color: "var(--tac-dim)" }}>(no caption)</span>}
-      </div>
-    </motion.div>
+      </td>
+    </tr>
   );
 });
-
-function Stat({ icon: Icon, value, label, active, isText, accent }) {
-  const activeColor = accent || "#4f8dfe";
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateRows: "auto auto",
-        gap: 2,
-        padding: 4,
-        background: active ? "var(--tac-bg)" : "transparent",
-        border: active ? `1px solid ${activeColor}` : "1px solid var(--tac-border)",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-          color: "var(--tac-dim)",
-          letterSpacing: "0.1em",
-        }}
-      >
-        {Icon && <Icon size={9} weight="regular" />}
-        {label}
-      </div>
-      <div
-        style={{
-          color: active ? activeColor : "var(--tac-fg)",
-          fontWeight: active ? 600 : 400,
-          fontVariantNumeric: "tabular-nums",
-        }}
-      >
-        {isText ? value : fmt(value)}
-      </div>
-    </div>
-  );
-}
-
-function RankBadge({ rank, podium }) {
-  if (podium) {
-    const Icon = rank === 1 ? Trophy : Medal;
-    return (
-      <span
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "3px 8px",
-          background: podium.accent,
-          color: "var(--tac-bg)",
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: "0.1em",
-          fontVariantNumeric: "tabular-nums",
-        }}
-      >
-        <Icon size={11} weight="fill" />#{rank}
-      </span>
-    );
-  }
-  return (
-    <div
-      style={{
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 10,
-        color: "var(--tac-mute)",
-        letterSpacing: "0.1em",
-      }}
-    >
-      #{String(rank).padStart(2, "0")}
-    </div>
-  );
-}
 
 function num(v) {
   const n = Number(v);

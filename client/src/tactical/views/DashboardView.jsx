@@ -28,6 +28,7 @@ import Top10ReelsGrid from "../widgets/Top10ReelsGrid.jsx";
 import ScatterPlot from "../widgets/ScatterPlot.jsx";
 import ValidationGate from "../widgets/ValidationGate.jsx";
 import CreatorTabs from "../widgets/CreatorTabs.jsx";
+import PerformanceIntelligence from "../widgets/PerformanceIntelligence.jsx";
 import ApifyRunPanel from "../widgets/ApifyRunPanel.jsx";
 
 // localStorage keys for the ScrapeIdle form. The shared token slots are read
@@ -41,9 +42,9 @@ const MODE_KEY = "swh-dash-mode";
 const LEGACY_CONFIG_KEY = "swh-apify-config"; // migrated away on mount
 
 const TIME_WINDOWS = [
-  { id: "WEEKLY", label: "WEEKLY", days: 7, hint: "last 7 days" },
-  { id: "MONTHLY", label: "MONTHLY", days: 30, hint: "last 30 days" },
-  { id: "YEARLY", label: "YEARLY", days: 365, hint: "last 365 days" },
+  { id: "WEEKLY", label: "Weekly", days: 7, hint: "Last 7 days" },
+  { id: "MONTHLY", label: "Monthly", days: 30, hint: "Last 30 days" },
+  { id: "YEARLY", label: "Yearly", days: 365, hint: "Last 365 days" },
 ];
 
 function dateForWindow(windowId) {
@@ -226,7 +227,7 @@ function ScrapeIdle({ error }) {
       <header
         style={{
           background: "var(--tac-bg)",
-          padding: "20px 24px",
+          padding: "24px 24px 20px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -234,29 +235,29 @@ function ScrapeIdle({ error }) {
         }}
       >
         <div>
-          <div className="tac-label">SECTION D-01 / DASHBOARD</div>
           <h1
-            className="tac-display"
-            style={{ fontSize: 28, color: "var(--tac-fg)", marginTop: 4 }}
+            style={{
+              fontFamily:
+                '"Inter", ui-sans-serif, system-ui, sans-serif',
+              fontSize: 22,
+              fontWeight: 600,
+              color: "var(--tac-fg)",
+              margin: 0,
+            }}
           >
-            AWAITING TARGET
+            Start a scrape
           </h1>
+          <div
+            style={{
+              fontSize: 13,
+              color: "var(--tac-mute)",
+              marginTop: 4,
+            }}
+          >
+            Pull Instagram posts via Apify and run them through the framework.
+          </div>
         </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 10,
-            color: "var(--tac-mute)",
-            letterSpacing: "0.1em",
-          }}
-        >
-          <span>STATE / IDLE</span>
-          <span style={{ color: "#4f8dfe" }}>·</span>
-          <span>SCRAPER / READY</span>
-        </div>
+        <span className="tac-pill">Scraper ready</span>
       </header>
 
       <div
@@ -310,9 +311,9 @@ function ScrapeIdle({ error }) {
           {error && (
             <div className="tac-error-banner">
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <Warning size={14} weight="regular" color="#ef4444" />
-                <span style={{ color: "#ef4444", fontWeight: 500 }}>
-                  PARSE_ERROR //
+                <Warning size={14} weight="regular" color="var(--tac-danger)" />
+                <span style={{ color: "var(--tac-danger)", fontWeight: 500 }}>
+                  Parse error
                 </span>
                 <span>{error}</span>
               </div>
@@ -332,37 +333,28 @@ function TokenMissingBanner() {
         gridTemplateColumns: "auto 1fr auto",
         alignItems: "center",
         gap: 14,
-        padding: "12px 14px",
-        background: "rgba(251, 191, 36, 0.08)",
-        border: "1px dashed #fbbf24",
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 11,
+        padding: "12px 16px",
+        background: "rgba(245, 158, 11, 0.08)",
+        border: "1px solid rgba(245, 158, 11, 0.3)",
+        borderRadius: 8,
+        fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+        fontSize: 13,
       }}
     >
-      <Warning size={14} weight="regular" color="#fbbf24" />
+      <Warning size={16} weight="regular" color="var(--tac-warning)" />
       <div style={{ color: "var(--tac-fg)", lineHeight: 1.5 }}>
-        Apify token not set.{" "}
+        <span style={{ fontWeight: 500 }}>Apify token not set.</span>{" "}
         <span style={{ color: "var(--tac-mute)" }}>
-          Drop one in on the Apify page before running.
+          Add one on the Apify page before running.
         </span>
       </div>
       <Link
-        to="/app/apify"
-        style={{
-          fontSize: 10,
-          color: "#fbbf24",
-          letterSpacing: "0.1em",
-          textDecoration: "none",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          border: "1px solid #fbbf24",
-          padding: "6px 12px",
-          fontWeight: 600,
-        }}
+        to="/apify"
+        className="tac-btn"
+        style={{ fontSize: 12, padding: "6px 12px", textDecoration: "none" }}
       >
-        SET TOKEN
-        <ArrowRight size={11} weight="bold" />
+        Set token
+        <ArrowRight size={12} weight="regular" />
       </Link>
     </div>
   );
@@ -370,17 +362,25 @@ function TokenMissingBanner() {
 
 function ModeToggle({ value, onChange, disabled }) {
   const opts = [
-    { id: "PROFILE", label: "PROFILE", sub: "scrape a creator", icon: UserIcon },
-    { id: "REEL", label: "REEL", sub: "case-study one reel", icon: FilmReel },
+    {
+      id: "PROFILE",
+      label: "Profile scrape",
+      sub: "Scrape a creator's recent posts",
+      icon: UserIcon,
+    },
+    {
+      id: "REEL",
+      label: "Single reel",
+      sub: "Case-study one specific reel",
+      icon: FilmReel,
+    },
   ];
   return (
     <div
       style={{
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
-        gap: 1,
-        background: "var(--tac-border)",
-        border: "1px solid var(--tac-border)",
+        gap: 8,
       }}
     >
       {opts.map((opt) => {
@@ -393,15 +393,14 @@ function ModeToggle({ value, onChange, disabled }) {
             onClick={() => !disabled && onChange(opt.id)}
             disabled={disabled}
             style={{
-              background: active ? "var(--tac-bg)" : "var(--tac-surface)",
-              border: "none",
-              borderTop: active
-                ? "2px solid #4f8dfe"
-                : "2px solid transparent",
+              background: active ? "var(--tac-surface2)" : "var(--tac-surface)",
+              border: `1px solid ${active ? "var(--tac-accent)" : "var(--tac-border)"}`,
+              borderRadius: 8,
               color: active ? "var(--tac-fg)" : "var(--tac-mute)",
-              padding: "12px 16px",
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 12,
+              padding: "12px 14px",
+              fontFamily:
+                '"Inter", ui-sans-serif, system-ui, sans-serif',
+              fontSize: 13,
               cursor: disabled ? "not-allowed" : "pointer",
               display: "grid",
               gridTemplateColumns: "16px 1fr",
@@ -409,19 +408,23 @@ function ModeToggle({ value, onChange, disabled }) {
               alignItems: "center",
               textAlign: "left",
               opacity: disabled ? 0.5 : 1,
+              transition:
+                "border-color 120ms, background 120ms, color 120ms",
             }}
           >
-            <Icon size={14} weight="regular" color={active ? "#4f8dfe" : "var(--tac-mute)"} />
+            <Icon
+              size={15}
+              weight="regular"
+              color={active ? "var(--tac-accent)" : "var(--tac-mute)"}
+            />
             <div>
-              <div style={{ fontWeight: 600, letterSpacing: "0.04em" }}>
-                {opt.label}
-              </div>
+              <div style={{ fontWeight: 500 }}>{opt.label}</div>
               <div
                 style={{
-                  fontSize: 9,
+                  fontSize: 12,
                   color: "var(--tac-mute)",
-                  marginTop: 2,
-                  letterSpacing: "0.06em",
+                  marginTop: 1,
+                  fontWeight: 400,
                 }}
               >
                 {opt.sub}
@@ -455,8 +458,8 @@ function ProfileForm({
       }}
     >
       <FormField
-        label="01 / CREATOR PROFILES"
-        sub="one per line · profile URL or @handle"
+        label="Creator profiles"
+        sub="One per line · profile URL or @handle"
       >
         <textarea
           value={urlsText}
@@ -470,9 +473,10 @@ function ProfileForm({
           rows={4}
           className="tac-input"
           style={{
-            fontSize: 12,
+            fontSize: 13,
             padding: "10px 12px",
-            fontFamily: '"JetBrains Mono", monospace',
+            fontFamily:
+              '"JetBrains Mono", ui-monospace, monospace',
             resize: "vertical",
             minHeight: 96,
           }}
@@ -481,18 +485,22 @@ function ProfileForm({
           style={{
             display: "flex",
             justifyContent: "space-between",
-            fontSize: 9,
-            color: "var(--tac-dim)",
+            fontSize: 12,
+            color: "var(--tac-mute)",
             marginTop: 4,
-            letterSpacing: "0.06em",
           }}
         >
-          <span>{urlCount} target{urlCount === 1 ? "" : "s"} detected</span>
-          <span>multi-creator scrapes split into per-creator tabs after load</span>
+          <span>
+            {urlCount} target{urlCount === 1 ? "" : "s"} detected
+          </span>
+          <span>Multi-creator scrapes split into per-creator tabs after load</span>
         </div>
       </FormField>
 
-      <FormField label="02 / TIME WINDOW" sub="filters posts newer than today − N days">
+      <FormField
+        label="Time window"
+        sub="Filters posts newer than today − N days"
+      >
         <WindowToggle
           value={windowId}
           onChange={setWindowId}
@@ -500,7 +508,10 @@ function ProfileForm({
         />
       </FormField>
 
-      <FormField label="03 / RESULTS / URL" sub="max posts per creator · 1 – 1000">
+      <FormField
+        label="Results per profile"
+        sub="Max posts per creator · 1–1000"
+      >
         <input
           type="number"
           min={1}
@@ -510,9 +521,8 @@ function ProfileForm({
           disabled={isRunning}
           className="tac-input"
           style={{
-            fontSize: 12,
+            fontSize: 13,
             padding: "10px 12px",
-            fontFamily: '"JetBrains Mono", monospace',
             fontVariantNumeric: "tabular-nums",
             width: 160,
           }}
@@ -524,7 +534,7 @@ function ProfileForm({
         ready={ready}
         tokenSet={tokenSet}
         isRunning={isRunning}
-        label="RUN SCRAPE"
+        label="Run scrape"
       />
     </div>
   );
@@ -534,8 +544,8 @@ function ReelForm({ reelUrl, setReelUrl, onRun, ready, tokenSet, isRunning }) {
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <FormField
-        label="01 / REEL URL"
-        sub="paste a public reel/post link · scrapes only that single reel"
+        label="Reel URL"
+        sub="Paste a public reel/post link · scrapes only that single reel"
       >
         <input
           type="url"
@@ -547,21 +557,21 @@ function ReelForm({ reelUrl, setReelUrl, onRun, ready, tokenSet, isRunning }) {
           disabled={isRunning}
           className="tac-input"
           style={{
-            fontSize: 12,
+            fontSize: 13,
             padding: "10px 12px",
-            fontFamily: '"JetBrains Mono", monospace',
+            fontFamily:
+              '"JetBrains Mono", ui-monospace, monospace',
           }}
         />
         <div
           style={{
-            fontSize: 9,
-            color: "var(--tac-dim)",
+            fontSize: 12,
+            color: "var(--tac-mute)",
             marginTop: 4,
-            letterSpacing: "0.04em",
             lineHeight: 1.5,
           }}
         >
-          accepts /reel/&#123;shortcode&#125;/ or /p/&#123;shortcode&#125;/ — not
+          Accepts /reel/&#123;shortcode&#125;/ or /p/&#123;shortcode&#125;/ — not
           /&#123;handle&#125;/reels/ listing pages.
         </div>
       </FormField>
@@ -571,7 +581,7 @@ function ReelForm({ reelUrl, setReelUrl, onRun, ready, tokenSet, isRunning }) {
         ready={ready}
         tokenSet={tokenSet}
         isRunning={isRunning}
-        label="RUN CASE STUDY"
+        label="Run case study"
       />
     </div>
   );
@@ -583,9 +593,7 @@ function WindowToggle({ value, onChange, disabled }) {
       style={{
         display: "grid",
         gridTemplateColumns: "1fr 1fr 1fr",
-        gap: 1,
-        background: "var(--tac-border)",
-        border: "1px solid var(--tac-border)",
+        gap: 8,
       }}
     >
       {TIME_WINDOWS.map((w) => {
@@ -597,38 +605,32 @@ function WindowToggle({ value, onChange, disabled }) {
             onClick={() => !disabled && onChange(w.id)}
             disabled={disabled}
             style={{
-              background: active ? "var(--tac-bg)" : "var(--tac-surface)",
-              border: "none",
-              borderTop: active
-                ? "2px solid #4f8dfe"
-                : "2px solid transparent",
+              background: active ? "var(--tac-surface2)" : "var(--tac-surface)",
+              border: `1px solid ${active ? "var(--tac-accent)" : "var(--tac-border)"}`,
+              borderRadius: 8,
               color: active ? "var(--tac-fg)" : "var(--tac-mute)",
               padding: "10px 14px",
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 11,
+              fontFamily:
+                '"Inter", ui-sans-serif, system-ui, sans-serif',
+              fontSize: 13,
               cursor: disabled ? "not-allowed" : "pointer",
               display: "grid",
               gap: 2,
               textAlign: "left",
               opacity: disabled ? 0.5 : 1,
+              transition:
+                "border-color 120ms, background 120ms, color 120ms",
             }}
           >
             <span
               style={{
-                fontWeight: 600,
-                letterSpacing: "0.06em",
-                color: active ? "#4f8dfe" : "var(--tac-mute)",
+                fontWeight: 500,
+                color: active ? "var(--tac-fg)" : "var(--tac-mute)",
               }}
             >
               {w.label}
             </span>
-            <span
-              style={{
-                fontSize: 9,
-                color: "var(--tac-mute)",
-                letterSpacing: "0.04em",
-              }}
-            >
+            <span style={{ fontSize: 12, color: "var(--tac-mute)" }}>
               {w.hint}
             </span>
           </button>
@@ -647,28 +649,27 @@ function RunButton({ onClick, ready, tokenSet, isRunning, label }) {
       disabled={disabled}
       className="tac-btn tac-btn-accent"
       style={{
-        padding: "14px 18px",
-        fontSize: 13,
+        padding: "12px 18px",
+        fontSize: 14,
         opacity: disabled ? 0.4 : 1,
         cursor: disabled ? "not-allowed" : "pointer",
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
         gap: 10,
-        letterSpacing: "0.06em",
       }}
       title={
         isRunning
-          ? "scrape already in flight"
+          ? "Scrape already in flight"
           : !tokenSet
-          ? "set your Apify token first"
-          : "fire the scrape"
+          ? "Set your Apify token first"
+          : "Fire the scrape"
       }
     >
       {isRunning ? (
         <>
-          <Robot size={14} weight="regular" />
-          SCRAPE IN FLIGHT…
+          <Robot size={15} weight="regular" />
+          Scrape running…
         </>
       ) : (
         <>
@@ -688,30 +689,20 @@ function FormField({ label, sub, children }) {
           display: "flex",
           alignItems: "baseline",
           justifyContent: "space-between",
+          gap: 12,
         }}
       >
         <span
           style={{
-            fontSize: 10,
-            color: "#4f8dfe",
-            letterSpacing: "0.18em",
-            fontWeight: 600,
-            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: 13,
+            color: "var(--tac-fg)",
+            fontWeight: 500,
           }}
         >
           {label}
         </span>
         {sub && (
-          <span
-            style={{
-              fontSize: 9,
-              color: "var(--tac-dim)",
-              letterSpacing: "0.04em",
-              fontFamily: '"JetBrains Mono", monospace',
-            }}
-          >
-            {sub}
-          </span>
+          <span style={{ fontSize: 12, color: "var(--tac-mute)" }}>{sub}</span>
         )}
       </div>
       {children}
@@ -775,7 +766,7 @@ function LiveGrid() {
   );
 
   const cadenceEvents = cadence.map((c) => ({
-    label: c.day.slice(0, 2).toUpperCase(),
+    label: c.day.slice(0, 3),
     value: c.posts,
   }));
 
@@ -791,15 +782,15 @@ function LiveGrid() {
       style={{
         display: "grid",
         gridTemplateRows: "auto auto 1fr",
-        gap: 1,
-        background: "var(--tac-border)",
+        gap: 0,
+        background: "var(--tac-bg)",
         minHeight: "calc(100dvh - 44px)",
       }}
     >
       <header
         style={{
           background: "var(--tac-bg)",
-          padding: "16px 24px",
+          padding: "20px 24px 16px",
           display: "grid",
           gridTemplateColumns: "auto 1fr",
           alignItems: "center",
@@ -807,13 +798,11 @@ function LiveGrid() {
         }}
       >
         <div>
-          <div className="tac-label">SECTION D-01 / DASHBOARD</div>
           <div
             style={{
               display: "flex",
               alignItems: "baseline",
               gap: 14,
-              marginTop: 4,
               flexWrap: "wrap",
             }}
           >
@@ -829,8 +818,9 @@ function LiveGrid() {
             />
             <span
               style={{
-                fontFamily: '"JetBrains Mono", monospace',
-                fontSize: 11,
+                fontFamily:
+                  '"Inter", ui-sans-serif, system-ui, sans-serif',
+                fontSize: 12,
                 color: "var(--tac-mute)",
               }}
               title={filename}
@@ -850,38 +840,36 @@ function LiveGrid() {
         />
       </header>
 
-      <CreatorTabs label="DASHBOARD // CREATOR" />
+      <CreatorTabs label="Creators" />
 
       <div
         style={{
-          padding: 1,
-          background: "var(--tac-border)",
+          padding: "16px 24px 24px",
           display: "grid",
-          gap: 1,
+          gap: 16,
           gridTemplateColumns: "1fr",
         }}
       >
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "2fr 1fr 1fr",
-            gap: 1,
-            background: "var(--tac-border)",
+            gridTemplateColumns: "1fr 1fr 1fr",
+            gap: 16,
           }}
         >
           <SparklineCard
-            name="AVG VIEWS / POST"
+            name="Avg views per post"
             kpi={missing.has("views") ? "MISSING" : stats.avgViews}
             delta={missing.has("views") ? null : computeDelta(viewSeries)}
             series={missing.has("views") ? [] : viewSeries}
           />
           <SparklineCard
-            name="MEDIAN VIEWS"
+            name="Median views"
             kpi={missing.has("views") ? "MISSING" : stats.medianViews}
             series={missing.has("views") ? [] : viewSeries}
           />
           <SparklineCard
-            name="ENGAGEMENT %"
+            name="Engagement rate"
             kpi={
               missing.has("likes") || missing.has("comments")
                 ? "MISSING"
@@ -901,19 +889,18 @@ function LiveGrid() {
           />
         </div>
 
-        <div style={{ background: "var(--tac-surface)" }}>
-          <Top10ReelsGrid
-            rows={rows}
-            missing={missing.has("views") || missing.has("url")}
-          />
-        </div>
+        <PerformanceIntelligence rows={rows} />
+
+        <Top10ReelsGrid
+          rows={rows}
+          missing={missing.has("views") || missing.has("url")}
+        />
 
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "7fr 3fr",
-            gap: 1,
-            background: "var(--tac-border)",
+            gap: 16,
           }}
         >
           <ScatterPlot
@@ -924,12 +911,10 @@ function LiveGrid() {
               missing.has("comments")
             }
           />
-          <LiveTimeline name="UPLOAD CADENCE / DOW" events={cadenceEvents} />
+          <LiveTimeline name="Upload cadence" events={cadenceEvents} />
         </div>
 
-        <div style={{ background: "var(--tac-border)" }}>
-          <CommandInput name="QUERY_BUS" />
-        </div>
+        <CommandInput name="Query dataset" />
       </div>
     </section>
   );
@@ -953,7 +938,7 @@ function MustHaves({
       style={{
         justifySelf: "end",
         display: "grid",
-        gap: 4,
+        gap: 8,
         minWidth: 0,
       }}
     >
@@ -967,55 +952,44 @@ function MustHaves({
       >
         <span
           style={{
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 9,
-            color: "#4f8dfe",
-            letterSpacing: "0.18em",
+            fontFamily:
+              '"Inter", ui-sans-serif, system-ui, sans-serif',
+            fontSize: 12,
+            color: "var(--tac-mute)",
+            fontWeight: 500,
           }}
         >
-          [ MUST HAVES // NON-NEGOTIABLE ]
+          Dataset summary
         </span>
         {datasetType && datasetType !== "UNKNOWN" && (
-          <span
-            style={{
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 9,
-              color: "#4AF626",
-              letterSpacing: "0.12em",
-              border: "1px solid var(--tac-border)",
-              padding: "1px 6px",
-            }}
-          >
-            {datasetType}
-          </span>
+          <span className="tac-pill tac-pill--ok">{datasetType.toLowerCase()}</span>
         )}
       </div>
       <div
         style={{
           display: "flex",
-          gap: 1,
-          background: "var(--tac-border)",
-          border: "1px solid var(--tac-border)",
+          gap: 8,
+          flexWrap: "wrap",
         }}
       >
-        <Tile label="POSTS" value={totalPosts.toLocaleString()} accent />
+        <Tile label="Posts" value={totalPosts.toLocaleString()} accent />
         <Tile
-          label="FIRST POST"
-          value={missingTimestamp ? "MISSING" : fmtDate(oldest)}
+          label="First post"
+          value={missingTimestamp ? "Missing" : fmtDate(oldest)}
           warn={missingTimestamp}
         />
         <Tile
-          label="LATEST POST"
-          value={missingTimestamp ? "MISSING" : fmtDate(newest)}
+          label="Latest post"
+          value={missingTimestamp ? "Missing" : fmtDate(newest)}
           warn={missingTimestamp}
         />
         <Tile
-          label="SPAN"
+          label="Span"
           value={
             missingTimestamp
-              ? "MISSING"
+              ? "Missing"
               : spanDays
-              ? `${spanDays} DAYS`
+              ? `${spanDays} days`
               : "—"
           }
           warn={missingTimestamp}
@@ -1029,8 +1003,10 @@ function Tile({ label, value, accent, warn }) {
   return (
     <div
       style={{
-        background: "var(--tac-surface2)",
-        padding: "6px 12px",
+        background: "var(--tac-surface)",
+        border: "1px solid var(--tac-border)",
+        borderRadius: 8,
+        padding: "8px 12px",
         minWidth: 96,
         display: "grid",
         gap: 2,
@@ -1038,21 +1014,25 @@ function Tile({ label, value, accent, warn }) {
     >
       <div
         style={{
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 9,
+          fontFamily:
+            '"Inter", ui-sans-serif, system-ui, sans-serif',
+          fontSize: 11,
           color: "var(--tac-mute)",
-          letterSpacing: "0.1em",
         }}
       >
         {label}
       </div>
       <div
         style={{
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 12,
-          color: warn ? "#ef4444" : accent ? "#4f8dfe" : "var(--tac-fg)",
+          fontFamily:
+            '"Inter", ui-sans-serif, system-ui, sans-serif',
+          fontSize: 14,
+          color: warn
+            ? "var(--tac-danger)"
+            : accent
+            ? "var(--tac-accent)"
+            : "var(--tac-fg)",
           fontWeight: 600,
-          letterSpacing: "0.04em",
           fontVariantNumeric: "tabular-nums",
         }}
       >
@@ -1137,10 +1117,11 @@ function EditableHandle({ value, fallback, hasAlias, onChange, disabled }) {
             border: "none",
             outline: "none",
             color: "var(--tac-fg)",
-            fontFamily: '"Archivo Black", Impact, sans-serif',
+            fontFamily:
+              '"Inter", ui-sans-serif, system-ui, sans-serif',
             fontSize: 22,
-            textTransform: "uppercase",
-            letterSpacing: "-0.04em",
+            fontWeight: 600,
+            letterSpacing: "-0.01em",
             width: `${Math.max((draft.length || fallback.length || 4), 4) + 2}ch`,
             padding: 0,
           }}
@@ -1199,8 +1180,14 @@ function EditableHandle({ value, fallback, hasAlias, onChange, disabled }) {
       }}
     >
       <span
-        className="tac-display"
-        style={{ fontSize: 22, color: "var(--tac-fg)" }}
+        style={{
+          fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+          fontSize: 22,
+          fontWeight: 600,
+          letterSpacing: "-0.01em",
+          color: "var(--tac-fg)",
+          lineHeight: 1.1,
+        }}
       >
         @{value}
       </span>
@@ -1220,27 +1207,10 @@ function EditableHandle({ value, fallback, hasAlias, onChange, disabled }) {
             clearAlias();
           }}
           aria-label="Reset to original handle"
-          style={{
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 9,
-            color: "var(--tac-mute)",
-            background: "transparent",
-            border: "1px solid var(--tac-border)",
-            padding: "1px 6px",
-            cursor: "pointer",
-            letterSpacing: "0.1em",
-            transition: "color 120ms, border-color 120ms",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = "var(--tac-fg)";
-            e.currentTarget.style.borderColor = "#4f8dfe";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = "var(--tac-mute)";
-            e.currentTarget.style.borderColor = "var(--tac-border)";
-          }}
+          className="tac-btn"
+          style={{ fontSize: 11, padding: "3px 8px" }}
         >
-          RESET → @{fallback}
+          Reset to @{fallback}
         </button>
       )}
     </span>

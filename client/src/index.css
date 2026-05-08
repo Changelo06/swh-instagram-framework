@@ -286,19 +286,27 @@
    ============================================================ */
 
 .tac-root {
-  /* Theme tokens — overridden by .tac-theme-light below.
-     Brand accents (signal blue, status green, etc) stay constant. */
-  --tac-bg: #0A0A0A;
-  --tac-surface: #1A1A1A;
-  --tac-surface2: #0D0D0D;
-  --tac-border: #2A2A2A;
-  --tac-dim: #3A3A3A;
-  --tac-mute: #6B6B6B;
-  --tac-fg: #EAEAEA;
+  /* Apify-console-style lifted dark palette.
+     Brand accent + semantic status colors stay constant across themes. */
+  --tac-bg: #14151a;
+  --tac-surface: #1c1d22;
+  --tac-surface2: #25272d; /* elevated/hover */
+  --tac-border: #2c2e35;
+  --tac-dim: #6c6e75;
+  --tac-mute: #a1a3aa;
+  --tac-fg: #ebecef;
+
+  /* Brand + semantic */
+  --tac-accent: #4f8dfe;
+  --tac-accent-hover: #7aaeff;
+  --tac-success: #22c55e;
+  --tac-warning: #f59e0b;
+  --tac-danger: #ef4444;
 
   background: var(--tac-bg);
   color: var(--tac-fg);
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   min-height: 100dvh;
@@ -307,16 +315,15 @@
   transition: background 180ms ease;
 }
 
-/* Light / low-cortisol gray mode. Slight light gray substrate, panels
-   sit one shade darker for depth. Brand colors keep their hex. */
+/* Light / low-cortisol gray mode. Lifts the substrate; brand colors keep hex. */
 .tac-root.tac-theme-light {
-  --tac-bg: #d4d4d4;
-  --tac-surface: #c0c0c0;
-  --tac-surface2: #cccccc;
-  --tac-border: #9a9a9a;
-  --tac-dim: #777777;
-  --tac-mute: #4a4a4a;
-  --tac-fg: #1a1a1a;
+  --tac-bg: #f4f5f7;
+  --tac-surface: #ffffff;
+  --tac-surface2: #eceef2;
+  --tac-border: #d8dade;
+  --tac-dim: #8a8d94;
+  --tac-mute: #54575f;
+  --tac-fg: #1a1c20;
 }
 
 .tac-root.tac-theme-light .tac-scanlines {
@@ -330,15 +337,13 @@
   mix-blend-mode: multiply;
 }
 
-/* Force every descendant to lose rounding — non-negotiable per spec */
-.tac-root *,
-.tac-root *::before,
-.tac-root *::after {
-  border-radius: 0 !important;
-}
+/* The brutalist `border-radius: 0 !important` reset has been removed.
+   Phase 3 widgets opt into rounded corners via .tac-panel / .tac-btn /
+   .tac-input. Inline-styled `borderRadius: 0` declarations from the old
+   tactical era still win on the components that haven't been migrated yet. */
 
-/* CRT scanline overlay — fixed, pointer-events-none, top of viewport.
-   Never applied to scrolling containers (GPU repaint cost). */
+/* Legacy CRT scanline overlay — kept defined for backwards compatibility
+   but no longer applied by AnalyticsShell. Safe to delete in Phase 4. */
 .tac-scanlines {
   position: fixed;
   inset: 0;
@@ -354,51 +359,68 @@
   z-index: 1;
 }
 
-/* Display type — Archivo Black, uppercase, tight tracking */
+/* Display type — Inter SemiBold/Bold for KPI numbers and page titles.
+   Sentence case; no uppercase, no decorative tracking. */
 .tac-display {
-  font-family: "Archivo Black", Impact, sans-serif;
-  text-transform: uppercase;
-  letter-spacing: -0.04em;
-  line-height: 1;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 .tac-label {
-  font-family: "JetBrains Mono", monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 10px;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
   font-weight: 500;
   color: var(--tac-mute);
+  letter-spacing: 0;
+  text-transform: none;
 }
 .tac-meta {
-  font-family: "JetBrains Mono", monospace;
-  font-size: 11px;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px;
   color: var(--tac-mute);
 }
+/* Mono is reserved for: row IDs, JSON, code blocks, timestamps,
+   and numeric cells inside .tac-table. Use this class deliberately. */
+.tac-mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
 
-/* Panels — flat surface, single 1px border, no rounding */
+/* Panels — lifted surface, soft borders, gentle rounding */
 .tac-panel {
   background: var(--tac-surface);
   border: 1px solid var(--tac-border);
+  border-radius: 10px;
 }
 .tac-panel-inset {
   background: var(--tac-surface2);
   border: 1px solid var(--tac-border);
+  border-radius: 10px;
 }
 .tac-panel-active {
-  border: 2px solid #4f8dfe;
+  border: 1px solid var(--tac-accent);
+  box-shadow: 0 0 0 1px var(--tac-accent);
 }
 
-/* Razor-thin compartmentalization grid (gap method, no borders) */
+/* Compartmentalized grid (gap method). Use only where structurally needed.
+   Default gap dropped from 1px to 16px so children breathe. */
 .tac-grid-divider {
   display: grid;
-  gap: 1px;
-  background: var(--tac-border);
+  gap: 16px;
+  background: transparent;
 }
 .tac-grid-divider > * {
   background: var(--tac-surface);
 }
+/* Opt back into the old razor-thin look with .tac-grid-divider--hairline */
+.tac-grid-divider--hairline {
+  gap: 1px;
+  background: var(--tac-border);
+}
 
-/* Buttons — rectangular, mono, uppercase */
+/* Buttons — sentence case, Inter, rounded */
 .tac-btn {
   display: inline-flex;
   align-items: center;
@@ -406,55 +428,83 @@
   padding: 8px 14px;
   background: var(--tac-surface);
   border: 1px solid var(--tac-border);
+  border-radius: 6px;
   color: var(--tac-fg);
-  font-family: "JetBrains Mono", monospace;
-  font-size: 11px;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  text-transform: none;
+  letter-spacing: 0;
   cursor: pointer;
   transition: border-color 120ms ease, background 120ms ease, transform 80ms ease;
   user-select: none;
 }
 .tac-btn:hover {
-  border-color: #4f8dfe;
+  background: var(--tac-surface2);
+  border-color: var(--tac-mute);
+}
+.tac-btn:focus-visible {
+  outline: none;
+  border-color: var(--tac-accent);
+  box-shadow: 0 0 0 3px rgba(79, 141, 254, 0.25);
 }
 .tac-btn:active {
-  transform: translateY(1px) scale(0.98);
+  transform: translateY(1px);
 }
 .tac-btn:disabled {
-  opacity: 0.35;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 .tac-btn:disabled:hover {
+  background: var(--tac-surface);
   border-color: var(--tac-border);
 }
 
-/* Accent button — hazard red */
+/* Accent button — primary action */
 .tac-btn-accent {
-  background: #4f8dfe;
-  border-color: #4f8dfe;
-  color: var(--tac-bg);
+  background: var(--tac-accent);
+  border-color: var(--tac-accent);
+  color: #ffffff;
 }
 .tac-btn-accent:hover {
-  background: #7aaeff;
-  border-color: #7aaeff;
+  background: var(--tac-accent-hover);
+  border-color: var(--tac-accent-hover);
+}
+.tac-btn-accent:focus-visible {
+  border-color: var(--tac-accent-hover);
+  box-shadow: 0 0 0 3px rgba(79, 141, 254, 0.35);
+}
+
+/* Danger button — destructive only */
+.tac-btn-danger {
+  background: var(--tac-surface);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: var(--tac-danger);
+}
+.tac-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: var(--tac-danger);
 }
 
 /* Inputs */
 .tac-input {
-  background: var(--tac-bg);
+  background: var(--tac-surface);
   border: 1px solid var(--tac-border);
+  border-radius: 6px;
   color: var(--tac-fg);
-  font-family: "JetBrains Mono", monospace;
-  font-size: 12px;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
   padding: 8px 12px;
   width: 100%;
   outline: none;
-  transition: border-color 120ms ease;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.tac-input:hover {
+  border-color: var(--tac-mute);
 }
 .tac-input:focus {
-  border-color: #4f8dfe;
+  border-color: var(--tac-accent);
+  box-shadow: 0 0 0 3px rgba(79, 141, 254, 0.2);
 }
 .tac-input::placeholder {
   color: var(--tac-dim);
@@ -465,20 +515,120 @@
   display: inline-block;
   width: 6px;
   height: 6px;
-  background: #4AF626;
+  border-radius: 9999px;
+  background: var(--tac-success);
   animation: tac-pulse 1.6s ease-in-out infinite;
 }
 .tac-dot-error {
   display: inline-block;
   width: 6px;
   height: 6px;
-  background: #ef4444;
+  border-radius: 9999px;
+  background: var(--tac-danger);
 }
 .tac-dot-mute {
   display: inline-block;
   width: 6px;
   height: 6px;
+  border-radius: 9999px;
   background: var(--tac-mute);
+}
+
+/* ---------- Status pills ---------- */
+.tac-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background: var(--tac-surface2);
+  color: var(--tac-mute);
+  white-space: nowrap;
+}
+.tac-pill--ok {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--tac-success);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+.tac-pill--warn {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--tac-warning);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.tac-pill--err {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--tac-danger);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+.tac-pill--accent {
+  background: rgba(79, 141, 254, 0.12);
+  color: var(--tac-accent);
+  border-color: rgba(79, 141, 254, 0.3);
+}
+
+/* ---------- Empty / placeholder grid texture ----------
+   Apply as a className on any empty-state card to get a faint graph-paper
+   background. Sits on top of var(--tac-surface2). The grid lines are intentionally
+   a hair above invisible — they read as "no data yet" without competing with text. */
+.tac-empty-grid {
+  background-color: var(--tac-surface2);
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 16px 16px;
+  background-position: -1px -1px;
+}
+.tac-root.tac-theme-light .tac-empty-grid {
+  background-image:
+    linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+}
+
+/* ---------- Shared data table ---------- */
+.tac-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  color: var(--tac-fg);
+}
+.tac-table thead th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--tac-mute);
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--tac-border);
+  background: transparent;
+}
+.tac-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--tac-border);
+  vertical-align: middle;
+}
+.tac-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.tac-table tbody tr:hover td {
+  background: var(--tac-surface2);
+}
+.tac-table .num,
+.tac-table th.num,
+.tac-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.tac-table .mono,
+.tac-table td.mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ASCII bracket framing for empty / upload / instruction states */
@@ -578,14 +728,15 @@
   pointer-events: none;
 }
 
-/* Inline error banner — left accent bar, no modal */
+/* Inline error banner — soft red surface with left accent bar */
 .tac-error-banner {
-  background: #1f1212;
-  border: 1px solid var(--tac-border);
-  border-left: 3px solid #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-left: 3px solid var(--tac-danger);
+  border-radius: 6px;
   padding: 12px 16px;
-  font-family: "JetBrains Mono", monospace;
-  font-size: 12px;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
   color: var(--tac-fg);
 }
 
@@ -601,18 +752,20 @@
   background: var(--tac-border);
 }
 .tac-root *::-webkit-scrollbar-thumb:hover {
-  background: #4f8dfe;
+  background: var(--tac-mute);
 }
 
 /* Selection */
 .tac-root ::selection {
-  background: #4f8dfe;
-  color: var(--tac-bg);
+  background: rgba(79, 141, 254, 0.35);
+  color: var(--tac-fg);
 }
 
-/* Hazard red text utility */
-.tac-accent { color: #4f8dfe; }
-.tac-status { color: #4AF626; }
+/* Text color utilities */
+.tac-accent { color: var(--tac-accent); }
+.tac-status { color: var(--tac-success); }
+.tac-warning { color: var(--tac-warning); }
+.tac-danger { color: var(--tac-danger); }
 .tac-mute   { color: var(--tac-mute); }
 .tac-fg     { color: var(--tac-fg); }
 
@@ -639,18 +792,19 @@
   animation: tac-blink 1s steps(2) infinite;
 }
 
-/* Recharts: tame default font + tooltip cursor */
+/* Recharts: align with the new palette + Inter typography */
 .recharts-tooltip-wrapper { outline: none; }
 .recharts-default-tooltip {
-  background-color: #0a1628 !important;
-  border: 1px solid rgba(212, 175, 55, 0.3) !important;
-  border-radius: 6px !important;
+  background-color: var(--tac-surface2) !important;
+  border: 1px solid var(--tac-border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.6) !important;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif !important;
 }
-/* Force readable colors on tooltip children — recharts inlines dark
-   defaults on the label and item rows. */
 .recharts-default-tooltip .recharts-tooltip-label {
-  color: #e6c768 !important;
+  color: var(--tac-fg) !important;
   font-weight: 600 !important;
+  font-size: 12px !important;
   margin-bottom: 4px !important;
 }
 .recharts-default-tooltip .recharts-tooltip-item,
@@ -659,9 +813,18 @@
 .recharts-default-tooltip .recharts-tooltip-item-separator,
 .recharts-default-tooltip .recharts-tooltip-item-value,
 .recharts-default-tooltip .recharts-tooltip-item-unit {
-  color: #e2e8f0 !important;
+  color: var(--tac-mute) !important;
+  font-size: 12px !important;
 }
-.recharts-cartesian-axis-tick-value { font-family: "Inter", system-ui, sans-serif; }
+.recharts-cartesian-axis-tick-value {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  fill: var(--tac-mute) !important;
+  font-size: 11px;
+}
+.recharts-cartesian-grid line {
+  stroke: var(--tac-border);
+  stroke-opacity: 0.6;
+}
 
 /* Subtle entrance for cards / panels */
 @keyframes fadeUp {

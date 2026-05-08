@@ -84,7 +84,8 @@ export default function SettingsDrawer({ open, onClose, health, theme, onThemeCh
               zIndex: 41,
               display: "grid",
               gridTemplateRows: "auto 1fr auto",
-              fontFamily: '"JetBrains Mono", monospace',
+              fontFamily:
+                '"Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
             }}
           >
             <header
@@ -92,41 +93,37 @@ export default function SettingsDrawer({ open, onClose, health, theme, onThemeCh
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                padding: "16px 20px",
+                padding: "20px 24px",
                 borderBottom: "1px solid var(--tac-border)",
               }}
             >
               <div>
-                <div className="tac-label">UNIT D-01 / SETTINGS</div>
                 <div
-                  className="tac-display"
-                  style={{ fontSize: 18, color: "var(--tac-fg)", marginTop: 4 }}
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 600,
+                    color: "var(--tac-fg)",
+                    lineHeight: 1.2,
+                  }}
                 >
-                  CONTROL PANEL
+                  Settings
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--tac-mute)",
+                    marginTop: 2,
+                  }}
+                >
+                  Display, API tokens, and telemetry
                 </div>
               </div>
               <button
                 type="button"
                 onClick={onClose}
                 aria-label="Close settings"
-                style={{
-                  background: "transparent",
-                  border: "1px solid var(--tac-border)",
-                  color: "var(--tac-mute)",
-                  padding: 6,
-                  cursor: "pointer",
-                  display: "grid",
-                  placeItems: "center",
-                  transition: "border-color 120ms, color 120ms",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "#4f8dfe";
-                  e.currentTarget.style.color = "var(--tac-fg)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "var(--tac-border)";
-                  e.currentTarget.style.color = "var(--tac-mute)";
-                }}
+                className="tac-btn"
+                style={{ padding: 6 }}
               >
                 <X size={14} weight="regular" />
               </button>
@@ -148,18 +145,17 @@ export default function SettingsDrawer({ open, onClose, health, theme, onThemeCh
 
             <footer
               style={{
-                padding: "10px 20px",
+                padding: "12px 24px",
                 borderTop: "1px solid var(--tac-border)",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                fontSize: 9,
+                fontSize: 11,
                 color: "var(--tac-dim)",
-                letterSpacing: "0.18em",
               }}
             >
-              <span>SWH // INTERNAL</span>
-              <span>v1.2 / TACTICAL</span>
+              <span>SWH Framework</span>
+              <span>v1.2</span>
             </footer>
           </motion.aside>
         </>
@@ -171,35 +167,24 @@ export default function SettingsDrawer({ open, onClose, health, theme, onThemeCh
 function DisplaySection({ theme, onThemeChange }) {
   const isDark = theme !== "light";
   const options = [
-    {
-      id: "dark",
-      label: "DARK",
-      sub: "tactical default",
-      icon: Moon,
-    },
-    {
-      id: "light",
-      label: "GRAY",
-      sub: "low cortisol",
-      icon: Sun,
-    },
+    { id: "dark", label: "Dark", sub: "Default", icon: Moon },
+    { id: "light", label: "Light", sub: "Low contrast", icon: Sun },
   ];
 
   return (
-    <section style={{ display: "grid", gap: 12 }}>
+    <section style={{ display: "grid", gap: 10 }}>
       <header>
-        <div className="tac-label">SECTION D / DISPLAY</div>
         <div
           style={{
-            fontSize: 12,
+            fontSize: 14,
+            fontWeight: 600,
             color: "var(--tac-fg)",
-            marginTop: 4,
-            letterSpacing: "0.04em",
-            textTransform: "uppercase",
-            fontWeight: 500,
           }}
         >
-          THEME
+          Display
+        </div>
+        <div style={{ fontSize: 12, color: "var(--tac-mute)", marginTop: 2 }}>
+          Theme
         </div>
       </header>
 
@@ -207,9 +192,7 @@ function DisplaySection({ theme, onThemeChange }) {
         style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
-          gap: 1,
-          background: "var(--tac-border)",
-          border: "1px solid var(--tac-border)",
+          gap: 8,
         }}
       >
         {options.map((opt) => {
@@ -221,54 +204,42 @@ function DisplaySection({ theme, onThemeChange }) {
               type="button"
               onClick={() => onThemeChange?.(opt.id)}
               style={{
-                background: active ? "var(--tac-bg)" : "var(--tac-surface)",
-                border: "none",
-                borderTop: active
-                  ? "2px solid #4f8dfe"
-                  : "2px solid transparent",
+                background: active ? "var(--tac-surface2)" : "var(--tac-surface)",
+                border: `1px solid ${active ? "var(--tac-accent)" : "var(--tac-border)"}`,
+                borderRadius: 8,
                 color: active ? "var(--tac-fg)" : "var(--tac-mute)",
-                padding: "12px 14px",
-                fontFamily: '"JetBrains Mono", monospace',
-                fontSize: 11,
-                letterSpacing: "0.06em",
+                padding: "10px 12px",
+                fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+                fontSize: 13,
                 cursor: "pointer",
                 display: "grid",
                 gridTemplateColumns: "16px 1fr auto",
                 alignItems: "center",
                 gap: 10,
                 textAlign: "left",
-                transition: "color 120ms",
+                transition: "border-color 120ms, background 120ms, color 120ms",
               }}
             >
               <Icon
-                size={13}
+                size={14}
                 weight="regular"
-                color={active ? "#4f8dfe" : "var(--tac-mute)"}
+                color={active ? "var(--tac-accent)" : "var(--tac-mute)"}
               />
               <div>
-                <div style={{ fontWeight: 600 }}>{opt.label}</div>
+                <div style={{ fontWeight: 500 }}>{opt.label}</div>
                 <div
                   style={{
-                    fontSize: 9,
+                    fontSize: 11,
                     color: "var(--tac-mute)",
-                    marginTop: 2,
-                    letterSpacing: "0.08em",
+                    marginTop: 1,
+                    fontWeight: 400,
                   }}
                 >
                   {opt.sub}
                 </div>
               </div>
               {active && (
-                <span
-                  style={{
-                    fontSize: 9,
-                    color: "#4f8dfe",
-                    letterSpacing: "0.1em",
-                    fontWeight: 700,
-                  }}
-                >
-                  ACTIVE
-                </span>
+                <span className="tac-pill tac-pill--accent">Active</span>
               )}
             </button>
           );
@@ -278,17 +249,16 @@ function DisplaySection({ theme, onThemeChange }) {
       <div
         style={{
           padding: "10px 12px",
-          background: "var(--tac-bg)",
+          background: "var(--tac-surface2)",
           border: "1px solid var(--tac-border)",
-          fontSize: 10,
+          borderRadius: 8,
+          fontSize: 12,
           color: "var(--tac-mute)",
-          lineHeight: 1.6,
-          letterSpacing: "0.02em",
+          lineHeight: 1.5,
         }}
       >
-        Gray mode swaps the substrate to a lighter neutral tone for long
-        sessions. Brand accents (signal blue, status green, error red) stay
-        constant across themes.
+        Light mode swaps to a brighter substrate for long sessions. Brand accent
+        and status colors stay constant across themes.
       </div>
     </section>
   );
@@ -337,70 +307,71 @@ function GroqSection() {
   const hasSaved = savedToken.length > 0;
   const canSave = dirty;
 
-  let statusTone = "var(--tac-dim)";
-  let statusLabel = "// no token saved · transcripts will be skipped on scrape";
+  let pillVariant = "";
+  let statusLabel = "No token saved — transcripts will be skipped on scrape";
   let StatusIcon = Warning;
   if (savedFlash) {
-    statusTone = "#4AF626";
-    statusLabel = "TOKEN SAVED";
+    pillVariant = "ok";
+    statusLabel = "Token saved";
     StatusIcon = CheckCircle;
   } else if (dirty && token) {
-    statusTone = "#fbbf24";
-    statusLabel = "UNSAVED CHANGES · click SAVE to persist";
+    pillVariant = "warn";
+    statusLabel = "Unsaved changes — click Save to persist";
   } else if (dirty && !token && hasSaved) {
-    statusTone = "#fbbf24";
-    statusLabel = "FIELD CLEARED · click SAVE to wipe stored token";
+    pillVariant = "warn";
+    statusLabel = "Field cleared — click Save to wipe stored token";
   } else if (!dirty && hasSaved) {
-    statusTone = "#4AF626";
-    statusLabel = "TOKEN SAVED · transcripts enabled";
+    pillVariant = "ok";
+    statusLabel = "Token saved — transcripts enabled";
     StatusIcon = CheckCircle;
   }
 
   return (
-    <section style={{ display: "grid", gap: 12 }}>
+    <section style={{ display: "grid", gap: 10 }}>
       <header
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          gap: 12,
         }}
       >
         <div>
-          <div className="tac-label">SECTION G / GROQ</div>
           <div
             style={{
               display: "flex",
               alignItems: "center",
               gap: 8,
-              fontSize: 12,
+              fontSize: 14,
+              fontWeight: 600,
               color: "var(--tac-fg)",
-              marginTop: 4,
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-              fontWeight: 500,
             }}
           >
-            <Microphone size={13} weight="regular" color="#4f8dfe" />
-            WHISPER · TRANSCRIBER
+            <Microphone size={15} weight="regular" color="var(--tac-accent)" />
+            Groq Whisper
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              color: "var(--tac-mute)",
+              marginTop: 2,
+            }}
+          >
+            Transcriber token
           </div>
         </div>
         <a
           href="https://console.groq.com/keys"
           target="_blank"
           rel="noopener noreferrer"
+          className="tac-btn"
           style={{
-            fontSize: 9,
-            color: "var(--tac-mute)",
-            letterSpacing: "0.12em",
-            border: "1px solid var(--tac-border)",
-            padding: "4px 8px",
+            fontSize: 12,
+            padding: "5px 10px",
             textDecoration: "none",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 4,
           }}
         >
-          GET KEY
+          Get key
         </a>
       </header>
 
@@ -428,10 +399,10 @@ function GroqSection() {
             autoComplete="off"
             className="tac-input"
             style={{
-              fontSize: 11,
+              fontSize: 12,
               padding: "8px 32px 8px 10px",
-              letterSpacing: "0.02em",
-              fontFamily: '"JetBrains Mono", monospace',
+              fontFamily:
+                '"JetBrains Mono", ui-monospace, monospace',
             }}
           />
           <button
@@ -464,76 +435,45 @@ function GroqSection() {
           onClick={onSave}
           disabled={!canSave}
           className="tac-btn tac-btn-accent"
-          style={{
-            padding: "0 10px",
-            fontSize: 10,
-            letterSpacing: "0.08em",
-            opacity: canSave ? 1 : 0.4,
-            cursor: canSave ? "pointer" : "not-allowed",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5,
-          }}
+          style={{ padding: "0 12px", fontSize: 12 }}
         >
-          <FloppyDisk size={11} weight="regular" />
-          SAVE
+          <FloppyDisk size={12} weight="regular" />
+          Save
         </button>
         <button
           type="button"
           onClick={onClear}
           disabled={!hasSaved && !token}
           className="tac-btn"
-          style={{
-            padding: "0 10px",
-            fontSize: 10,
-            letterSpacing: "0.08em",
-            opacity: !hasSaved && !token ? 0.4 : 1,
-            cursor: !hasSaved && !token ? "not-allowed" : "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5,
-          }}
+          style={{ padding: "0 12px", fontSize: 12 }}
         >
-          <Trash size={11} weight="regular" />
-          CLEAR
+          <Trash size={12} weight="regular" />
+          Clear
         </button>
       </div>
 
       <div
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "5px 10px",
-          border: `1px solid ${statusTone}`,
-          background: `${statusTone}11`,
-          color: statusTone,
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 10,
-          letterSpacing: "0.08em",
-          fontWeight: 600,
-          alignSelf: "start",
-          transition: "border-color 200ms, background 200ms, color 200ms",
-        }}
+        className={`tac-pill${pillVariant ? ` tac-pill--${pillVariant}` : ""}`}
+        style={{ alignSelf: "start", paddingTop: 4, paddingBottom: 4 }}
       >
-        <StatusIcon size={11} weight="regular" />
+        <StatusIcon size={12} weight="regular" />
         {statusLabel}
       </div>
 
       <div
         style={{
           padding: "10px 12px",
-          background: "var(--tac-bg)",
+          background: "var(--tac-surface2)",
           border: "1px solid var(--tac-border)",
-          fontSize: 10,
+          borderRadius: 8,
+          fontSize: 12,
           color: "var(--tac-mute)",
-          lineHeight: 1.6,
-          letterSpacing: "0.02em",
+          lineHeight: 1.5,
         }}
       >
         Token rides in the request body to /api/scrape and /api/transcribe.
-        Server forwards it to Groq Whisper and never persists it. When unset,
-        scrapes still complete — they just ship without transcripts.
+        The server forwards it to Groq Whisper and never persists it. When
+        unset, scrapes still complete — they just ship without transcripts.
       </div>
     </section>
   );
@@ -548,28 +488,45 @@ function ApiSection({ health }) {
   const groqConfigured =
     details?.services?.groq?.configured ?? details?.groqConfigured;
 
+  const overallVariant =
+    state === API_STATE.ONLINE
+      ? "ok"
+      : state === API_STATE.DEGRADED
+      ? "warn"
+      : state === API_STATE.OFFLINE
+      ? "err"
+      : "";
+  const overallLabel =
+    state === API_STATE.ONLINE
+      ? "All services online"
+      : state === API_STATE.DEGRADED
+      ? "Anthropic OK · Groq missing"
+      : state === API_STATE.OFFLINE
+      ? "Offline"
+      : "Checking…";
+
   return (
-    <section style={{ display: "grid", gap: 12 }}>
+    <section style={{ display: "grid", gap: 10 }}>
       <header
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          gap: 12,
         }}
       >
         <div>
-          <div className="tac-label">SECTION A / TELEMETRY</div>
           <div
             style={{
-              fontSize: 12,
+              fontSize: 14,
+              fontWeight: 600,
               color: "var(--tac-fg)",
-              marginTop: 4,
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-              fontWeight: 500,
             }}
           >
-            API STATUS
+            Telemetry
+          </div>
+          <div style={{ fontSize: 12, color: "var(--tac-mute)", marginTop: 2 }}>
+            API status
           </div>
         </div>
         <button
@@ -577,16 +534,11 @@ function ApiSection({ health }) {
           onClick={recheck}
           disabled={state === API_STATE.CHECKING}
           className="tac-btn"
-          style={{
-            padding: "6px 10px",
-            fontSize: 9,
-            opacity: state === API_STATE.CHECKING ? 0.4 : 1,
-          }}
+          style={{ padding: "5px 10px", fontSize: 12 }}
         >
           <ArrowsClockwise
-            size={11}
+            size={12}
             weight="regular"
-            className={state === API_STATE.CHECKING ? "spin-slow" : ""}
             style={{
               animation:
                 state === API_STATE.CHECKING
@@ -594,74 +546,34 @@ function ApiSection({ health }) {
                   : "none",
             }}
           />
-          RECHECK
+          Recheck
         </button>
       </header>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "auto 1fr auto",
-          alignItems: "center",
-          gap: 12,
-          padding: "12px 14px",
-          background: "var(--tac-surface)",
-          border: "1px solid var(--tac-border)",
-        }}
+      <span
+        className={`tac-pill${overallVariant ? ` tac-pill--${overallVariant}` : ""}`}
+        style={{ alignSelf: "start", paddingTop: 4, paddingBottom: 4 }}
       >
         <StatusIcon
-          size={18}
+          size={12}
           weight="regular"
-          color={conf.color}
           style={{
             animation: conf.spin ? "spin 1s linear infinite" : "none",
           }}
         />
-        <div>
-          <div
-            style={{
-              fontSize: 11,
-              color: "var(--tac-mute)",
-              letterSpacing: "0.1em",
-            }}
-          >
-            PIPELINE STATUS
-          </div>
-          <div
-            style={{
-              fontSize: 14,
-              color: conf.color,
-              fontWeight: 600,
-              letterSpacing: "0.06em",
-              marginTop: 2,
-            }}
-          >
-            {conf.label}
-          </div>
-        </div>
-        <span
-          style={{
-            width: 8,
-            height: 8,
-            background: conf.color,
-            animation:
-              conf.color === "#4AF626"
-                ? "tac-pulse 1.6s ease-in-out infinite"
-                : "none",
-          }}
-        />
-      </div>
+        {overallLabel}
+      </span>
 
-      <div style={{ display: "grid", gap: 1, background: "var(--tac-border)" }}>
+      <div style={{ display: "grid", gap: 8 }}>
         <ServiceRow
-          name="ANTHROPIC"
+          name="Anthropic"
           subtitle="Required · framework analysis"
           ok={!!anthropicConfigured}
           model={details?.model}
           required
         />
         <ServiceRow
-          name="GROQ WHISPER"
+          name="Groq Whisper"
           subtitle="Optional · top-reel transcription"
           ok={!!groqConfigured}
           model={details?.groqModel}
@@ -669,9 +581,13 @@ function ApiSection({ health }) {
       </div>
 
       {error && (
-        <div className="tac-error-banner" style={{ fontSize: 11 }}>
+        <div className="tac-error-banner">
           <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-            <Warning size={13} color="#ef4444" style={{ marginTop: 2, flexShrink: 0 }} />
+            <Warning
+              size={14}
+              color="var(--tac-danger)"
+              style={{ marginTop: 2, flexShrink: 0 }}
+            />
             <span style={{ wordBreak: "break-all" }}>{error}</span>
           </div>
         </div>
@@ -680,29 +596,33 @@ function ApiSection({ health }) {
       <div
         style={{
           padding: "10px 12px",
-          background: "var(--tac-bg)",
+          background: "var(--tac-surface2)",
           border: "1px solid var(--tac-border)",
-          fontSize: 10,
+          borderRadius: 8,
+          fontSize: 12,
           color: "var(--tac-mute)",
-          lineHeight: 1.6,
-          letterSpacing: "0.02em",
+          lineHeight: 1.5,
         }}
       >
-        Anthropic powers every framework run. Groq is only consulted to transcribe the top-engaged reels before deep analysis. Pipeline runs without Groq — transcripts are skipped.
+        Anthropic powers every framework run. Groq is only consulted to
+        transcribe the top-engaged reels before deep analysis. The pipeline
+        still runs without Groq — transcripts are skipped.
       </div>
     </section>
   );
 }
 
 function ServiceRow({ name, subtitle, ok, model, required }) {
-  const tone = ok ? "#4AF626" : required ? "#ef4444" : "#fbbf24";
-  const status = ok ? "OK" : required ? "MISSING" : "OPTIONAL";
+  const variant = ok ? "ok" : required ? "err" : "warn";
+  const status = ok ? "Online" : required ? "Missing" : "Optional";
 
   return (
     <div
       style={{
         background: "var(--tac-surface)",
-        padding: "10px 14px",
+        border: "1px solid var(--tac-border)",
+        borderRadius: 8,
+        padding: "12px 14px",
         display: "grid",
         gridTemplateColumns: "1fr auto",
         alignItems: "center",
@@ -712,36 +632,18 @@ function ServiceRow({ name, subtitle, ok, model, required }) {
       <div>
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
+            fontSize: 13,
+            fontWeight: 500,
+            color: "var(--tac-fg)",
           }}
         >
-          <span
-            style={{
-              width: 6,
-              height: 6,
-              background: tone,
-              animation: ok ? "tac-pulse 1.6s ease-in-out infinite" : "none",
-            }}
-          />
-          <span
-            style={{
-              fontSize: 11,
-              color: "var(--tac-fg)",
-              letterSpacing: "0.06em",
-              fontWeight: 500,
-            }}
-          >
-            {name}
-          </span>
+          {name}
         </div>
         <div
           style={{
-            fontSize: 9,
+            fontSize: 12,
             color: "var(--tac-mute)",
-            marginTop: 4,
-            letterSpacing: "0.04em",
+            marginTop: 2,
           }}
         >
           {subtitle}
@@ -749,9 +651,10 @@ function ServiceRow({ name, subtitle, ok, model, required }) {
         {model && (
           <div
             style={{
-              fontSize: 9,
+              fontSize: 11,
               color: "var(--tac-dim)",
               marginTop: 2,
+              fontFamily: '"JetBrains Mono", ui-monospace, monospace',
               fontVariantNumeric: "tabular-nums",
             }}
           >
@@ -759,16 +662,7 @@ function ServiceRow({ name, subtitle, ok, model, required }) {
           </div>
         )}
       </div>
-      <span
-        style={{
-          fontSize: 9,
-          color: tone,
-          letterSpacing: "0.12em",
-          fontWeight: 600,
-        }}
-      >
-        {status}
-      </span>
+      <span className={`tac-pill tac-pill--${variant}`}>{status}</span>
     </div>
   );
 }

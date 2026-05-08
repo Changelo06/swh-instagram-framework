@@ -1,38 +1,38 @@
 import { memo, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { MagnifyingGlass, ArrowCounterClockwise, Bell } from "@phosphor-icons/react";
+import { MagnifyingGlass, ArrowCounterClockwise } from "@phosphor-icons/react";
 import { useCsv, STAGE } from "../state/CsvContext.jsx";
 import { API_STATE } from "../../components/ApiStatus.jsx";
 
 const SECTION_LABEL = {
-  "/": "DASHBOARD",
-  "/dataset": "DATASET",
-  "/analyze": "ANALYZE",
-  "/scripts": "SCRIPTS",
-  "/apify": "APIFY",
+  "/": "Dashboard",
+  "/dataset": "Dataset",
+  "/analyze": "Analyze",
+  "/scripts": "Scripts",
+  "/apify": "Apify",
+};
+
+const HEALTH_PILL = {
+  [API_STATE.ONLINE]: { variant: "ok", label: "Online" },
+  [API_STATE.DEGRADED]: { variant: "warn", label: "Groq missing" },
+  [API_STATE.OFFLINE]: { variant: "err", label: "Offline" },
+  [API_STATE.CHECKING]: { variant: "default", label: "Checking…" },
 };
 
 function Topbar({ healthState, onReset, search, onSearchChange }) {
   const { pathname } = useLocation();
-  const section = SECTION_LABEL[pathname] || "DASHBOARD";
+  const section = SECTION_LABEL[pathname] || "Dashboard";
   const { stage, filename, parsed } = useCsv();
   const rowCount = parsed?.rows?.length || 0;
 
   const operatorId = useOperatorId();
 
   const showSearch = pathname === "/dataset";
-
-  const dot =
-    healthState === API_STATE.ONLINE
-      ? "#4AF626"
-      : healthState === API_STATE.DEGRADED
-      ? "#fbbf24"
-      : healthState === API_STATE.OFFLINE
-      ? "#ef4444"
-      : "var(--tac-mute)";
+  const health = HEALTH_PILL[healthState] || HEALTH_PILL[API_STATE.CHECKING];
 
   return (
     <header
+      className="tac-topbar"
       style={{
         position: "absolute",
         inset: 0,
@@ -41,58 +41,58 @@ function Topbar({ healthState, onReset, search, onSearchChange }) {
         display: "grid",
         gridTemplateColumns: "auto 1fr auto",
         alignItems: "stretch",
-        gap: 1,
       }}
-      className="tac-topbar"
     >
       <div
         style={{
           display: "flex",
           alignItems: "center",
           gap: 12,
-          padding: "0 16px",
-          borderRight: "1px solid var(--tac-border)",
-          background: "var(--tac-surface2)",
+          padding: "0 20px",
           minWidth: 240,
         }}
       >
-        <span className="tac-label" style={{ color: "#4f8dfe" }}>
-          [ {section} ]
-        </span>
         <span
           style={{
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 11,
-            color: "var(--tac-mute)",
-          }}
-        >
-          /
-        </span>
-        <span
-          style={{
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 11,
+            fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+            fontSize: 14,
+            fontWeight: 600,
             color: "var(--tac-fg)",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            maxWidth: 280,
           }}
-          title={filename || "no dataset"}
         >
-          {filename || "no_dataset.csv"}
+          {section}
         </span>
+        {filename && (
+          <>
+            <span
+              style={{
+                width: 1,
+                height: 14,
+                background: "var(--tac-border)",
+              }}
+            />
+            <span
+              title={filename}
+              style={{
+                fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+                fontSize: 12,
+                color: "var(--tac-mute)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                maxWidth: 320,
+              }}
+            >
+              {filename}
+            </span>
+          </>
+        )}
         {stage === STAGE.READY && rowCount > 0 && (
           <span
-            style={{
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 10,
-              color: "var(--tac-mute)",
-              border: "1px solid var(--tac-border)",
-              padding: "2px 6px",
-            }}
+            className="tac-pill"
+            style={{ fontVariantNumeric: "tabular-nums" }}
           >
-            {rowCount.toLocaleString()} ROWS
+            {rowCount.toLocaleString()} rows
           </span>
         )}
       </div>
@@ -108,7 +108,7 @@ function Topbar({ healthState, onReset, search, onSearchChange }) {
         {showSearch ? (
           <div style={{ position: "relative", flex: 1, maxWidth: 480 }}>
             <MagnifyingGlass
-              size={12}
+              size={14}
               weight="regular"
               style={{
                 position: "absolute",
@@ -123,12 +123,12 @@ function Topbar({ healthState, onReset, search, onSearchChange }) {
               className="tac-input"
               value={search || ""}
               onChange={(e) => onSearchChange?.(e.target.value)}
-              placeholder="grep dataset..."
+              placeholder="Search dataset"
               style={{
-                paddingLeft: 28,
-                height: 28,
-                fontSize: 11,
-                background: "var(--tac-surface2)",
+                paddingLeft: 32,
+                height: 30,
+                fontSize: 13,
+                background: "var(--tac-surface)",
               }}
             />
           </div>
@@ -141,65 +141,48 @@ function Topbar({ healthState, onReset, search, onSearchChange }) {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 14,
-          padding: "0 16px",
-          borderLeft: "1px solid var(--tac-border)",
-          background: "var(--tac-surface2)",
+          gap: 12,
+          padding: "0 20px",
         }}
       >
         {onReset && stage === STAGE.READY && (
           <button
             type="button"
             onClick={onReset}
-            style={{
-              background: "transparent",
-              border: "1px solid var(--tac-border)",
-              color: "var(--tac-fg)",
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 10,
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-              padding: "4px 10px",
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              transition: "border-color 120ms",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#4f8dfe")}
-            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--tac-border)")}
+            className="tac-btn"
+            style={{ fontSize: 12, padding: "5px 10px" }}
           >
-            <ArrowCounterClockwise size={11} weight="regular" />
-            RESET
+            <ArrowCounterClockwise size={13} weight="regular" />
+            Reset
           </button>
         )}
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            color: "var(--tac-mute)",
-          }}
-          title={`API: ${healthState}`}
+        <span
+          className={`tac-pill tac-pill--${health.variant === "default" ? "" : health.variant}`}
+          title={`API status: ${health.label}`}
         >
-          <Bell size={13} weight="regular" />
           <span
             style={{
               width: 6,
               height: 6,
-              background: dot,
-              animation: dot === "#4AF626" ? "tac-pulse 1.6s ease-in-out infinite" : "none",
+              borderRadius: 9999,
+              background: "currentColor",
+              opacity: 0.9,
+              animation:
+                health.variant === "ok"
+                  ? "tac-pulse 1.6s ease-in-out infinite"
+                  : "none",
             }}
           />
-        </div>
+          {health.label}
+        </span>
 
         <div
           style={{
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 10,
+            fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+            fontSize: 12,
             color: "var(--tac-mute)",
-            letterSpacing: "0.08em",
+            fontVariantNumeric: "tabular-nums",
           }}
         >
           {operatorId}
@@ -212,60 +195,40 @@ function Topbar({ healthState, onReset, search, onSearchChange }) {
 function ParseStatus({ stage }) {
   if (stage === STAGE.PARSING) {
     return (
-      <span
-        style={{
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 11,
-          color: "#4f8dfe",
-          letterSpacing: "0.06em",
-        }}
-        className="tac-cursor"
-      >
-        PARSING
+      <span className="tac-pill tac-pill--accent">
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: 9999,
+            background: "currentColor",
+            animation: "tac-pulse 1.6s ease-in-out infinite",
+          }}
+        />
+        Parsing
       </span>
     );
   }
   if (stage === STAGE.ERROR) {
-    return (
-      <span
-        style={{
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 11,
-          color: "#ef4444",
-        }}
-      >
-        // ERROR
-      </span>
-    );
+    return <span className="tac-pill tac-pill--err">Parse error</span>;
   }
   if (stage === STAGE.READY) {
     return (
-      <span
-        style={{
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 11,
-          color: "#4AF626",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-      >
-        <span className="tac-dot-status" />
-        DATASET LIVE
+      <span className="tac-pill tac-pill--ok">
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: 9999,
+            background: "currentColor",
+            animation: "tac-pulse 1.6s ease-in-out infinite",
+          }}
+        />
+        Dataset ready
       </span>
     );
   }
-  return (
-    <span
-      style={{
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 11,
-        color: "var(--tac-mute)",
-      }}
-    >
-      AWAITING INPUT
-    </span>
-  );
+  return <span className="tac-pill">Awaiting input</span>;
 }
 
 function useOperatorId() {

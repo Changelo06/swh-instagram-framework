@@ -84,13 +84,13 @@ export const ALL_HANDLE = "__all__";
 const VALIDATION_LAYERS = [
   {
     id: "url",
-    label: "URL // REEL DESTINATION",
+    label: "Reel URL",
     critical: true,
     test: (row) => !!row.url || !!row.shortCode,
   },
   {
     id: "views",
-    label: "VIEW COUNT // PERFORMANCE SIGNAL",
+    label: "View count",
     critical: true,
     test: (row) =>
       Number.isFinite(Number(row.videoViewCount)) ||
@@ -98,19 +98,19 @@ const VALIDATION_LAYERS = [
   },
   {
     id: "likes",
-    label: "LIKES // ENGAGEMENT NUMERATOR",
+    label: "Likes",
     critical: true,
     test: (row) => Number.isFinite(Number(row.likesCount)),
   },
   {
     id: "comments",
-    label: "COMMENTS // ENGAGEMENT NUMERATOR",
+    label: "Comments",
     critical: true,
     test: (row) => Number.isFinite(Number(row.commentsCount)),
   },
   {
     id: "timestamp",
-    label: "TIMESTAMP // DATE INTERVAL",
+    label: "Timestamp",
     critical: true,
     test: (row) => {
       const v = row.timestamp || row.takenAtTimestamp || row.taken_at_timestamp;
@@ -121,19 +121,19 @@ const VALIDATION_LAYERS = [
   },
   {
     id: "caption",
-    label: "CAPTION // TEXT CONTENT",
+    label: "Caption",
     critical: false,
     test: (row) => typeof row.caption === "string" && row.caption.trim().length > 0,
   },
   {
     id: "duration",
-    label: "DURATION // OPTIONAL METRIC",
+    label: "Duration",
     critical: false,
     test: (row) => Number.isFinite(Number(row.videoDuration)),
   },
   {
     id: "owner",
-    label: "OWNER // CREATOR ATTRIBUTION",
+    label: "Owner",
     critical: false,
     // Pass when either Apify export column carries the creator — ownerUsername
     // (the @handle) or ownerFullName (the display name). Falling back to the

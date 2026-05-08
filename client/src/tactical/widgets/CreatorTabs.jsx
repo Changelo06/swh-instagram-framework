@@ -1,32 +1,15 @@
 import { Users, Stack } from "@phosphor-icons/react";
 import { useCsv, ALL_HANDLE } from "../state/CsvContext.jsx";
 
-// Vibrant rainbow palette — one accent per creator slot. Matches the legacy
-// CreatorSwitcher palette so colors stay consistent across UIs.
-const CREATOR_HUES = [
-  "#EC4899", // pink
-  "#A855F7", // purple
-  "#6366F1", // indigo
-  "#3B82F6", // blue
-  "#F97316", // orange
-  "#FBBF24", // amber
-  "#EF4444", // red
-  "#D946EF", // fuchsia
-  "#7C3AED", // violet
-  "#F43F5E", // rose
-];
-
-const ALL_HUE = "#4f8dfe";
-
 // Tabbed creator filter. Renders one tab per detected creator (using the
-// original-case OwnerUsername from the CSV) and an optional "ALL" tab that
+// original-case OwnerUsername from the CSV) and an optional "All" tab that
 // merges every creator's rows into a unified dataset view.
 //
 // Returns null when only one (or zero) creators are present — the tab strip
 // only carries weight on multi-creator uploads.
 export default function CreatorTabs({
   allowAll = false,
-  allLabel = "ALL CREATORS",
+  allLabel = "All creators",
   label,
 }) {
   const { creators, selectedHandle, setSelectedHandle, perCreator } = useCsv();
@@ -34,15 +17,15 @@ export default function CreatorTabs({
   if (!creators || creators.length < 2) return null;
 
   const totalRows = creators.reduce((sum, c) => sum + (c.count || 0), 0);
-  const headerLabel =
-    label || (allowAll ? "FILTER // CREATORS" : "VIEWING //");
+  const headerLabel = label || (allowAll ? "Creators" : "Viewing");
 
   return (
     <div
       style={{
-        background: "var(--tac-surface2)",
+        background: "var(--tac-bg)",
+        borderTop: "1px solid var(--tac-border)",
         borderBottom: "1px solid var(--tac-border)",
-        padding: "10px 16px",
+        padding: "10px 24px",
         display: "flex",
         flexWrap: "wrap",
         alignItems: "center",
@@ -54,26 +37,25 @@ export default function CreatorTabs({
           display: "inline-flex",
           alignItems: "center",
           gap: 6,
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 9,
+          fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+          fontSize: 12,
           color: "var(--tac-mute)",
-          letterSpacing: "0.18em",
-          fontWeight: 600,
+          fontWeight: 500,
         }}
       >
-        <Users size={11} weight="regular" color={ALL_HUE} />
+        <Users size={13} weight="regular" />
         {headerLabel}
       </span>
 
       <span
         style={{
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 9,
+          fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+          fontSize: 12,
           color: "var(--tac-dim)",
-          letterSpacing: "0.1em",
+          fontVariantNumeric: "tabular-nums",
         }}
       >
-        {creators.length} DETECTED · {totalRows.toLocaleString()} ROWS
+        {creators.length} detected · {totalRows.toLocaleString()} rows
       </span>
 
       <div
@@ -87,15 +69,13 @@ export default function CreatorTabs({
         {allowAll && (
           <CreatorTab
             active={selectedHandle === ALL_HANDLE}
-            hue={ALL_HUE}
             label={allLabel}
             count={totalRows}
             Icon={Stack}
             onClick={() => setSelectedHandle(ALL_HANDLE)}
           />
         )}
-        {creators.map((c, idx) => {
-          const hue = CREATOR_HUES[idx % CREATOR_HUES.length];
+        {creators.map((c) => {
           const active = c.handle === selectedHandle;
           const alias = perCreator?.[c.handle]?.alias;
           const display = alias || c.displayHandle || c.handle;
@@ -103,7 +83,6 @@ export default function CreatorTabs({
             <CreatorTab
               key={c.handle}
               active={active}
-              hue={hue}
               label={`@${display}`}
               count={c.count}
               onClick={() => setSelectedHandle(c.handle)}
@@ -115,7 +94,7 @@ export default function CreatorTabs({
   );
 }
 
-function CreatorTab({ active, hue, label, count, Icon, onClick }) {
+function CreatorTab({ active, label, count, Icon, onClick }) {
   return (
     <button
       type="button"
@@ -126,20 +105,19 @@ function CreatorTab({ active, hue, label, count, Icon, onClick }) {
         alignItems: "center",
         gap: 8,
         padding: "5px 12px",
-        background: active ? `${hue}1f` : "var(--tac-bg)",
-        border: `1px solid ${active ? hue : "var(--tac-border)"}`,
+        background: active ? "var(--tac-surface2)" : "transparent",
+        border: `1px solid ${active ? "var(--tac-accent)" : "var(--tac-border)"}`,
+        borderRadius: 9999,
         color: active ? "var(--tac-fg)" : "var(--tac-mute)",
         cursor: "pointer",
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 11,
-        letterSpacing: "0.04em",
+        fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+        fontSize: 13,
         transition:
-          "background 120ms, border-color 120ms, color 120ms, box-shadow 120ms",
-        boxShadow: active ? `0 4px 14px -8px ${hue}` : "none",
+          "background 120ms, border-color 120ms, color 120ms",
       }}
       onMouseEnter={(e) => {
         if (!active) {
-          e.currentTarget.style.borderColor = hue;
+          e.currentTarget.style.borderColor = "var(--tac-mute)";
           e.currentTarget.style.color = "var(--tac-fg)";
         }
       }}
@@ -150,26 +128,21 @@ function CreatorTab({ active, hue, label, count, Icon, onClick }) {
         }
       }}
     >
-      {Icon ? (
-        <Icon size={11} weight="regular" color={hue} />
-      ) : (
-        <span
-          style={{
-            width: 6,
-            height: 6,
-            background: hue,
-            boxShadow: active ? `0 0 8px ${hue}` : "none",
-          }}
+      {Icon && (
+        <Icon
+          size={12}
+          weight="regular"
+          color={active ? "var(--tac-accent)" : "var(--tac-mute)"}
         />
       )}
-      <span style={{ fontWeight: active ? 600 : 500 }}>{label}</span>
+      <span style={{ fontWeight: active ? 500 : 400 }}>{label}</span>
       <span
         style={{
-          fontSize: 9,
-          color: active ? "var(--tac-fg)" : "var(--tac-dim)",
-          background: active ? `${hue}33` : "var(--tac-surface)",
-          padding: "1px 6px",
-          letterSpacing: "0.06em",
+          fontSize: 11,
+          color: active ? "var(--tac-mute)" : "var(--tac-dim)",
+          background: active ? "var(--tac-surface)" : "var(--tac-surface2)",
+          borderRadius: 9999,
+          padding: "1px 8px",
           fontVariantNumeric: "tabular-nums",
         }}
       >

@@ -1,7 +1,6 @@
 import { memo, useMemo } from "react";
 import { motion } from "framer-motion";
 import WidgetFrame from "./WidgetFrame.jsx";
-import { neonAt } from "../lib/tokens.js";
 
 function LiveTimeline({ name, events = [] }) {
   const max = useMemo(
@@ -12,8 +11,14 @@ function LiveTimeline({ name, events = [] }) {
   const total = events.reduce((s, e) => s + (e.value || 0), 0);
 
   return (
-    <WidgetFrame name={name} type="DATE">
-      <div style={{ display: "grid", gridTemplateRows: "auto 1fr auto", gap: 10 }}>
+    <WidgetFrame name={name}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateRows: "auto 1fr auto",
+          gap: 14,
+        }}
+      >
         <div
           style={{
             display: "flex",
@@ -21,18 +26,22 @@ function LiveTimeline({ name, events = [] }) {
             alignItems: "baseline",
           }}
         >
-          <span className="tac-display" style={{ fontSize: 22, color: "var(--tac-fg)" }}>
-            {total.toLocaleString()}
-          </span>
           <span
             style={{
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 9,
-              color: "var(--tac-mute)",
-              letterSpacing: "0.1em",
+              fontFamily:
+                '"Inter", ui-sans-serif, system-ui, sans-serif',
+              fontSize: 24,
+              fontWeight: 600,
+              color: "var(--tac-fg)",
+              fontVariantNumeric: "tabular-nums",
+              lineHeight: 1.05,
+              letterSpacing: "-0.01em",
             }}
           >
-            EVENTS / WINDOW
+            {total.toLocaleString()}
+          </span>
+          <span style={{ fontSize: 12, color: "var(--tac-mute)" }}>
+            posts in window
           </span>
         </div>
 
@@ -40,22 +49,21 @@ function LiveTimeline({ name, events = [] }) {
           style={{
             display: "grid",
             gridTemplateColumns: `repeat(${events.length || 1}, 1fr)`,
-            gap: 4,
+            gap: 6,
             alignItems: "end",
-            minHeight: 56,
+            minHeight: 64,
           }}
         >
           {events.map((e, i) => {
             const h = ((e.value || 0) / max) * 100;
             const empty = (e.value || 0) === 0;
-            const color = empty ? "var(--tac-border)" : neonAt(i);
             return (
               <div
                 key={e.label || i}
                 style={{
                   display: "grid",
                   gridTemplateRows: "1fr auto",
-                  gap: 4,
+                  gap: 6,
                   alignItems: "end",
                 }}
               >
@@ -70,17 +78,21 @@ function LiveTimeline({ name, events = [] }) {
                   }}
                   style={{
                     height: `${Math.max(h, 4)}%`,
-                    background: color,
+                    background: empty
+                      ? "var(--tac-border)"
+                      : "var(--tac-accent)",
+                    borderRadius: "4px 4px 0 0",
                     transformOrigin: "bottom",
+                    minHeight: 4,
                   }}
                 />
                 <div
                   style={{
-                    fontFamily: '"JetBrains Mono", monospace',
-                    fontSize: 9,
-                    color: empty ? "var(--tac-dim)" : color,
+                    fontFamily:
+                      '"Inter", ui-sans-serif, system-ui, sans-serif',
+                    fontSize: 11,
+                    color: empty ? "var(--tac-dim)" : "var(--tac-mute)",
                     textAlign: "center",
-                    letterSpacing: "0.04em",
                   }}
                 >
                   {e.label}
@@ -92,23 +104,12 @@ function LiveTimeline({ name, events = [] }) {
 
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            paddingTop: 6,
-            borderTop: "1px solid var(--tac-border)",
+            fontSize: 12,
+            color: "var(--tac-mute)",
+            lineHeight: 1.5,
           }}
         >
-          <span className="tac-dot-status" />
-          <span
-            style={{
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 10,
-              color: "var(--tac-mute)",
-            }}
-          >
-            STREAM ACTIVE
-          </span>
+          Based on posts in this dataset.
         </div>
       </div>
     </WidgetFrame>

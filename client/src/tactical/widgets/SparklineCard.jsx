@@ -5,28 +5,47 @@ import WidgetFrame from "./WidgetFrame.jsx";
 function SparklineCard({ name, kpi, delta, series = [], unit = "" }) {
   const dir = delta == null || delta === 0 ? "flat" : delta > 0 ? "up" : "down";
   const deltaColor =
-    dir === "up" ? "#4AF626" : dir === "down" ? "#ef4444" : "var(--tac-mute)";
+    dir === "up"
+      ? "var(--tac-success)"
+      : dir === "down"
+      ? "var(--tac-danger)"
+      : "var(--tac-mute)";
   const DeltaIcon = dir === "up" ? TrendUp : dir === "down" ? TrendDown : Minus;
 
   const path = useSparklinePath(series);
 
   return (
-    <WidgetFrame name={name} type="NUMERIC">
+    <WidgetFrame name={name}>
       <div
         style={{
           display: "grid",
           gridTemplateRows: "auto auto",
-          gap: 10,
+          gap: 14,
         }}
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
           <span
-            className="tac-display"
-            style={{ fontSize: 30, color: "var(--tac-fg)" }}
+            style={{
+              fontFamily:
+                '"Inter", ui-sans-serif, system-ui, sans-serif',
+              fontSize: 30,
+              fontWeight: 600,
+              color: "var(--tac-fg)",
+              fontVariantNumeric: "tabular-nums",
+              letterSpacing: "-0.01em",
+              lineHeight: 1.05,
+            }}
           >
             {formatKpi(kpi)}
             {unit && (
-              <span style={{ fontSize: 14, color: "var(--tac-mute)", marginLeft: 4 }}>
+              <span
+                style={{
+                  fontSize: 16,
+                  color: "var(--tac-mute)",
+                  marginLeft: 4,
+                  fontWeight: 500,
+                }}
+              >
                 {unit}
               </span>
             )}
@@ -38,13 +57,15 @@ function SparklineCard({ name, kpi, delta, series = [], unit = "" }) {
                 alignItems: "center",
                 gap: 4,
                 color: deltaColor,
-                fontFamily: '"JetBrains Mono", monospace',
-                fontSize: 11,
+                fontFamily:
+                  '"Inter", ui-sans-serif, system-ui, sans-serif',
+                fontSize: 12,
                 fontWeight: 500,
+                fontVariantNumeric: "tabular-nums",
               }}
             >
-              <DeltaIcon size={11} weight="bold" />
-              {dir === "flat" ? "0" : `${delta > 0 ? "+" : ""}${delta}%`}
+              <DeltaIcon size={12} weight="bold" />
+              {dir === "flat" ? "0%" : `${delta > 0 ? "+" : ""}${delta}%`}
             </span>
           )}
         </div>
@@ -52,61 +73,33 @@ function SparklineCard({ name, kpi, delta, series = [], unit = "" }) {
         <div
           style={{
             position: "relative",
-            height: 38,
+            height: 36,
             overflow: "hidden",
-            borderTop: "1px solid var(--tac-border)",
-            paddingTop: 8,
           }}
         >
           {path && (
             <div
               className="tac-marquee-track"
-              style={{
-                height: "100%",
-                gap: 0,
-              }}
+              style={{ height: "100%", gap: 0 }}
             >
-              <svg
-                viewBox="0 0 100 30"
-                preserveAspectRatio="none"
-                style={{ width: 200, height: "100%", display: "block" }}
-              >
-                <path
-                  d={path}
-                  fill="none"
-                  stroke="#4f8dfe"
-                  strokeWidth={1}
-                  vectorEffect="non-scaling-stroke"
-                />
-              </svg>
-              <svg
-                viewBox="0 0 100 30"
-                preserveAspectRatio="none"
-                style={{ width: 200, height: "100%", display: "block" }}
-                aria-hidden
-              >
-                <path
-                  d={path}
-                  fill="none"
-                  stroke="#4f8dfe"
-                  strokeWidth={1}
-                  vectorEffect="non-scaling-stroke"
-                />
-              </svg>
-              <svg
-                viewBox="0 0 100 30"
-                preserveAspectRatio="none"
-                style={{ width: 200, height: "100%", display: "block" }}
-                aria-hidden
-              >
-                <path
-                  d={path}
-                  fill="none"
-                  stroke="#4f8dfe"
-                  strokeWidth={1}
-                  vectorEffect="non-scaling-stroke"
-                />
-              </svg>
+              {[0, 1, 2].map((i) => (
+                <svg
+                  key={i}
+                  viewBox="0 0 100 30"
+                  preserveAspectRatio="none"
+                  style={{ width: 200, height: "100%", display: "block" }}
+                  aria-hidden={i > 0}
+                >
+                  <path
+                    d={path}
+                    fill="none"
+                    stroke="var(--tac-accent)"
+                    strokeWidth={1.25}
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </svg>
+              ))}
             </div>
           )}
         </div>

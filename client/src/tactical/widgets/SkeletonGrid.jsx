@@ -3,136 +3,90 @@ import { memo } from "react";
 const SK_BASE = {
   background: "var(--tac-surface)",
   border: "1px solid var(--tac-border)",
+  borderRadius: 10,
+  padding: 20,
   display: "grid",
-  gridTemplateRows: "auto 1fr",
+  gap: 12,
 };
 
-const SK_HEADER = {
-  borderBottom: "1px solid var(--tac-border)",
-  padding: "8px 12px",
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  background: "var(--tac-surface2)",
-};
-
-function SkBlock({ height = 14, width = "60%" }) {
+function SkBlock({ height = 14, width = "60%", radius = 4 }) {
   return (
     <div
       className="tac-skeleton"
-      style={{ height, width, marginBottom: 8 }}
+      style={{ height, width, borderRadius: radius }}
     />
   );
 }
 
 function SkHeader({ width = "40%" }) {
-  return (
-    <div style={SK_HEADER}>
-      <div className="tac-skeleton" style={{ height: 10, width }} />
-    </div>
-  );
-}
-
-function SkBody({ children }) {
-  return <div style={{ padding: 14 }}>{children}</div>;
+  return <SkBlock height={12} width={width} radius={4} />;
 }
 
 function SkeletonGrid() {
   return (
-    <div style={{ display: "grid", gap: 1, background: "var(--tac-border)" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 1, background: "var(--tac-border)" }}>
-        <div style={SK_BASE}>
-          <SkHeader width="35%" />
-          <SkBody>
-            <SkBlock height={36} width="55%" />
-            <SkBlock height={28} width="100%" />
-          </SkBody>
-        </div>
-        <div style={SK_BASE}>
-          <SkHeader width="50%" />
-          <SkBody>
-            <SkBlock height={20} width="80%" />
-            <SkBlock height={12} width="60%" />
-            <SkBlock height={12} width="70%" />
-            <SkBlock height={12} width="50%" />
-          </SkBody>
-        </div>
-        <div style={SK_BASE}>
-          <SkHeader width="50%" />
-          <SkBody>
-            <SkBlock height={20} width="80%" />
-            <SkBlock height={12} width="60%" />
-            <SkBlock height={12} width="70%" />
-            <SkBlock height={12} width="50%" />
-          </SkBody>
-        </div>
+    <div style={{ display: "grid", gap: 16, padding: "16px 24px" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr 1fr",
+          gap: 16,
+        }}
+      >
+        {[0, 1, 2].map((i) => (
+          <div key={i} style={SK_BASE}>
+            <SkHeader width="50%" />
+            <SkBlock height={36} width="55%" radius={6} />
+            <SkBlock height={28} width="100%" radius={4} />
+          </div>
+        ))}
+      </div>
+
+      <div style={SK_BASE}>
+        <SkHeader width="20%" />
+        {Array.from({ length: 6 }).map((_, i) => (
+          <SkBlock key={i} height={20} width="100%" radius={4} />
+        ))}
       </div>
 
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "7fr 3fr",
-          gap: 1,
-          background: "var(--tac-border)",
+          gap: 16,
         }}
       >
         <div style={SK_BASE}>
-          <SkHeader width="30%" />
-          <SkBody>
-            <SkBlock height={70} width="100%" />
-          </SkBody>
+          <SkHeader width="35%" />
+          <SkBlock height={220} width="100%" radius={8} />
         </div>
         <div style={SK_BASE}>
-          <SkHeader width="60%" />
-          <SkBody>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(8, 1fr)",
-                gap: 2,
-              }}
-            >
-              {Array.from({ length: 32 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="tac-skeleton"
-                  style={{ aspectRatio: "1 / 1" }}
-                />
-              ))}
-            </div>
-          </SkBody>
+          <SkHeader width="50%" />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(7, 1fr)",
+              gap: 6,
+              alignItems: "end",
+              height: 80,
+            }}
+          >
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div
+                key={i}
+                className="tac-skeleton"
+                style={{
+                  height: `${30 + Math.random() * 60}%`,
+                  borderRadius: "4px 4px 0 0",
+                }}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr",
-          gap: 1,
-          background: "var(--tac-border)",
-        }}
-      >
-        <div style={SK_BASE}>
-          <SkHeader width="50%" />
-          <SkBody>
-            <SkBlock height={24} width="60%" />
-            <SkBlock height={20} width="80%" />
-          </SkBody>
-        </div>
-        <div style={SK_BASE}>
-          <SkHeader width="50%" />
-          <SkBody>
-            <SkBlock height={24} width="60%" />
-            <SkBlock height={20} width="80%" />
-          </SkBody>
-        </div>
-        <div style={SK_BASE}>
-          <SkHeader width="50%" />
-          <SkBody>
-            <SkBlock height={24} width="60%" />
-            <SkBlock height={20} width="80%" />
-          </SkBody>
-        </div>
+      <div style={SK_BASE}>
+        <SkHeader width="20%" />
+        <SkBlock height={36} width="100%" radius={6} />
       </div>
     </div>
   );

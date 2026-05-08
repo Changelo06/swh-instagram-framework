@@ -34,30 +34,30 @@ export default function ApifyRunPanel() {
       : isRunning
       ? Clock
       : Warning;
-  const tone =
+  const variant =
     status === "done"
-      ? "#4AF626"
+      ? "ok"
       : status === "error"
-      ? "#ef4444"
+      ? "err"
       : status === "stopped"
-      ? "#fbbf24"
-      : "#4f8dfe";
+      ? "warn"
+      : "accent";
   const label =
     status === "done"
-      ? "DATASET LOADED"
+      ? "Dataset loaded"
       : status === "error"
-      ? "FAILED"
+      ? "Failed"
       : status === "stopped"
-      ? "STOPPED"
+      ? "Stopped"
       : phase === "submitting"
-      ? "SUBMITTING"
+      ? "Submitting"
       : phase === "queued"
-      ? "QUEUED ON APIFY"
+      ? "Queued on Apify"
       : phase === "transcribing"
-      ? `TRANSCRIBING · ${run.actorStatus || "RUNNING"}`
+      ? `Transcribing · ${(run.actorStatus || "running").toLowerCase()}`
       : phase === "scraping"
-      ? `SCRAPING · ${run.actorStatus || "RUNNING"}`
-      : `RUNNING · ${run.actorStatus || "STARTING"}`;
+      ? `Scraping · ${(run.actorStatus || "running").toLowerCase()}`
+      : `Running · ${(run.actorStatus || "starting").toLowerCase()}`;
 
   const elapsed = run.startedAt
     ? Math.max(
@@ -71,12 +71,12 @@ export default function ApifyRunPanel() {
       style={{
         background: "var(--tac-surface)",
         border: "1px solid var(--tac-border)",
-        borderLeft: `3px solid ${tone}`,
-        padding: "14px 16px",
+        borderRadius: 10,
+        padding: "16px 20px",
         display: "grid",
-        gap: 10,
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 11,
+        gap: 12,
+        fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+        fontSize: 13,
       }}
     >
       <div
@@ -85,26 +85,29 @@ export default function ApifyRunPanel() {
           alignItems: "center",
           justifyContent: "space-between",
           gap: 12,
+          flexWrap: "wrap",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Icon size={14} weight="regular" color={tone} />
-          <span
-            style={{
-              color: tone,
-              fontWeight: 600,
-              letterSpacing: "0.08em",
-            }}
-          >
-            {label}
-          </span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          className={`tac-pill tac-pill--${variant}`}
+          style={{ paddingTop: 4, paddingBottom: 4 }}
+        >
+          <Icon size={13} weight="regular" />
+          {label}
+        </span>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
           <span
             style={{
               color: "var(--tac-mute)",
-              letterSpacing: "0.06em",
-              fontSize: 10,
+              fontSize: 12,
+              fontVariantNumeric: "tabular-nums",
             }}
           >
             {elapsed}s ·{" "}
@@ -117,24 +120,11 @@ export default function ApifyRunPanel() {
               type="button"
               onClick={stopApifyScrape}
               aria-label="Stop scrape"
-              style={{
-                background: "#ef4444",
-                border: "1px solid #ef4444",
-                color: "var(--tac-bg)",
-                fontFamily: '"JetBrains Mono", monospace',
-                fontSize: 10,
-                fontWeight: 600,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                padding: "4px 10px",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 5,
-              }}
+              className="tac-btn tac-btn-danger"
+              style={{ padding: "4px 10px", fontSize: 12 }}
             >
-              <Stop size={11} weight="fill" />
-              STOP
+              <Stop size={12} weight="fill" />
+              Stop
             </button>
           )}
           {isTerminal && (
@@ -143,9 +133,9 @@ export default function ApifyRunPanel() {
               onClick={clearApifyRun}
               aria-label="Clear last scrape"
               className="tac-btn"
-              style={{ padding: "4px 8px", fontSize: 10 }}
+              style={{ padding: "4px 8px", fontSize: 12 }}
             >
-              <Trash size={10} weight="regular" />
+              <Trash size={12} weight="regular" />
             </button>
           )}
         </div>
@@ -158,48 +148,60 @@ export default function ApifyRunPanel() {
           rel="noopener noreferrer"
           style={{
             color: "var(--tac-mute)",
-            fontSize: 10,
-            letterSpacing: "0.06em",
+            fontSize: 12,
             textDecoration: "none",
             display: "inline-flex",
             alignItems: "center",
             gap: 4,
+            transition: "color 120ms",
           }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.color = "var(--tac-accent)")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.color = "var(--tac-mute)")
+          }
         >
-          watch run on apify console
-          <ArrowSquareOut size={10} weight="regular" />
+          Watch run on Apify console
+          <ArrowSquareOut size={12} weight="regular" />
         </a>
       )}
 
       {run.error && (
-        <div
-          style={{
-            color: "#ef4444",
-            fontSize: 10,
-            lineHeight: 1.5,
-            wordBreak: "break-word",
-            background: "#1f1212",
-            padding: "8px 10px",
-            border: "1px solid var(--tac-border)",
-          }}
-        >
-          // {run.error}
+        <div className="tac-error-banner">
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 10,
+              wordBreak: "break-word",
+            }}
+          >
+            <Warning
+              size={14}
+              weight="regular"
+              color="var(--tac-danger)"
+              style={{ marginTop: 2, flexShrink: 0 }}
+            />
+            <span>{run.error}</span>
+          </div>
         </div>
       )}
 
       {run.warning && !run.error && (
         <div
           style={{
-            color: "#fbbf24",
-            fontSize: 10,
+            color: "var(--tac-warning)",
+            fontSize: 12,
             lineHeight: 1.5,
             wordBreak: "break-word",
-            background: "rgba(251, 191, 36, 0.06)",
-            padding: "8px 10px",
-            border: "1px solid #fbbf24",
+            background: "rgba(245, 158, 11, 0.08)",
+            border: "1px solid rgba(245, 158, 11, 0.3)",
+            borderRadius: 6,
+            padding: "8px 12px",
           }}
         >
-          // warn: {run.warning}
+          {run.warning}
         </div>
       )}
 
@@ -207,7 +209,8 @@ export default function ApifyRunPanel() {
         <div
           style={{
             height: 4,
-            background: "var(--tac-bg)",
+            background: "var(--tac-surface2)",
+            borderRadius: 4,
             position: "relative",
             overflow: "hidden",
           }}
@@ -219,7 +222,8 @@ export default function ApifyRunPanel() {
               left: 0,
               bottom: 0,
               width: "30%",
-              background: tone,
+              background: "var(--tac-accent)",
+              borderRadius: 4,
               animation: "tac-pulse 1.6s ease-in-out infinite",
             }}
           />
@@ -242,18 +246,17 @@ function RuntimeTimeline({ states }) {
     <details
       style={{
         marginTop: 4,
-        background: "var(--tac-bg)",
+        background: "var(--tac-surface2)",
         border: "1px solid var(--tac-border)",
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 10,
+        borderRadius: 6,
+        fontSize: 12,
       }}
     >
       <summary
         style={{
-          padding: "6px 10px",
+          padding: "8px 12px",
           cursor: "pointer",
           color: "var(--tac-mute)",
-          letterSpacing: "0.08em",
           listStyle: "none",
           display: "flex",
           alignItems: "center",
@@ -261,8 +264,13 @@ function RuntimeTimeline({ states }) {
           gap: 12,
         }}
       >
-        <span>RUNTIME · {states.length} states</span>
-        <span style={{ color: "var(--tac-dim)" }}>
+        <span>Runtime · {states.length} states</span>
+        <span
+          style={{
+            color: "var(--tac-dim)",
+            fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+          }}
+        >
           last: {last.label} (+{last.t}ms)
         </span>
       </summary>
@@ -274,6 +282,7 @@ function RuntimeTimeline({ states }) {
           maxHeight: 240,
           overflowY: "auto",
           borderTop: "1px solid var(--tac-border)",
+          fontFamily: '"JetBrains Mono", ui-monospace, monospace',
         }}
       >
         {states.map((s, i) => (
@@ -283,12 +292,13 @@ function RuntimeTimeline({ states }) {
               display: "grid",
               gridTemplateColumns: "70px 12px 1fr",
               gap: 8,
-              padding: "4px 10px",
+              padding: "6px 12px",
               borderBottom:
                 i === states.length - 1
                   ? "none"
-                  : "1px solid var(--tac-surface)",
+                  : "1px solid var(--tac-border)",
               alignItems: "baseline",
+              fontSize: 11,
             }}
           >
             <span
@@ -303,7 +313,9 @@ function RuntimeTimeline({ states }) {
             <span
               title={s.client ? "client-side" : "server-side"}
               style={{
-                color: s.client ? "#fbbf24" : "#4f8dfe",
+                color: s.client
+                  ? "var(--tac-warning)"
+                  : "var(--tac-accent)",
                 fontWeight: 700,
                 textAlign: "center",
               }}
@@ -314,7 +326,6 @@ function RuntimeTimeline({ states }) {
               <div
                 style={{
                   color: "var(--tac-fg)",
-                  letterSpacing: "0.04em",
                   fontWeight: 500,
                 }}
               >

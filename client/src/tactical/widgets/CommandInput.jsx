@@ -1,19 +1,19 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { ArrowSquareOut, ArrowRight, X as XIcon } from "@phosphor-icons/react";
 import WidgetFrame from "./WidgetFrame.jsx";
 import { useCsv } from "../state/CsvContext.jsx";
 
 const PLACEHOLDER_HINTS = [
-  'top 10 likes',
-  'avg views',
-  'median engagement',
-  'find handsworkout',
-  '/help',
-  'count caption containing morning',
-  'top 5 by comments',
+  "top 10 likes",
+  "avg views",
+  "median engagement",
+  "find handsworkout",
+  "/help",
+  "count caption containing morning",
+  "top 5 by comments",
 ];
 
-function CommandInput({ name = "QUERY_BUS" }) {
+function CommandInput({ name = "Query dataset" }) {
   const { rows } = useCsv();
   const [text, setText] = useState("");
   const [result, setResult] = useState(null);
@@ -64,27 +64,38 @@ function CommandInput({ name = "QUERY_BUS" }) {
   };
 
   return (
-    <WidgetFrame name={name} type="COMMAND">
-      <div style={{ display: "grid", gap: 8 }}>
+    <WidgetFrame name={name}>
+      <div style={{ display: "grid", gap: 12 }}>
         <form
           onSubmit={(e) => {
             e.preventDefault();
             submit();
           }}
           style={{
-            background: "var(--tac-bg)",
+            background: "var(--tac-surface)",
             border: "1px solid var(--tac-border)",
+            borderRadius: 6,
             display: "flex",
             alignItems: "center",
             gap: 10,
             padding: "8px 12px",
+            transition: "border-color 120ms, box-shadow 120ms",
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = "var(--tac-accent)";
+            e.currentTarget.style.boxShadow =
+              "0 0 0 3px rgba(79, 141, 254, 0.2)";
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = "var(--tac-border)";
+            e.currentTarget.style.boxShadow = "none";
           }}
         >
           <span
             style={{
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 11,
-              color: "#4f8dfe",
+              fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+              fontSize: 13,
+              color: "var(--tac-accent)",
               fontWeight: 500,
             }}
           >
@@ -103,8 +114,8 @@ function CommandInput({ name = "QUERY_BUS" }) {
               border: "none",
               outline: "none",
               color: "var(--tac-fg)",
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 11,
+              fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+              fontSize: 13,
               padding: 0,
             }}
             onKeyDown={(e) => {
@@ -122,41 +133,40 @@ function CommandInput({ name = "QUERY_BUS" }) {
               style={{
                 background: "transparent",
                 border: "none",
-                color: "var(--tac-dim)",
+                color: "var(--tac-mute)",
                 cursor: "pointer",
-                padding: 2,
+                padding: 4,
+                borderRadius: 4,
                 display: "grid",
                 placeItems: "center",
-                transition: "color 120ms",
+                transition: "color 120ms, background 120ms",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--tac-fg)")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--tac-dim)")}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "var(--tac-fg)";
+                e.currentTarget.style.background = "var(--tac-surface2)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--tac-mute)";
+                e.currentTarget.style.background = "transparent";
+              }}
             >
-              <XIcon size={11} weight="regular" />
+              <XIcon size={13} weight="regular" />
             </button>
           )}
           <button
             type="submit"
             disabled={!text.trim()}
             aria-label="Run query"
+            className="tac-btn tac-btn-accent"
             style={{
-              background: text.trim() ? "#4f8dfe" : "transparent",
-              color: text.trim() ? "var(--tac-bg)" : "var(--tac-dim)",
-              border: text.trim() ? "1px solid #4f8dfe" : "1px solid var(--tac-border)",
+              padding: "5px 10px",
+              fontSize: 12,
+              opacity: text.trim() ? 1 : 0.4,
               cursor: text.trim() ? "pointer" : "not-allowed",
-              padding: "3px 8px",
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 9,
-              letterSpacing: "0.1em",
-              fontWeight: 600,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-              transition: "color 120ms, background 120ms, border-color 120ms",
             }}
           >
-            RUN
-            <ArrowRight size={9} weight="bold" />
+            Run
+            <ArrowRight size={12} weight="bold" />
           </button>
         </form>
 
@@ -169,31 +179,31 @@ function CommandInput({ name = "QUERY_BUS" }) {
 }
 
 function Footer({ result, rowCount }) {
+  const variant = result?.error ? "err" : result ? "ok" : "";
+  const label = result?.error
+    ? "Query error"
+    : result
+    ? `Result · ${result.summary || "OK"}`
+    : `Idle · ${rowCount.toLocaleString()} rows`;
+
   return (
     <div
       style={{
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 9,
+        gap: 12,
+        fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+        fontSize: 12,
         color: "var(--tac-mute)",
-        letterSpacing: "0.08em",
+        flexWrap: "wrap",
       }}
     >
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-        <span
-          className="tac-dot-status"
-          style={{ background: result?.error ? "#ef4444" : "#4AF626" }}
-        />
-        {result?.error
-          ? "QUERY ERROR"
-          : result
-          ? `RESULT // ${result.summary || "OK"}`
-          : `IDLE // ${rowCount.toLocaleString()} ROWS IN BUS`}
+      <span className={`tac-pill${variant ? ` tac-pill--${variant}` : ""}`}>
+        {label}
       </span>
       <span style={{ color: "var(--tac-dim)" }}>
-        // try: top N field · avg field · find TEXT · /help
+        Try: top N field · avg field · find TEXT · /help
       </span>
     </div>
   );
@@ -202,20 +212,14 @@ function Footer({ result, rowCount }) {
 function ResultPanel({ result }) {
   if (result.error) {
     return (
-      <div className="tac-error-banner" style={{ fontSize: 11 }}>
-        // {result.error}
+      <div className="tac-error-banner">
+        {result.error}
       </div>
     );
   }
-  if (result.kind === "help") {
-    return <HelpResult />;
-  }
-  if (result.kind === "stat") {
-    return <StatResult result={result} />;
-  }
-  if (result.kind === "rows") {
-    return <RowsResult result={result} />;
-  }
+  if (result.kind === "help") return <HelpResult />;
+  if (result.kind === "stat") return <StatResult result={result} />;
+  if (result.kind === "rows") return <RowsResult result={result} />;
   return null;
 }
 
@@ -225,23 +229,32 @@ function StatResult({ result }) {
       style={{
         background: "var(--tac-surface2)",
         border: "1px solid var(--tac-border)",
-        padding: "12px 14px",
+        borderRadius: 8,
+        padding: "14px 16px",
         display: "grid",
         gridTemplateColumns: "auto 1fr",
         alignItems: "center",
-        gap: 14,
+        gap: 16,
       }}
     >
-      <span className="tac-display" style={{ fontSize: 26, color: "#4f8dfe" }}>
+      <span
+        style={{
+          fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+          fontSize: 28,
+          fontWeight: 600,
+          color: "var(--tac-accent)",
+          fontVariantNumeric: "tabular-nums",
+          letterSpacing: "-0.01em",
+        }}
+      >
         {fmt(result.value)}
       </span>
       <div>
         <div
           style={{
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 9,
-            color: "var(--tac-mute)",
-            letterSpacing: "0.1em",
+            fontSize: 13,
+            color: "var(--tac-fg)",
+            fontWeight: 500,
           }}
         >
           {result.label}
@@ -249,9 +262,8 @@ function StatResult({ result }) {
         {result.detail && (
           <div
             style={{
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 10,
-              color: "var(--tac-dim)",
+              fontSize: 12,
+              color: "var(--tac-mute)",
               marginTop: 2,
             }}
           >
@@ -264,148 +276,137 @@ function StatResult({ result }) {
 }
 
 function RowsResult({ result }) {
-  const cols = result.cols || ["metric", "views", "likes", "comments"];
   return (
     <div
       style={{
-        background: "var(--tac-surface2)",
+        background: "var(--tac-surface)",
         border: "1px solid var(--tac-border)",
+        borderRadius: 8,
         overflow: "hidden",
       }}
     >
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "32px auto 1fr auto",
-          gap: 8,
-          padding: "6px 12px",
-          background: "var(--tac-bg)",
-          borderBottom: "1px solid var(--tac-border)",
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 9,
-          color: "var(--tac-mute)",
-          letterSpacing: "0.1em",
-        }}
-      >
-        <span>#</span>
-        <span>{result.metricLabel || "METRIC"}</span>
-        <span>CAPTION</span>
-        <span>LINK</span>
-      </div>
-      <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-        {result.rows.slice(0, 10).map((r, i) => (
-          <li
-            key={i}
-            style={{
-              display: "grid",
-              gridTemplateColumns: "32px auto 1fr auto",
-              gap: 8,
-              padding: "8px 12px",
-              borderBottom: "1px solid var(--tac-surface)",
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 11,
-              alignItems: "center",
-            }}
-          >
-            <span style={{ color: "var(--tac-dim)", fontVariantNumeric: "tabular-nums" }}>
-              {String(i + 1).padStart(2, "0")}
-            </span>
-            <span
-              style={{
-                color: "#4f8dfe",
-                fontWeight: 600,
-                fontVariantNumeric: "tabular-nums",
-                minWidth: 60,
-              }}
-            >
-              {fmt(r._metric)}
-            </span>
-            <span
-              style={{
-                color: "var(--tac-fg)",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                minWidth: 0,
-              }}
-              title={r.caption || ""}
-            >
-              {snippet(r.caption, 80) || (
-                <span style={{ color: "var(--tac-dim)" }}>(no caption)</span>
-              )}
-            </span>
-            {r._url ? (
-              <a
-                href={r._url}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Open reel"
+      <table className="tac-table">
+        <thead>
+          <tr>
+            <th style={{ width: 40 }}>#</th>
+            <th className="num" style={{ width: 100 }}>
+              {result.metricLabel || "Metric"}
+            </th>
+            <th>Caption</th>
+            <th style={{ width: 80, textAlign: "right" }}>Link</th>
+          </tr>
+        </thead>
+        <tbody>
+          {result.rows.slice(0, 10).map((r, i) => (
+            <tr key={i}>
+              <td
+                className="num"
                 style={{
                   color: "var(--tac-mute)",
-                  fontSize: 9,
-                  letterSpacing: "0.1em",
-                  textDecoration: "none",
-                  border: "1px solid var(--tac-border)",
-                  padding: "2px 6px",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  transition: "border-color 120ms, color 120ms",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "#4f8dfe";
-                  e.currentTarget.style.color = "var(--tac-fg)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "var(--tac-border)";
-                  e.currentTarget.style.color = "var(--tac-mute)";
+                  fontWeight: 500,
                 }}
               >
-                OPEN
-                <ArrowSquareOut size={9} weight="regular" />
-              </a>
-            ) : (
-              <span style={{ color: "var(--tac-dim)", fontSize: 9 }}>—</span>
-            )}
-          </li>
-        ))}
-      </ul>
+                {i + 1}
+              </td>
+              <td
+                className="num"
+                style={{
+                  color: "var(--tac-accent)",
+                  fontWeight: 600,
+                }}
+              >
+                {fmt(r._metric)}
+              </td>
+              <td
+                title={r.caption || ""}
+                style={{
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  maxWidth: 360,
+                  color: r.caption ? "var(--tac-fg)" : "var(--tac-dim)",
+                }}
+              >
+                {snippet(r.caption, 80) || "(no caption)"}
+              </td>
+              <td style={{ textAlign: "right" }}>
+                {r._url ? (
+                  <a
+                    href={r._url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Open reel"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      fontSize: 12,
+                      color: "var(--tac-mute)",
+                      textDecoration: "none",
+                      padding: "2px 6px",
+                      borderRadius: 4,
+                      transition: "color 120ms, background 120ms",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "var(--tac-accent)";
+                      e.currentTarget.style.background = "var(--tac-surface2)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = "var(--tac-mute)";
+                      e.currentTarget.style.background = "transparent";
+                    }}
+                  >
+                    Open
+                    <ArrowSquareOut size={11} weight="regular" />
+                  </a>
+                ) : (
+                  <span style={{ color: "var(--tac-dim)" }}>—</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
 function HelpResult() {
   const rows = [
-    ["top N field", "rank top N reels by field (views/likes/comments/engagement/duration)"],
-    ["avg field", "average value of field across all rows"],
-    ["median field", "median value of field"],
-    ["sum field", "sum of field across all rows"],
-    ["count where COND", "count rows where COND (e.g. likes > 1000)"],
-    ["find TEXT", "search captions for TEXT (case-insensitive)"],
-    ["stats", "show aggregate dashboard stats inline"],
-    ["/help", "this list"],
+    [
+      "top N field",
+      "Rank top N reels by field (views/likes/comments/engagement/duration)",
+    ],
+    ["avg field", "Average value of field across all rows"],
+    ["median field", "Median value of field"],
+    ["sum field", "Sum of field across all rows"],
+    ["count where COND", "Count rows where COND (e.g. likes > 1000)"],
+    ["find TEXT", "Search captions for TEXT (case-insensitive)"],
+    ["stats", "Show aggregate dashboard stats inline"],
+    ["/help", "This list"],
   ];
   return (
     <div
       style={{
         background: "var(--tac-surface2)",
         border: "1px solid var(--tac-border)",
-        padding: "10px 14px",
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 10,
+        borderRadius: 8,
+        padding: "12px 16px",
+        fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+        fontSize: 13,
         color: "var(--tac-mute)",
         lineHeight: 1.6,
       }}
     >
       <div
         style={{
-          color: "#4f8dfe",
-          fontSize: 9,
-          letterSpacing: "0.18em",
+          color: "var(--tac-fg)",
+          fontSize: 13,
+          fontWeight: 500,
           marginBottom: 8,
         }}
       >
-        // QUERY GRAMMAR
+        Query grammar
       </div>
       <div style={{ display: "grid", gap: 4 }}>
         {rows.map(([cmd, desc]) => (
@@ -418,7 +419,16 @@ function HelpResult() {
               alignItems: "baseline",
             }}
           >
-            <span style={{ color: "var(--tac-fg)" }}>{cmd}</span>
+            <span
+              style={{
+                color: "var(--tac-fg)",
+                fontFamily:
+                  '"JetBrains Mono", ui-monospace, monospace',
+                fontSize: 12,
+              }}
+            >
+              {cmd}
+            </span>
             <span style={{ color: "var(--tac-mute)" }}>{desc}</span>
           </div>
         ))}
@@ -427,7 +437,7 @@ function HelpResult() {
   );
 }
 
-// ---------- query engine ----------
+// ---------- query engine (logic unchanged) ----------
 
 function num(v) {
   const n = Number(v);
@@ -449,11 +459,11 @@ const FIELD_GETTERS = {
 };
 
 const FIELD_LABEL = {
-  views: "VIEWS",
-  likes: "LIKES",
-  comments: "COMMENTS",
-  engagement: "ENGAGEMENT",
-  duration: "DURATION",
+  views: "Views",
+  likes: "Likes",
+  comments: "Comments",
+  engagement: "Engagement",
+  duration: "Duration",
 };
 
 function fieldGetter(name) {
@@ -463,27 +473,33 @@ function fieldGetter(name) {
 
 function runQuery(q, rows) {
   if (!rows || !rows.length) {
-    return { error: "no rows in bus — inject a CSV first" };
+    return { error: "No rows in dataset — load a CSV first." };
   }
 
   const lower = q.toLowerCase().trim();
 
   if (lower === "/help" || lower === "help") {
-    return { kind: "help", summary: "QUERY GRAMMAR" };
+    return { kind: "help", summary: "Query grammar" };
   }
 
   if (lower === "stats") {
     const list = ["views", "likes", "comments", "engagement"]
       .map((f) => `${f}=${avg(rows, FIELD_GETTERS[f]).toFixed(0)}`)
-      .join(" ");
-    return { kind: "stat", value: rows.length, label: "TOTAL ROWS", detail: list, summary: "AGGREGATE STATS" };
+      .join(" · ");
+    return {
+      kind: "stat",
+      value: rows.length,
+      label: "Total rows",
+      detail: list,
+      summary: "Aggregate stats",
+    };
   }
 
   let m = lower.match(/^top\s+(\d+)\s+(?:by\s+)?(\w+)$/);
   if (m) {
     const n = Math.min(Math.max(parseInt(m[1], 10), 1), 50);
     const f = fieldGetter(m[2]);
-    if (!f) return { error: `unknown field "${m[2]}"` };
+    if (!f) return { error: `Unknown field "${m[2]}"` };
     const sorted = [...rows]
       .map((r) => ({ ...r, _metric: f.getter(r), _url: reelUrl(r) }))
       .sort((a, b) => b._metric - a._metric)
@@ -492,53 +508,53 @@ function runQuery(q, rows) {
       kind: "rows",
       rows: sorted,
       metricLabel: FIELD_LABEL[f.key],
-      summary: `TOP ${n} · ${FIELD_LABEL[f.key]}`,
+      summary: `Top ${n} · ${FIELD_LABEL[f.key].toLowerCase()}`,
     };
   }
 
   m = lower.match(/^(avg|average|mean)\s+(\w+)$/);
   if (m) {
     const f = fieldGetter(m[2]);
-    if (!f) return { error: `unknown field "${m[2]}"` };
+    if (!f) return { error: `Unknown field "${m[2]}"` };
     return {
       kind: "stat",
       value: Math.round(avg(rows, f.getter)),
-      label: `AVG ${FIELD_LABEL[f.key]}`,
+      label: `Average ${FIELD_LABEL[f.key].toLowerCase()}`,
       detail: `n = ${rows.length}`,
-      summary: `AVG · ${FIELD_LABEL[f.key]}`,
+      summary: `Avg · ${FIELD_LABEL[f.key].toLowerCase()}`,
     };
   }
 
   m = lower.match(/^median\s+(\w+)$/);
   if (m) {
     const f = fieldGetter(m[1]);
-    if (!f) return { error: `unknown field "${m[1]}"` };
+    if (!f) return { error: `Unknown field "${m[1]}"` };
     return {
       kind: "stat",
       value: Math.round(median(rows, f.getter)),
-      label: `MEDIAN ${FIELD_LABEL[f.key]}`,
+      label: `Median ${FIELD_LABEL[f.key].toLowerCase()}`,
       detail: `n = ${rows.length}`,
-      summary: `MEDIAN · ${FIELD_LABEL[f.key]}`,
+      summary: `Median · ${FIELD_LABEL[f.key].toLowerCase()}`,
     };
   }
 
   m = lower.match(/^sum\s+(\w+)$/);
   if (m) {
     const f = fieldGetter(m[1]);
-    if (!f) return { error: `unknown field "${m[1]}"` };
+    if (!f) return { error: `Unknown field "${m[1]}"` };
     return {
       kind: "stat",
       value: rows.reduce((s, r) => s + f.getter(r), 0),
-      label: `SUM ${FIELD_LABEL[f.key]}`,
+      label: `Sum ${FIELD_LABEL[f.key].toLowerCase()}`,
       detail: `n = ${rows.length}`,
-      summary: `SUM · ${FIELD_LABEL[f.key]}`,
+      summary: `Sum · ${FIELD_LABEL[f.key].toLowerCase()}`,
     };
   }
 
   m = lower.match(/^count\s+(?:where\s+)?(\w+)\s*(>=|<=|>|<|==?|=)\s*(\d+(?:\.\d+)?)$/);
   if (m) {
     const f = fieldGetter(m[1]);
-    if (!f) return { error: `unknown field "${m[1]}"` };
+    if (!f) return { error: `Unknown field "${m[1]}"` };
     const op = m[2];
     const target = Number(m[3]);
     const compare = (v) => {
@@ -562,9 +578,9 @@ function runQuery(q, rows) {
     return {
       kind: "stat",
       value: hits,
-      label: `COUNT WHERE ${m[1].toUpperCase()} ${op} ${target}`,
+      label: `Count where ${m[1]} ${op} ${target}`,
       detail: `${((hits / rows.length) * 100).toFixed(1)}% of n=${rows.length}`,
-      summary: `COUNT · ${m[1].toUpperCase()} ${op} ${target}`,
+      summary: `Count · ${m[1]} ${op} ${target}`,
     };
   }
 
@@ -579,9 +595,9 @@ function runQuery(q, rows) {
     return {
       kind: "stat",
       value: hits,
-      label: `CAPTIONS CONTAINING "${needle}"`,
+      label: `Captions containing "${needle}"`,
       detail: `${((hits / rows.length) * 100).toFixed(1)}% of n=${rows.length}`,
-      summary: `COUNT · "${needle}"`,
+      summary: `Count · "${needle}"`,
     };
   }
 
@@ -600,13 +616,13 @@ function runQuery(q, rows) {
       .sort((a, b) => b._metric - a._metric)
       .slice(0, 10);
     if (!matched.length) {
-      return { error: `no captions match "${needle}"` };
+      return { error: `No captions match "${needle}"` };
     }
     return {
       kind: "rows",
       rows: matched,
-      metricLabel: "VIEWS",
-      summary: `FIND "${needle}" · ${matched.length} HITS`,
+      metricLabel: "Views",
+      summary: `Find "${needle}" · ${matched.length} hits`,
     };
   }
 
@@ -616,14 +632,14 @@ function runQuery(q, rows) {
     return {
       kind: "stat",
       value: Math.round(avg(rows, bare.getter)),
-      label: `AVG ${FIELD_LABEL[bare.key]}`,
+      label: `Average ${FIELD_LABEL[bare.key].toLowerCase()}`,
       detail: `n = ${rows.length}`,
-      summary: `AVG · ${FIELD_LABEL[bare.key]}`,
+      summary: `Avg · ${FIELD_LABEL[bare.key].toLowerCase()}`,
     };
   }
 
   return {
-    error: `unrecognized query — try "/help" for grammar`,
+    error: `Unrecognized query — try "/help" for grammar.`,
   };
 }
 
