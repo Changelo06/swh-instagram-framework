@@ -98,14 +98,36 @@ export function detectHandle(posts) {
   return "creator";
 }
 
+// Slugify a free-form display name into a stable lowercased bucket key.
+// Used when ownerFullName is the only attribution available — collapses
+// "Alex Hormozi" → "alex_hormozi" so two rows with the same fullName end up
+// in the same creator group.
+function slugifyName(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
 // Read the handle off a single row, falling back through the same candidate
 // columns the single-handle detector uses. Used to bucket rows per creator.
+// Order: ownerUsername > legacy username/handle aliases > slugified
+// ownerFullName > URL-extracted handle.
 export function rowHandle(row) {
   if (!row) return "";
-  const candidates = ["ownerUsername", "owner_username", "username", "handle"];
-  for (const k of candidates) {
+  const handleCandidates = ["ownerUsername", "owner_username", "username", "handle"];
+  for (const k of handleCandidates) {
     const v = row[k] || (row._raw && row._raw[k]);
     if (v) return String(v).replace(/^@/, "").toLowerCase();
+  }
+  const fullNameCandidates = ["ownerFullName", "owner_full_name", "fullName"];
+  for (const k of fullNameCandidates) {
+    const v = row[k] || (row._raw && row._raw[k]);
+    if (v) {
+      const slug = slugifyName(v);
+      if (slug) return slug;
+    }
   }
   const u = row.url || row.postUrl;
   if (u) {
@@ -117,21 +139,57 @@ export function rowHandle(row) {
   return "";
 }
 
+// Same lookup as rowHandle but preserves the original casing — used for the
+// display label on creator tabs/badges so usernames render exactly as the
+// CSV's OwnerUsername column wrote them. Falls through to ownerFullName so
+// "Alex Hormozi" can still appear as a tab label when no @handle exists.
+export function rowDisplayHandle(row) {
+  if (!row) return "";
+  const handleCandidates = ["ownerUsername", "owner_username", "username", "handle"];
+  for (const k of handleCandidates) {
+    const v = row[k] || (row._raw && row._raw[k]);
+    if (v) return String(v).replace(/^@/, "");
+  }
+  const fullNameCandidates = ["ownerFullName", "owner_full_name", "fullName"];
+  for (const k of fullNameCandidates) {
+    const v = row[k] || (row._raw && row._raw[k]);
+    if (v) return String(v).trim();
+  }
+  const u = row.url || row.postUrl;
+  if (u) {
+    const m = String(u).match(/instagram\.com\/([^/?#]+)\//i);
+    if (m && m[1] && !["p", "reel", "tv"].includes(m[1].toLowerCase())) {
+      return m[1];
+    }
+  }
+  return "";
+}
+
 // Group parsed rows by creator handle. Returns an array of
 // { handle, displayHandle, rows, count } sorted by row count desc.
 // Rows that don't expose a recognizable handle are bucketed under "unknown".
+// `displayHandle` preserves the original-case username from the row so tab
+// labels render the way the OwnerUsername column was written.
 export function groupByCreator(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return [];
   const buckets = new Map();
+  const displayCase = new Map();
   for (const r of rows) {
     const h = rowHandle(r) || "unknown";
     if (!buckets.has(h)) buckets.set(h, []);
     buckets.get(h).push(r);
+    if (h !== "unknown" && !displayCase.has(h)) {
+      const orig = rowDisplayHandle(r);
+      if (orig) displayCase.set(h, orig);
+    }
   }
   return Array.from(buckets.entries())
     .map(([handle, bucketRows]) => ({
       handle,
-      displayHandle: handle === "unknown" ? "unattributed" : handle,
+      displayHandle:
+        handle === "unknown"
+          ? "unattributed"
+          : displayCase.get(handle) || handle,
       rows: bucketRows,
       count: bucketRows.length,
     }))

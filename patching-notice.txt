@@ -1,0 +1,112 @@
+PATCH 1 — Fix Logo & Naming
+
+Do this first so everything else inherits the correct branding.
+
+
+ Decide on final tool name
+ Design or source logo (can use Canva or generate one)
+ Replace placeholder logo/name in App.tsx and any nav/header components
+ Update browser tab title (<title> in index.html)
+ Update any hardcoded strings referencing old name across codebase
+
+
+PATCH 2 — Fix Top 10 Reels Container Size
+
+Quick UI fix — isolate it before touching bigger layout work.
+
+
+ Locate the Top 10 Reels component in your codebase
+ Reduce container width, max-width, or height via CSS/Tailwind
+ Check responsiveness on both desktop and mobile after resizing
+ Confirm cards/thumbnails inside scale proportionally
+
+
+PATCH 3 — MVP Landing Page
+
+Do this after branding is locked (Patch 1) so design is consistent.
+
+
+ Extract color palette, fonts, and component style from App.tsx
+ Build landing page sections:
+
+ Hero (headline + CTA button)
+ Features section
+ How it works
+ Pricing (even if placeholder)
+ Footer
+
+
+ Match design tokens exactly to the app (same button styles, card styles, colors)
+ Link CTA button to signup/login page
+
+
+PATCH 4 — Update Security
+
+Do before any cloud or database work — secure the foundation first.
+
+
+ Move all API keys (Claude, Groq, Apify) to .env file — remove any hardcoded keys
+ Confirm no API keys are exposed in frontend/client-side code
+ Add .env to .gitignore — verify it's not committed to any repo
+ Enable HTTPS (if deploying — most platforms handle this automatically)
+ Add basic rate limiting to your backend API endpoints
+ Wrap all API calls in try/catch with proper error handling
+
+
+PATCH 5 — Add Database + User History (Cloud)
+
+Requires Patch 4 done first. This is your biggest lift.
+
+
+ Create a free Supabase project at supabase.com
+ Set up tables:
+
+users — managed by Supabase Auth
+scrape_runs — stores each run per user (profile URLs, date, results)
+results — stores scraped data linked to each run
+
+
+ Enable Row-Level Security (RLS) so users only see their own data
+ Enable automated daily backups in Supabase dashboard
+ Connect your backend to Supabase using the Supabase JS or Python SDK
+ Build user auth flow:
+
+ Signup page
+ Login page
+ Session persistence (stay logged in)
+
+
+ On each scrape run — save results to DB linked to logged-in user
+ Build a Run History view in the app dashboard
+
+
+PATCH 6 — Replace CSV Upload with Apify Direct Connection
+
+Requires Patch 5 done (so profile URLs can be saved per user).
+
+
+ Remove CSV upload component from UI completely
+ Build a Profile URL input field (add one URL at a time or paste a list)
+ Save added profile URLs to Supabase under the logged-in user
+ On scrape trigger — pull profile URLs directly from DB and send to Apify actor
+ Display added profiles in a clean list with option to remove
+ Validate URLs on input (must be valid Instagram profile URLs)
+
+
+PATCH 7 — Apify Automated Scheduling
+
+Do this last — depends on Patches 5 and 6 being fully working.
+
+
+ Add Settings page to the app with schedule options:
+
+ Weekly updates
+ Monthly updates
+ Yearly updates
+
+
+ Save user's chosen schedule to Supabase (users or separate settings table)
+ On backend — use Apify Schedules API to create/update a scheduled actor run per user
+ Each scheduled run pulls that user's saved profile URLs from DB automatically
+ On run completion — save new results to DB and notify user (email or in-app notification)
+ Allow user to pause or change schedule from Settings page at any time

@@ -17,17 +17,10 @@ const SYSTEM_PROMPT = fs.readFileSync(PROMPT_PATH, "utf8");
 const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-6";
 const PORT = process.env.PORT || 3001;
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
-const GROQ_MODEL = process.env.GROQ_WHISPER_MODEL || "whisper-large-v3-turbo";
-const GROQ_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
-const TRANSCRIBE_CONCURRENCY = Number(process.env.TRANSCRIBE_CONCURRENCY || 4);
 const TRANSCRIPT_FIELD = "reel-transcript";
 
 if (!process.env.ANTHROPIC_API_KEY) {
   console.warn("[warn] ANTHROPIC_API_KEY not set — /api/analyze will fail");
-}
-if (!GROQ_API_KEY) {
-  console.warn("[warn] GROQ_API_KEY not set — /api/transcribe will fail");
 }
 
 const anthropic = new Anthropic();
@@ -47,6 +40,14 @@ const FIELD_ALIASES = {
   id: ["id", "postId", "post_id", "pk"],
   shortCode: ["shortCode", "shortcode", "code"],
   url: ["url", "postUrl", "post_url", "permalink", "displayUrl"],
+  ownerUsername: ["ownerUsername", "owner_username", "username", "handle"],
+  ownerFullName: [
+    "ownerFullName",
+    "owner_full_name",
+    "ownerFullname",
+    "fullName",
+    "full_name",
+  ],
   caption: [
     "caption",
     "text",
@@ -61,6 +62,15 @@ const FIELD_ALIASES = {
   videoPlayCount: ["videoPlayCount", "video_play_count", "plays"],
   likesCount: ["likesCount", "likes_count", "likes", "edge_liked_by/count", "edge_media_preview_like/count"],
   commentsCount: ["commentsCount", "comments_count", "comments", "edge_media_to_comment/count"],
+  shareCount: [
+    "shareCount",
+    "share_count",
+    "shares",
+    "shareCounts",
+    "videoShareCount",
+    "video_share_count",
+    "edge_media_to_share/count",
+  ],
   timestamp: ["timestamp", "taken_at_timestamp", "takenAtTimestamp", "createdAt", "created_at", "date"],
   videoDuration: ["videoDuration", "video_duration", "duration"],
   productType: ["productType", "product_type"],
@@ -178,22 +188,90 @@ function summarize(rows, rawColumns = []) {
   };
 }
 
-// ---------- Groq Whisper helpers ----------
+// ---------- Routes ----------
 
-async function downloadAudio(url, { timeoutMs = 30000 } = {}) {
+// ---------- Apify scraper ----------
+//
+// Drives the public `apify/instagram-scraper` actor end-to-end and streams
+// progress back to the browser as Server-Sent Events. We deliberately do NOT
+// persist the operator's Apify token — it travels in the request body, gets
+// forwarded to api.apify.com, and is then discarded.
+//
+// Flow:
+//   1. POST /v2/acts/{actor}/runs?token=… to start the run
+//   2. Poll /v2/actor-runs/{runId}?token=… every APIFY_POLL_MS until terminal
+//   3. GET /v2/datasets/{datasetId}/items?token=… for the scraped JSON
+//   4. Run each item through pickFields() so the rows match the exact shape
+//      that /api/parse emits — the rest of the app stays oblivious to source.
+//
+// `apify~instagram-scraper` is the URL-safe form of the actor id.
+const APIFY_ACTOR_ID = "apify~instagram-scraper";
+const APIFY_BASE = "https://api.apify.com/v2";
+const APIFY_POLL_MS = Number(process.env.APIFY_POLL_MS || 3000);
+const APIFY_MAX_POLLS = Number(process.env.APIFY_MAX_POLLS || 400); // ~20 min @ 3s
+// Apify run statuses considered "still running" for polling purposes.
+const APIFY_LIVE_STATUSES = new Set(["READY", "RUNNING"]);
+
+function normalizeIgUrl(raw) {
+  const trimmed = String(raw || "").trim();
+  if (!trimmed) return null;
+  // Bare handles like "@hormozi" / "hormozi" → full profile URL.
+  if (!/^https?:\/\//i.test(trimmed)) {
+    const handle = trimmed.replace(/^@/, "").replace(/\/+$/, "");
+    if (!handle) return null;
+    return `https://www.instagram.com/${handle}/`;
+  }
+  // Reject obviously non-instagram urls so the actor doesn't burn credits.
+  try {
+    const u = new URL(trimmed);
+    if (!/(^|\.)instagram\.com$/.test(u.hostname)) return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
+async function apifyFetch(url, init = {}) {
+  const r = await fetch(url, init);
+  if (!r.ok) {
+    let detail = "";
+    try {
+      detail = (await r.text()).slice(0, 400);
+    } catch {}
+    throw new Error(`apify ${r.status}: ${detail || r.statusText}`);
+  }
+  return r;
+}
+
+// ---------- Groq Whisper (speech-to-text) ----------
+//
+// We hit Groq's OpenAI-compatible endpoint with the audio file pulled directly
+// off the Apify-resolved media URL (`row._audioUrl`). The token can come from
+// the request body (operator-supplied via Settings) or from `GROQ_API_KEY` as
+// a fallback for local dev. Tokens are NEVER persisted server-side.
+const GROQ_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
+const GROQ_MODEL = process.env.GROQ_WHISPER_MODEL || "whisper-large-v3-turbo";
+const GROQ_AUDIO_MAX_BYTES = 24 * 1024 * 1024; // Groq Whisper limit
+const GROQ_DOWNLOAD_TIMEOUT_MS = Number(
+  process.env.GROQ_DOWNLOAD_TIMEOUT_MS || 30000
+);
+const TRANSCRIBE_CONCURRENCY = Number(process.env.TRANSCRIBE_CONCURRENCY || 4);
+
+async function downloadAudio(url, { timeoutMs = GROQ_DOWNLOAD_TIMEOUT_MS } = {}) {
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), timeoutMs);
   try {
     const r = await fetch(url, {
       signal: ac.signal,
       headers: {
+        // Instagram CDN occasionally rejects fetches without a UA.
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
       },
     });
     if (!r.ok) throw new Error(`audio fetch ${r.status}`);
     const buf = Buffer.from(await r.arrayBuffer());
-    if (buf.length > 24 * 1024 * 1024) {
+    if (buf.length > GROQ_AUDIO_MAX_BYTES) {
       throw new Error(`audio too large for Groq (${buf.length} bytes)`);
     }
     return buf;
@@ -202,34 +280,34 @@ async function downloadAudio(url, { timeoutMs = 30000 } = {}) {
   }
 }
 
-async function transcribeWithGroq(buf, { filename = "audio.mp4" } = {}) {
-  if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not set");
-
+async function transcribeWithGroq(buf, groqKey, { filename = "audio.mp4" } = {}) {
+  if (!groqKey) throw new Error("Groq API key not provided");
   const fd = new FormData();
   fd.append("file", new Blob([buf], { type: "audio/mp4" }), filename);
   fd.append("model", GROQ_MODEL);
   fd.append("response_format", "text");
   fd.append("temperature", "0");
-
   const r = await fetch(GROQ_URL, {
     method: "POST",
-    headers: { Authorization: `Bearer ${GROQ_API_KEY}` },
+    headers: { Authorization: `Bearer ${groqKey}` },
     body: fd,
   });
   if (!r.ok) {
     const errText = await r.text().catch(() => "");
-    throw new Error(`groq ${r.status}: ${errText.slice(0, 200)}`);
+    throw new Error(`groq ${r.status}: ${errText.slice(0, 200) || r.statusText}`);
   }
   const text = await r.text();
   return text.trim();
 }
 
-async function transcribeOne(url) {
-  const buf = await downloadAudio(url);
-  return transcribeWithGroq(buf);
+async function transcribeOne(audioUrl, groqKey) {
+  const buf = await downloadAudio(audioUrl);
+  return transcribeWithGroq(buf, groqKey);
 }
 
-// Bounded-concurrency runner.
+// Bounded-concurrency runner. Reports each completion via `onProgress` so the
+// caller can stream live updates back to the operator without forcing every
+// transcribe pass to finish first.
 async function pMapBounded(items, limit, fn, onProgress) {
   const results = new Array(items.length);
   let cursor = 0;
@@ -249,24 +327,418 @@ async function pMapBounded(items, limit, fn, onProgress) {
     }
   };
 
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, worker)
+  );
   return results;
 }
 
-// ---------- Routes ----------
+// Read the operator's Apify account profile + monthly usage. Both calls go
+// through the server purely so the browser never touches CORS edge cases on
+// console.apify.com endpoints; the token is per-request and not persisted.
+app.post("/api/apify/account", async (req, res) => {
+  const token = String(req.body?.token || "").trim();
+  if (!token) return res.status(400).json({ error: "token required" });
+  try {
+    const [userResp, usageResp] = await Promise.all([
+      fetch(`${APIFY_BASE}/users/me?token=${encodeURIComponent(token)}`),
+      fetch(`${APIFY_BASE}/users/me/usage/monthly?token=${encodeURIComponent(token)}`),
+    ]);
+    if (!userResp.ok) {
+      const txt = await userResp.text().catch(() => "");
+      return res
+        .status(userResp.status)
+        .json({ error: `apify ${userResp.status}: ${txt.slice(0, 200) || userResp.statusText}` });
+    }
+    const userJson = await userResp.json().catch(() => ({}));
+    const usageJson = usageResp.ok ? await usageResp.json().catch(() => ({})) : null;
+    res.json({ user: userJson?.data || null, usage: usageJson?.data || null });
+  } catch (e) {
+    console.error("[apify/account] failed", e);
+    res.status(500).json({ error: e.message || "fetch failed" });
+  }
+});
+
+app.post("/api/scrape", async (req, res) => {
+  const {
+    token,
+    urls,
+    resultsLimit,
+    onlyPostsNewerThan,
+    onlyPostsOlderThan,
+    addParentData,
+    // Operator-supplied Groq key from Settings; env fallback for local dev.
+    groqToken,
+  } = req.body || {};
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders?.();
+
+  // Whether the response can still accept writes. We check this — NOT the
+  // request's close event — because Express's body parser causes `req` to
+  // emit 'close' as soon as the JSON body is consumed, which falsely looks
+  // like the client disconnected even though the SSE response is fine.
+  const isOpen = () =>
+    !!res.writable && !res.writableEnded && !res.destroyed;
+
+  const send = (event, data) => {
+    if (!isOpen()) return false;
+    try {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // Diagnostic timeline. Every state transition lands here:
+  //   - Server console (with elapsed-ms + runId tag)
+  //   - SSE `state` event so the client can render a runtime panel
+  // When something stalls we can read the timeline directly to see whether
+  // the holdup is on the Apify side, the server side, or the client side.
+  const requestStartedAt = Date.now();
+  let runIdForLog = null;
+  const mark = (label, detail) => {
+    const t = Date.now() - requestStartedAt;
+    const tag = `[scrape ${runIdForLog || "..."} +${t}ms]`;
+    if (detail !== undefined && detail !== null && detail !== "") {
+      console.log(tag, label, typeof detail === "string" ? detail : JSON.stringify(detail));
+    } else {
+      console.log(tag, label);
+    }
+    send("state", { t, label, detail: detail ?? null });
+  };
+
+  // Surface response-level lifecycle into the timeline. `req.on('close')` was
+  // a false-positive trigger — leave it off entirely; we only watch the
+  // response-side signals which fire when the client truly disconnects.
+  res.on("close", () => mark("RES_ON_CLOSE"));
+  res.on("error", (e) => mark("RES_ON_ERROR", { message: e?.message }));
+
+  mark("REQUEST_RECEIVED", {
+    urlsRequested: Array.isArray(urls) ? urls.length : 0,
+    resultsLimit,
+    onlyPostsNewerThan: onlyPostsNewerThan || null,
+  });
+
+  const cleanToken = String(token || "").trim();
+  if (!cleanToken) {
+    mark("REJECT_NO_TOKEN");
+    send("error", { message: "Apify token is required" });
+    return res.end();
+  }
+
+  const directUrls = (Array.isArray(urls) ? urls : [])
+    .map(normalizeIgUrl)
+    .filter(Boolean);
+  if (directUrls.length === 0) {
+    mark("REJECT_NO_VALID_URLS");
+    send("error", { message: "Provide at least one valid Instagram profile URL or @handle" });
+    return res.end();
+  }
+  mark("URLS_NORMALIZED", { count: directUrls.length });
+
+  const limitClamped = Math.min(
+    1000,
+    Math.max(1, Number.isFinite(Number(resultsLimit)) ? Math.floor(Number(resultsLimit)) : 50)
+  );
+
+  const actorInput = {
+    directUrls,
+    resultsType: "posts",
+    resultsLimit: limitClamped,
+    addParentData: !!addParentData,
+  };
+  if (typeof onlyPostsNewerThan === "string" && onlyPostsNewerThan.trim()) {
+    actorInput.onlyPostsNewerThan = onlyPostsNewerThan.trim();
+  }
+  if (typeof onlyPostsOlderThan === "string" && onlyPostsOlderThan.trim()) {
+    actorInput.onlyPostsOlderThan = onlyPostsOlderThan.trim();
+  }
+
+  // Apify run continues even if the operator navigates away — they're paying
+  // for the compute and can recover the run from apify.com. The server only
+  // cares about whether the response is still writable when emitting events.
+
+  let runId = null;
+  let datasetId = null;
+
+  try {
+    send("start", {
+      actor: APIFY_ACTOR_ID,
+      urls: directUrls,
+      resultsLimit: limitClamped,
+    });
+
+    mark("APIFY_START_REQUEST", { actor: APIFY_ACTOR_ID });
+    const startResp = await apifyFetch(
+      `${APIFY_BASE}/acts/${APIFY_ACTOR_ID}/runs?token=${encodeURIComponent(cleanToken)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(actorInput),
+      }
+    );
+    const startJson = await startResp.json();
+    runId = startJson?.data?.id;
+    datasetId = startJson?.data?.defaultDatasetId;
+    runIdForLog = runId;
+    if (!runId || !datasetId) {
+      throw new Error("Apify did not return runId/datasetId");
+    }
+    mark("APIFY_START_OK", { runId, datasetId });
+
+    send("queued", {
+      runId,
+      datasetId,
+      consoleUrl: `https://console.apify.com/actors/runs/${runId}`,
+    });
+
+    // Poll until terminal. Apify's run object also exposes `stats.itemCount`
+    // mid-flight on most actors — surface it so the operator sees movement.
+    let polls = 0;
+    let lastStatus = null;
+    let lastItemCount = 0;
+
+    while (true) {
+      polls++;
+      if (polls > APIFY_MAX_POLLS) {
+        throw new Error(`run still in progress after ${polls} polls — bailing out`);
+      }
+      await new Promise((r) => setTimeout(r, APIFY_POLL_MS));
+
+      const statusResp = await apifyFetch(
+        `${APIFY_BASE}/actor-runs/${runId}?token=${encodeURIComponent(cleanToken)}`
+      );
+      const statusJson = await statusResp.json();
+      const status = statusJson?.data?.status;
+      const itemCount = Number(statusJson?.data?.stats?.itemCount) || 0;
+
+      // Always send progress every poll, even when status/itemCount didn't
+      // change — keeps the SSE connection from idle-timing out at any proxy
+      // (Vite dev, nginx, cloud LB) sitting in front of us. The cost is a
+      // ~150 byte event every APIFY_POLL_MS, which is nothing.
+      send("progress", {
+        phase: "scraping",
+        status,
+        itemCount,
+        requestsTotal: statusJson?.data?.stats?.requestsTotal || 0,
+        startedAt: statusJson?.data?.startedAt,
+      });
+      lastStatus = status;
+      lastItemCount = itemCount;
+
+      if (!APIFY_LIVE_STATUSES.has(status)) {
+        if (status !== "SUCCEEDED") {
+          mark("SCRAPE_TERMINAL_NON_SUCCESS", { status });
+          throw new Error(
+            `Apify run ${status}: ${statusJson?.data?.exitCode ?? ""} ${statusJson?.data?.statusMessage || ""}`.trim()
+          );
+        }
+        mark("SCRAPE_SUCCEEDED", { itemCount, polls });
+        break; // SUCCEEDED → fetch dataset
+      }
+    }
+
+    mark("DATASET_FETCH_START", { datasetId });
+    const itemsResp = await apifyFetch(
+      `${APIFY_BASE}/datasets/${datasetId}/items?format=json&clean=true&token=${encodeURIComponent(cleanToken)}`
+    );
+    const items = await itemsResp.json();
+    if (!Array.isArray(items)) {
+      throw new Error("Apify dataset response was not an array");
+    }
+    mark("DATASET_FETCH_OK", { items: items.length });
+
+    const rows = items.map(pickFields);
+    const filename = synthesizeScrapeFilename(directUrls);
+    mark("ROWS_MAPPED", { rows: rows.length });
+
+    // Chain Groq Whisper transcription. Best-effort: when the operator's
+    // Groq key is missing or any individual reel fails, the scrape still
+    // ships — the affected rows just have an empty `transcript` field.
+    const groqKey =
+      String(groqToken || "").trim() || process.env.GROQ_API_KEY || "";
+    if (rows.length > 0) {
+      const candidates = rows
+        .map((row, idx) => ({ row, idx }))
+        .filter(
+          ({ row }) =>
+            row._audioUrl &&
+            String(row._audioUrl).startsWith("http") &&
+            !(row[TRANSCRIPT_FIELD] && String(row[TRANSCRIPT_FIELD]).trim())
+        );
+      mark("TRANSCRIBE_CANDIDATES", {
+        count: candidates.length,
+        groqConfigured: !!groqKey,
+      });
+      if (candidates.length === 0) {
+        mark("TRANSCRIBE_SKIPPED", { reason: "no audio URLs" });
+      } else if (!groqKey) {
+        mark("TRANSCRIBE_SKIPPED", { reason: "no groq token" });
+        send("warn", {
+          phase: "transcribing",
+          message:
+            "Groq token not set — transcripts skipped. Add a token in Settings → Groq to enable.",
+        });
+      } else {
+        try {
+          mark("TRANSCRIBE_START", {
+            model: GROQ_MODEL,
+            concurrency: TRANSCRIBE_CONCURRENCY,
+          });
+          send("progress", {
+            phase: "transcribing",
+            status: "STARTING",
+            itemCount: 0,
+            total: candidates.length,
+          });
+          let succeeded = 0;
+          let failed = 0;
+          await pMapBounded(
+            candidates,
+            TRANSCRIBE_CONCURRENCY,
+            async ({ row }) => {
+              const text = await transcribeOne(row._audioUrl, groqKey);
+              // Write under both keys: `transcript` is the user-facing
+              // column the spec asks for, `reel-transcript` is the
+              // canonical key the rest of the pipeline (Analyze, Scripts)
+              // already reads from.
+              row.transcript = text;
+              row[TRANSCRIPT_FIELD] = text;
+              return text;
+            },
+            ({ completed, total, lastResult }) => {
+              if (lastResult.ok) succeeded++;
+              else failed++;
+              if (!isOpen()) return;
+              send("progress", {
+                phase: "transcribing",
+                status: "RUNNING",
+                itemCount: completed,
+                total,
+                succeeded,
+                failed,
+              });
+            }
+          );
+          mark("TRANSCRIBE_DONE", {
+            succeeded,
+            failed,
+            total: candidates.length,
+          });
+          send("progress", {
+            phase: "transcribing",
+            status: "SUCCEEDED",
+            itemCount: succeeded,
+            total: candidates.length,
+            succeeded,
+            failed,
+            done: true,
+          });
+        } catch (e) {
+          mark("TRANSCRIBE_FAILED", { message: e.message });
+          console.warn("[scrape] transcribe step failed:", e.message);
+          send("warn", {
+            phase: "transcribing",
+            message: `transcribe step failed: ${e.message || "unknown error"}`,
+          });
+        }
+      }
+    }
+
+    mark("SEND_DONE", { rows: rows.length });
+    send("done", {
+      summary: summarize(rows, items.length ? Object.keys(items[0]) : []),
+      rows,
+      filename,
+      runId,
+      datasetId,
+    });
+    if (isOpen()) res.end();
+    mark("RES_END");
+  } catch (e) {
+    mark("CAUGHT_ERROR", { message: e.message });
+    console.error("[scrape] failed", e);
+    send("error", {
+      message: e.message || "scrape failed",
+      runId,
+      datasetId,
+    });
+    if (isOpen()) res.end();
+    mark("RES_END_AFTER_ERROR");
+  }
+});
+
+function synthesizeScrapeFilename(urls) {
+  const handles = urls
+    .map((u) => {
+      try {
+        const parts = new URL(u).pathname.split("/").filter(Boolean);
+        return parts[0] || "creator";
+      } catch {
+        return "creator";
+      }
+    })
+    .filter(Boolean);
+  const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const head = handles.slice(0, 3).join("+");
+  const more = handles.length > 3 ? `+${handles.length - 3}more` : "";
+  return `apify-${head}${more}-${stamp}.json`;
+}
 
 app.post("/api/parse", upload.single("file"), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-    const text = req.file.buffer.toString("utf8");
-    const records = parse(text, {
-      columns: true,
-      skip_empty_lines: true,
-      relax_column_count: true,
-      relax_quotes: true,
-      trim: true,
-      bom: true,
-    });
+    const text = req.file.buffer.toString("utf8").replace(/^﻿/, "");
+    const name = req.file.originalname || "";
+    const isJson =
+      /\.json$/i.test(name) ||
+      req.file.mimetype === "application/json" ||
+      // Heuristic for unnamed buffers: starts with `[` or `{` after trimming.
+      /^[\s]*[\[{]/.test(text);
+
+    let records;
+    if (isJson) {
+      let parsed;
+      try {
+        parsed = JSON.parse(text);
+      } catch (e) {
+        return res.status(400).json({ error: `Invalid JSON: ${e.message}` });
+      }
+      // Apify dataset exports may be a bare array OR an object that wraps the
+      // array under common keys (`items`, `results`, `data`). Accept all.
+      if (Array.isArray(parsed)) {
+        records = parsed;
+      } else if (parsed && typeof parsed === "object") {
+        records =
+          parsed.items || parsed.results || parsed.data || parsed.rows || null;
+        if (!Array.isArray(records)) {
+          return res.status(400).json({
+            error:
+              "JSON must be an array of records (or { items|results|data|rows: [...] })",
+          });
+        }
+      } else {
+        return res
+          .status(400)
+          .json({ error: "JSON must be an array of records" });
+      }
+    } else {
+      records = parse(text, {
+        columns: true,
+        skip_empty_lines: true,
+        relax_column_count: true,
+        relax_quotes: true,
+        trim: true,
+        bom: true,
+      });
+    }
+
     const rawColumns = records.length ? Object.keys(records[0]) : [];
     const rows = records.map(pickFields);
     res.json({
@@ -288,13 +760,24 @@ function engagementScore(row) {
   return views; // fall back to views when engagement metrics are missing
 }
 
+// ---------- Groq Whisper transcriber ----------
+//
+// Top-N transcription pass driven by the operator's Groq token. The audio
+// URL we send to Groq is whatever Apify's instagram-scraper resolved into
+// `row._audioUrl` (typically the direct mp4 download URL). Groq Whisper has
+// a 24 MB upload ceiling, enforced inside `downloadAudio`.
+
 app.post("/api/transcribe", async (req, res) => {
-  const { rows, topN } = req.body || {};
+  const { rows, topN, groqToken } = req.body || {};
   if (!Array.isArray(rows) || rows.length === 0) {
     return res.status(400).json({ error: "rows[] required" });
   }
-  if (!GROQ_API_KEY) {
-    return res.status(500).json({ error: "GROQ_API_KEY not set on server" });
+  const groqKey =
+    String(groqToken || "").trim() || process.env.GROQ_API_KEY || "";
+  if (!groqKey) {
+    return res
+      .status(503)
+      .json({ error: "Groq API key not configured (set in Settings → Groq)" });
   }
 
   const limit = Number.isFinite(topN) && topN > 0 ? Math.floor(topN) : 5;
@@ -305,19 +788,29 @@ app.post("/api/transcribe", async (req, res) => {
   res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders?.();
 
+  const isOpen = () =>
+    !!res.writable && !res.writableEnded && !res.destroyed;
   const send = (event, data) => {
-    res.write(`event: ${event}\n`);
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (!isOpen()) return false;
+    try {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const enriched = rows.map((r) => ({ ...r }));
 
-  // Rank candidates by engagement, then keep only the top N that have audio URL
-  // and don't already have a transcript.
+  // Rank candidates by engagement, keep top-N that have a resolved audio URL
+  // and don't already have a transcript. Groq Whisper consumes the audio
+  // file directly so we need `_audioUrl`, not the post-page URL.
   const ranked = enriched
     .map((row, idx) => ({ row, idx, score: engagementScore(row) }))
     .filter(({ row }) => {
-      const existing = row[TRANSCRIPT_FIELD] && String(row[TRANSCRIPT_FIELD]).trim();
+      const existing =
+        row[TRANSCRIPT_FIELD] && String(row[TRANSCRIPT_FIELD]).trim();
       return row._audioUrl && !existing;
     })
     .sort((a, b) => b.score - a.score)
@@ -329,14 +822,8 @@ app.post("/api/transcribe", async (req, res) => {
     score,
   }));
 
-  const audioField = enriched.find((r) => r._audioSourceField)?._audioSourceField || null;
-
-  if (!audioField) {
-    send("error", {
-      message: `No audio URL column detected. Looked for: ${AUDIO_URL_CANDIDATES.join(", ")}`,
-    });
-    return res.end();
-  }
+  const audioField =
+    enriched.find((r) => r._audioSourceField)?._audioSourceField || null;
 
   send("start", {
     audioField,
@@ -348,7 +835,12 @@ app.post("/api/transcribe", async (req, res) => {
   });
 
   if (todo.length === 0) {
-    send("done", { rows: enriched, transcribed: 0, failed: 0, skipped: enriched.length });
+    send("done", {
+      rows: enriched,
+      transcribed: 0,
+      failed: 0,
+      skipped: enriched.length,
+    });
     return res.end();
   }
 
@@ -357,8 +849,9 @@ app.post("/api/transcribe", async (req, res) => {
     todo,
     TRANSCRIBE_CONCURRENCY,
     async (job) => {
-      const text = await transcribeOne(job.url);
+      const text = await transcribeOne(job.url, groqKey);
       enriched[job.idx][TRANSCRIPT_FIELD] = text;
+      enriched[job.idx].transcript = text;
       return text;
     },
     ({ completed, total, lastIndex, lastResult }) => {
@@ -392,7 +885,7 @@ app.post("/api/transcribe", async (req, res) => {
     failed,
     skipped: enriched.length - todo.length,
   });
-  res.end();
+  if (isOpen()) res.end();
 });
 
 app.post("/api/analyze", async (req, res) => {
@@ -663,20 +1156,20 @@ if (SERVE_CLIENT && fs.existsSync(CLIENT_DIST)) {
 
 app.get("/api/health", (_req, res) => {
   const anthropicConfigured = !!process.env.ANTHROPIC_API_KEY;
-  const groqConfigured = !!GROQ_API_KEY;
-  // We treat the framework as "online" iff the Anthropic key is present (Groq
-  // is optional — captions-only analysis is supported when it's missing).
+  const groqEnvConfigured = !!process.env.GROQ_API_KEY;
+  // Apify + Groq tokens are per-request — the operator sets them via the UI
+  // (Apify on the Apify page, Groq in Settings). The env-side flags below are
+  // optional fallbacks for local dev only.
   res.json({
     ok: anthropicConfigured,
     model: MODEL,
     groqModel: GROQ_MODEL,
     services: {
       anthropic: { configured: anthropicConfigured, required: true },
-      groq: { configured: groqConfigured, required: false },
+      groq: { configured: groqEnvConfigured, required: false, perRequest: true },
     },
-    // Legacy keys for older clients.
-    groqConfigured,
     anthropicConfigured,
+    groqConfigured: groqEnvConfigured,
   });
 });
 
@@ -686,5 +1179,11 @@ app.listen(PORT, () => {
     console.log(`Client UI:    http://localhost:${PORT}/  (served from client/dist)`);
   }
   console.log(`Claude model: ${MODEL}`);
-  console.log(`Groq Whisper model: ${GROQ_MODEL} (${GROQ_API_KEY ? "configured" : "MISSING KEY"})`);
+  console.log(
+    `Groq Whisper: ${GROQ_MODEL} (${
+      process.env.GROQ_API_KEY
+        ? "env key configured"
+        : "no env key — operator must set token in Settings"
+    })`
+  );
 });

@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { ArrowUp, ArrowDown, Plus, Trash } from "@phosphor-icons/react";
-import { useCsv, STAGE } from "../state/CsvContext.jsx";
+import { useCsv, STAGE, ALL_HANDLE } from "../state/CsvContext.jsx";
 import EmptyHint from "../widgets/EmptyHint.jsx";
 import ExportMenu from "../widgets/ExportMenu.jsx";
+import CreatorTabs from "../widgets/CreatorTabs.jsx";
 import { exportDataset } from "../lib/exporters.js";
 
 const COL_WIDTHS = {
@@ -14,16 +15,45 @@ const COL_WIDTHS = {
 };
 
 export default function DatasetView() {
-  const { stage, rows, parsed, filename, selectedCreator } = useCsv();
+  const {
+    stage,
+    rows,
+    parsed,
+    filename,
+    selectedCreator,
+    selectedHandle,
+    setSelectedHandle,
+    creators,
+  } = useCsv();
   const { search } = useOutletContext();
+
+  // First time the user lands on the dataset with multiple creators detected,
+  // default to the unified ALL view — the spec calls for "unified dataset but
+  // can toggle single creator categorization." Subsequent visits keep whatever
+  // tab the user last picked.
+  const defaultedRef = useRef(false);
+  useEffect(() => {
+    if (
+      !defaultedRef.current &&
+      creators.length > 1 &&
+      selectedHandle !== ALL_HANDLE
+    ) {
+      defaultedRef.current = true;
+      setSelectedHandle(ALL_HANDLE);
+    }
+  }, [creators.length, selectedHandle, setSelectedHandle]);
 
   if (stage !== STAGE.READY || !rows.length) {
     return <DatasetEmpty />;
   }
 
-  const baseName = `${(filename || "swh-dataset").replace(/\.csv$/i, "")}${
-    selectedCreator?.handle ? `-${selectedCreator.handle}` : ""
-  }`;
+  const handleSuffix =
+    selectedHandle === ALL_HANDLE
+      ? "-all"
+      : selectedCreator?.handle
+      ? `-${selectedCreator.handle}`
+      : "";
+  const baseName = `${(filename || "swh-dataset").replace(/\.csv$/i, "")}${handleSuffix}`;
 
   return (
     <DatasetTable
@@ -45,6 +75,15 @@ function DatasetTable({ rows, parsed, search, baseName }) {
   const [edit, setEdit] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [working, setWorking] = useState(rows);
+
+  // Re-seed the editable working set when the upstream rows change — happens
+  // when the user toggles between creator tabs (or ALL/unified). We discard
+  // any in-flight cell edit so the inline editor doesn't dangle on a row that
+  // just disappeared.
+  useEffect(() => {
+    setWorking(rows);
+    setEdit(null);
+  }, [rows]);
 
   const filtered = useMemo(() => {
     if (!search) return working;
@@ -103,7 +142,7 @@ function DatasetTable({ rows, parsed, search, baseName }) {
     <section
       style={{
         display: "grid",
-        gridTemplateRows: "auto 1fr",
+        gridTemplateRows: "auto auto 1fr",
         gap: 1,
         background: "var(--tac-border)",
         minHeight: "calc(100dvh - 44px)",
@@ -153,6 +192,8 @@ function DatasetTable({ rows, parsed, search, baseName }) {
           </span>
         </div>
       </header>
+
+      <CreatorTabs allowAll allLabel="ALL · UNIFIED" label="DATASET // FILTER" />
 
       <div
         style={{

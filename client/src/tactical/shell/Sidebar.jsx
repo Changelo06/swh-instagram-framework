@@ -9,21 +9,24 @@ import {
   CaretRight,
   Gear,
   User,
+  Robot,
 } from "@phosphor-icons/react";
 import { useCsv } from "../state/CsvContext.jsx";
 
 const NAV = [
-  { to: "/app", end: true, label: "Dashboard", icon: ChartBar, key: "dashboard" },
-  { to: "/app/dataset", label: "Dataset", icon: Table, key: "dataset" },
-  { to: "/app/analyze", label: "Analyze", icon: Sparkle, key: "analyze" },
-  { to: "/app/scripts", label: "Scripts", icon: NotePencil, key: "scripts" },
+  { to: "/", end: true, label: "Dashboard", icon: ChartBar, key: "dashboard" },
+  { to: "/dataset", label: "Dataset", icon: Table, key: "dataset" },
+  { to: "/analyze", label: "Analyze", icon: Sparkle, key: "analyze" },
+  { to: "/scripts", label: "Scripts", icon: NotePencil, key: "scripts" },
+  { to: "/apify", label: "Apify", icon: Robot, key: "apify" },
 ];
 
 function Sidebar({ collapsed, onToggleCollapsed, onOpenSettings }) {
-  const { rows, analyses, variations } = useCsv();
+  const { rows, analyses, variations, apifyRun } = useCsv();
   const rowCount = rows.length;
   const analyzeRunning = analyses.some((a) => a.status === "running");
   const scriptRunning = variations.some((v) => v.status === "running");
+  const apifyRunning = apifyRun?.status === "running";
 
   return (
     <aside
@@ -100,7 +103,9 @@ function Sidebar({ collapsed, onToggleCollapsed, onOpenSettings }) {
             }
             statusDot={
               (item.key === "scripts" && scriptRunning) ||
-              (item.key === "analyze" && analyzeRunning)
+              (item.key === "analyze" && analyzeRunning) ||
+              (item.key === "apify" && apifyRunning) ||
+              (item.key === "dashboard" && apifyRunning)
             }
           />
         ))}

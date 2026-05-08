@@ -4,7 +4,7 @@ import { Check, X, Warning, ArrowRight, Crosshair } from "@phosphor-icons/react"
 import { useCsv, STAGE } from "../state/CsvContext.jsx";
 
 export default function ValidationGate() {
-  const { stage, validation, parsed, filename, proceed } = useCsv();
+  const { stage, validation, parsed, filename, proceed, reset } = useCsv();
   const [revealedCount, setRevealedCount] = useState(0);
 
   const layers = validation?.layers || [];
@@ -19,6 +19,17 @@ export default function ValidationGate() {
     const t = setTimeout(() => setRevealedCount((c) => c + 1), 220);
     return () => clearTimeout(t);
   }, [stage, revealedCount, layers.length]);
+
+  // Esc anywhere on the gate cancels back to the idle upload screen — matches
+  // operator expectation that any modal honors Escape.
+  useEffect(() => {
+    if (stage !== STAGE.VALIDATING) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") reset();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [stage, reset]);
 
   if (stage !== STAGE.VALIDATING) return null;
 
@@ -82,7 +93,35 @@ export default function ValidationGate() {
                 EXAMINING SCHEMA
               </div>
             </div>
-            <Crosshair size={18} weight="regular" color="#4f8dfe" />
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Crosshair size={18} weight="regular" color="#4f8dfe" />
+              <button
+                type="button"
+                onClick={reset}
+                aria-label="Cancel and discard upload"
+                title="Cancel · discard upload (Esc)"
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--tac-border)",
+                  color: "var(--tac-mute)",
+                  padding: 6,
+                  cursor: "pointer",
+                  display: "grid",
+                  placeItems: "center",
+                  transition: "color 120ms, border-color 120ms",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "#ef4444";
+                  e.currentTarget.style.borderColor = "#ef4444";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "var(--tac-mute)";
+                  e.currentTarget.style.borderColor = "var(--tac-border)";
+                }}
+              >
+                <X size={13} weight="regular" />
+              </button>
+            </div>
           </header>
 
           <div
@@ -172,22 +211,44 @@ export default function ValidationGate() {
               </div>
             )}
 
-            <button
-              type="button"
-              disabled={!allRevealed}
-              onClick={proceed}
-              className="tac-btn tac-btn-accent"
+            <div
               style={{
-                justifyContent: "center",
-                padding: "10px 14px",
-                opacity: allRevealed ? 1 : 0.4,
-                cursor: allRevealed ? "pointer" : "wait",
-                fontWeight: 600,
+                display: "grid",
+                gridTemplateColumns: "auto 1fr",
+                gap: 8,
               }}
             >
-              {allRevealed ? "PROCEED → DASHBOARD" : "SCANNING..."}
-              {allRevealed && <ArrowRight size={12} weight="bold" />}
-            </button>
+              <button
+                type="button"
+                onClick={reset}
+                className="tac-btn"
+                style={{
+                  justifyContent: "center",
+                  padding: "10px 14px",
+                  fontWeight: 600,
+                }}
+                title="Discard the upload and return to the dropzone (Esc)"
+              >
+                <X size={12} weight="bold" />
+                CANCEL
+              </button>
+              <button
+                type="button"
+                disabled={!allRevealed}
+                onClick={proceed}
+                className="tac-btn tac-btn-accent"
+                style={{
+                  justifyContent: "center",
+                  padding: "10px 14px",
+                  opacity: allRevealed ? 1 : 0.4,
+                  cursor: allRevealed ? "pointer" : "wait",
+                  fontWeight: 600,
+                }}
+              >
+                {allRevealed ? "PROCEED → DASHBOARD" : "SCANNING..."}
+                {allRevealed && <ArrowRight size={12} weight="bold" />}
+              </button>
+            </div>
           </footer>
         </motion.div>
       </motion.div>

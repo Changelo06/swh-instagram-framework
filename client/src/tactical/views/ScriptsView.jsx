@@ -16,11 +16,12 @@ import {
   Sparkle,
   ArrowsCounterClockwise,
 } from "@phosphor-icons/react";
-import { useCsv, STAGE } from "../state/CsvContext.jsx";
+import { useCsv, STAGE, ALL_HANDLE } from "../state/CsvContext.jsx";
 import EmptyHint from "../widgets/EmptyHint.jsx";
 import ExportMenu from "../widgets/ExportMenu.jsx";
 import CreateVariationModal from "../widgets/CreateVariationModal.jsx";
 import ConfirmAction from "../widgets/ConfirmAction.jsx";
+import CreatorTabs from "../widgets/CreatorTabs.jsx";
 import { exportVariation } from "../lib/exporters.js";
 
 export default function ScriptsView() {
@@ -29,6 +30,9 @@ export default function ScriptsView() {
     rows,
     filename,
     selectedCreator,
+    selectedHandle,
+    setSelectedHandle,
+    creators,
     variations,
     activeVariationId,
     setActiveVariationId,
@@ -39,6 +43,15 @@ export default function ScriptsView() {
 
   const [modalOpen, setModalOpen] = useState(false);
 
+  // Variation forging targets a single creator's reels — drop out of the
+  // unified ALL filter back to the first creator on entry so the modal's
+  // source-video list isn't a confused blend.
+  useEffect(() => {
+    if (selectedHandle === ALL_HANDLE && creators.length > 0) {
+      setSelectedHandle(creators[0].handle);
+    }
+  }, [selectedHandle, creators, setSelectedHandle]);
+
   if (stage !== STAGE.READY || !rows.length) {
     return <EmptyHint />;
   }
@@ -48,7 +61,11 @@ export default function ScriptsView() {
     selectedCreator?.handle ? `-${selectedCreator.handle}` : ""
   }`;
 
-  const PAGE_CAP = 3;
+  // Page cap holds the notepad to a comfortable scan size while still leaving
+  // room for cross-creator batches (e.g. forge a script from each of 5
+  // creators in one shot). Reaching the cap disables the [+ NEW] entry
+  // until the operator removes pages.
+  const PAGE_CAP = 12;
   const atCap = variations.length >= PAGE_CAP;
   const tryOpen = () => {
     if (!atCap) setModalOpen(true);
@@ -59,12 +76,22 @@ export default function ScriptsView() {
       <section
         style={{
           display: "grid",
-          gridTemplateColumns: "260px 1fr",
+          gridTemplateRows: "auto 1fr",
           gap: 1,
           background: "var(--tac-border)",
           minHeight: "calc(100dvh - 44px)",
         }}
       >
+        <CreatorTabs label="SCRIPTS // CREATOR" />
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "260px 1fr",
+            gap: 1,
+            background: "var(--tac-border)",
+          }}
+        >
         <aside
           style={{
             background: "var(--tac-surface2)",
@@ -204,12 +231,14 @@ export default function ScriptsView() {
             <BlankPage onCreate={tryOpen} atCap={atCap} cap={PAGE_CAP} />
           )}
         </div>
+        </div>
       </section>
 
       <CreateVariationModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onCreated={(id) => setActiveVariationId(id)}
+        slotsAvailable={Math.max(0, PAGE_CAP - variations.length)}
       />
     </>
   );

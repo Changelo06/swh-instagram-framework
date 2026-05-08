@@ -5,10 +5,11 @@ import { useCsv, STAGE } from "../state/CsvContext.jsx";
 import { API_STATE } from "../../components/ApiStatus.jsx";
 
 const SECTION_LABEL = {
-  "/app": "DASHBOARD",
-  "/app/dataset": "DATASET",
-  "/app/analyze": "ANALYZE",
-  "/app/scripts": "SCRIPTS",
+  "/": "DASHBOARD",
+  "/dataset": "DATASET",
+  "/analyze": "ANALYZE",
+  "/scripts": "SCRIPTS",
+  "/apify": "APIFY",
 };
 
 function Topbar({ healthState, onReset, search, onSearchChange }) {
@@ -19,7 +20,7 @@ function Topbar({ healthState, onReset, search, onSearchChange }) {
 
   const operatorId = useOperatorId();
 
-  const showSearch = pathname === "/app/dataset";
+  const showSearch = pathname === "/dataset";
 
   const dot =
     healthState === API_STATE.ONLINE

@@ -12,6 +12,30 @@ import { groupByCreator } from "../../lib/datasetClassifier.js";
 // sessionStorage key — survives F5 within a tab, clears when tab closes.
 const SESSION_KEY = "tac-session-v1";
 
+// Token slots are read at request time (not threaded through component props)
+// so a token saved on the Settings/Apify pages is picked up on the next
+// transcribe / scrape without needing the CsvContext to remount.
+const APIFY_TOKEN_KEY = "swh-apify-token";
+const GROQ_TOKEN_KEY = "swh-groq-token";
+
+function readApifyToken() {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.localStorage.getItem(APIFY_TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function readGroqToken() {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.localStorage.getItem(GROQ_TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
 function loadSession() {
   if (typeof window === "undefined") return null;
   try {
@@ -51,6 +75,11 @@ export const STAGE = {
   READY: "ready",
   ERROR: "error",
 };
+
+// Pseudo-handle used by the Dataset view to show every creator's rows in one
+// unified table. Real creator buckets always have a non-empty, lowercased handle
+// so this prefix can never collide with a parsed username.
+export const ALL_HANDLE = "__all__";
 
 const VALIDATION_LAYERS = [
   {
@@ -106,7 +135,14 @@ const VALIDATION_LAYERS = [
     id: "owner",
     label: "OWNER // CREATOR ATTRIBUTION",
     critical: false,
-    test: (row) => !!row.ownerUsername || !!row.username || !!row.handle,
+    // Pass when either Apify export column carries the creator — ownerUsername
+    // (the @handle) or ownerFullName (the display name). Falling back to the
+    // legacy `username`/`handle` aliases keeps non-Apify CSVs working too.
+    test: (row) =>
+      !!row.ownerUsername ||
+      !!row.ownerFullName ||
+      !!row.username ||
+      !!row.handle,
   },
 ];
 
@@ -166,6 +202,16 @@ export function CsvProvider({ children }) {
     initial.activeVariationId || null
   );
 
+  // Live Apify scrape — only one can run at a time. Persisted across reloads
+  // as `idle`/`error`/`done`; mid-flight runs reset to idle since the SSE
+  // stream is dead after a reload.
+  const [apifyRun, setApifyRun] = useState(() => {
+    const raw = initial.apifyRun;
+    if (!raw) return { status: "idle" };
+    if (raw.status === "running") return { status: "idle" };
+    return raw;
+  });
+
   const abortRef = useRef({});
 
   // persist a snapshot whenever any persisted slice changes.
@@ -183,6 +229,7 @@ export function CsvProvider({ children }) {
       activeAnalysisId,
       variations,
       activeVariationId,
+      apifyRun,
     });
   }, [
     stage,
@@ -197,6 +244,7 @@ export function CsvProvider({ children }) {
     activeAnalysisId,
     variations,
     activeVariationId,
+    apifyRun,
   ]);
 
   const reset = useCallback(() => {
@@ -214,58 +262,76 @@ export function CsvProvider({ children }) {
     setActiveAnalysisId(null);
     setVariations([]);
     setActiveVariationId(null);
+    setApifyRun({ status: "idle" });
   }, []);
 
   const proceed = useCallback(() => {
     setStage((s) => (s === STAGE.VALIDATING ? STAGE.READY : s));
   }, []);
 
-  const ingest = useCallback(async (file) => {
-    if (!file) return;
-    if (!/\.csv$/i.test(file.name)) {
-      setError("Only .csv files are accepted.");
+  // Shared with both CSV upload and Apify scrape — the only difference between
+  // those entry points is *how* the rows arrive, not what we do with them once
+  // they exist. Returns false (and surfaces an error) if the dataset is empty.
+  const _loadParsedDataset = useCallback((data, fname) => {
+    const groups = groupByCreator(data.rows || []);
+    if (!groups.length) {
+      setError("No rows found in dataset.");
       setStage(STAGE.ERROR);
-      return;
+      return false;
     }
-    setError("");
-    setFilename(file.name);
-    setStage(STAGE.PARSING);
 
-    const fd = new FormData();
-    fd.append("file", file);
-
-    try {
-      const res = await fetch("/api/parse", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `Parse failed (HTTP ${res.status})`);
-
-      const groups = groupByCreator(data.rows || []);
-      if (!groups.length) throw new Error("No rows found in CSV.");
-
-      const initState = {};
-      for (const g of groups) {
-        initState[g.handle] = {
-          stage: "ready",
-          framework: null,
-          enrichedRows: null,
-          transcribeProgress: null,
-          analyzeMode: "full",
-          error: "",
-          usage: null,
-        };
-      }
-
-      setParsed(data);
-      setCreators(groups);
-      setSelectedHandle(groups[0].handle);
-      setPerCreator(initState);
-      setValidation(runValidation(data.rows || []));
-      setStage(STAGE.VALIDATING);
-    } catch (e) {
-      setError(e.message);
-      setStage(STAGE.ERROR);
+    const initState = {};
+    for (const g of groups) {
+      initState[g.handle] = {
+        stage: "ready",
+        framework: null,
+        enrichedRows: null,
+        transcribeProgress: null,
+        analyzeMode: "full",
+        error: "",
+        usage: null,
+      };
     }
+
+    setFilename(fname);
+    setParsed(data);
+    setCreators(groups);
+    setSelectedHandle(groups[0].handle);
+    setPerCreator(initState);
+    setValidation(runValidation(data.rows || []));
+    setStage(STAGE.VALIDATING);
+    return true;
   }, []);
+
+  const ingest = useCallback(
+    async (file) => {
+      if (!file) return;
+      // Accept both Apify CSV exports and the raw JSON dataset format. The
+      // server inspects extension/MIME/content to decide how to parse.
+      if (!/\.(csv|json)$/i.test(file.name)) {
+        setError("Only .csv or .json files are accepted.");
+        setStage(STAGE.ERROR);
+        return;
+      }
+      setError("");
+      setFilename(file.name);
+      setStage(STAGE.PARSING);
+
+      const fd = new FormData();
+      fd.append("file", file);
+
+      try {
+        const res = await fetch("/api/parse", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `Parse failed (HTTP ${res.status})`);
+        _loadParsedDataset(data, file.name);
+      } catch (e) {
+        setError(e.message);
+        setStage(STAGE.ERROR);
+      }
+    },
+    [_loadParsedDataset]
+  );
 
   const patchCreator = useCallback((handle, patch) => {
     setPerCreator((p) => ({
@@ -282,18 +348,29 @@ export function CsvProvider({ children }) {
     [patchCreator]
   );
 
+  const isAllSelected = selectedHandle === ALL_HANDLE;
+
   const selectedCreator = useMemo(
-    () => creators.find((c) => c.handle === selectedHandle) || null,
-    [creators, selectedHandle]
+    () =>
+      isAllSelected
+        ? null
+        : creators.find((c) => c.handle === selectedHandle) || null,
+    [creators, selectedHandle, isAllSelected]
   );
 
   const rows = useMemo(() => {
+    if (isAllSelected) {
+      return creators.flatMap((c) => {
+        const cur = perCreator[c.handle] || {};
+        return cur.enrichedRows || c.rows || [];
+      });
+    }
     if (!selectedCreator) return [];
     const cur = perCreator[selectedHandle] || {};
     return cur.enrichedRows || selectedCreator.rows || [];
-  }, [selectedCreator, perCreator, selectedHandle]);
+  }, [selectedCreator, perCreator, selectedHandle, creators, isAllSelected]);
 
-  const cur = perCreator[selectedHandle] || null;
+  const cur = isAllSelected ? null : perCreator[selectedHandle] || null;
 
   // ----- streaming helper for /api/analyze + /api/transcribe -----
   const streamAnalyze = useCallback(
@@ -309,6 +386,12 @@ export function CsvProvider({ children }) {
       const ctrl = new AbortController();
       abortRef.current[abortKey] = ctrl;
 
+      // Track whether a terminal event was received. If the stream closes
+      // (network blip, proxy idle-out, server crash) without ever emitting
+      // `done` or `error`, the caller would otherwise sit at "running"
+      // forever. We synthesize an error so apifyRun/analysis state can
+      // recover instead.
+      let sawTerminal = false;
       try {
         const res = await fetch(endpoint, {
           method: "POST",
@@ -344,10 +427,20 @@ export function CsvProvider({ children }) {
               continue;
             }
             if (event === "delta" && parsed.text) onDelta?.(parsed.text);
-            else if (event === "done") onDone?.(parsed);
-            else if (event === "error") throw new Error(parsed.message || "stream error");
-            else onEvent?.(event, parsed);
+            else if (event === "done") {
+              sawTerminal = true;
+              onDone?.(parsed);
+            } else if (event === "error") {
+              sawTerminal = true;
+              throw new Error(parsed.message || "stream error");
+            } else onEvent?.(event, parsed);
           }
+        }
+        if (!sawTerminal) {
+          onError?.({
+            message:
+              "connection closed before the run finished — check the apify console; if the run actually succeeded, refresh and the data will not have loaded automatically",
+          });
         }
       } catch (e) {
         if (e.name === "AbortError") onError?.({ aborted: true });
@@ -359,10 +452,169 @@ export function CsvProvider({ children }) {
     []
   );
 
+  // ----- Apify scraper -----
+  // Drive a single in-flight scrape and replace the dataset on success. The
+  // run state is intentionally a flat object (status + counters + error)
+  // rather than a list — only one scrape runs at a time, and finishing one
+  // implicitly invalidates the previous dataset anyway.
+  const runApifyScrape = useCallback(
+    ({
+      token,
+      groqToken,
+      urls,
+      resultsLimit,
+      onlyPostsNewerThan,
+      onlyPostsOlderThan,
+      addParentData,
+    }) => {
+      const startedAt = Date.now();
+      setApifyRun({
+        status: "running",
+        phase: "submitting",
+        startedAt,
+        urls,
+        resultsLimit,
+        runId: null,
+        datasetId: null,
+        itemCount: 0,
+        consoleUrl: null,
+        error: null,
+        states: [
+          {
+            t: 0,
+            label: "CLIENT_RUN_INITIATED",
+            detail: { urls: urls.length, resultsLimit },
+            client: true,
+          },
+        ],
+      });
+
+      const patch = (mut) => setApifyRun((r) => ({ ...r, ...mut }));
+      // Append to the runtime timeline. Used both for server-sourced `state`
+      // events and a couple of synthetic client-side milestones (initiated,
+      // done received, error received, stream ended).
+      const appendState = (entry) =>
+        setApifyRun((r) => ({
+          ...r,
+          states: [...(r.states || []), entry],
+        }));
+      const clientMark = (label, detail) => {
+        const t = Date.now() - startedAt;
+        // eslint-disable-next-line no-console
+        console.log(`[scrape client +${t}ms]`, label, detail || "");
+        appendState({ t, label, detail: detail ?? null, client: true });
+      };
+
+      streamAnalyze({
+        endpoint: "/api/scrape",
+        abortKey: "apify-scrape",
+        payload: {
+          token,
+          groqToken,
+          urls,
+          resultsLimit,
+          onlyPostsNewerThan,
+          onlyPostsOlderThan,
+          addParentData,
+        },
+        onEvent: (event, data) => {
+          // eslint-disable-next-line no-console
+          console.log(
+            `[scrape client +${Date.now() - startedAt}ms] event:${event}`,
+            data
+          );
+          if (event === "start") {
+            patch({ phase: "queued", actor: data.actor });
+          } else if (event === "queued") {
+            patch({
+              phase: "scraping",
+              runId: data.runId,
+              datasetId: data.datasetId,
+              consoleUrl: data.consoleUrl,
+            });
+          } else if (event === "progress") {
+            // Server tags every progress event with `phase` so the panel
+            // can swap "scraping → transcribing" without us inferring it.
+            // `phase: "running"` is the legacy fallback for old payloads.
+            patch({
+              phase: data.phase || "scraping",
+              actorStatus: data.status,
+              itemCount: data.itemCount || 0,
+              transcribeTotal:
+                data.phase === "transcribing" ? data.total : null,
+              requestsTotal: data.requestsTotal || 0,
+            });
+          } else if (event === "warn") {
+            // Non-fatal — surfaces e.g. "transcribe step failed" without
+            // killing the scrape. Stash on the run so the panel can show it.
+            patch({ warning: data.message || "warning" });
+          } else if (event === "state") {
+            // Diagnostic timeline event from the server. Append verbatim.
+            appendState({
+              t: data.t,
+              label: data.label,
+              detail: data.detail,
+              client: false,
+            });
+          }
+        },
+        onDone: (payload) => {
+          clientMark("CLIENT_DONE_RECEIVED", { rows: (payload.rows || []).length });
+          // Promote scraped dataset into the same state CSV uploads use.
+          const ok = _loadParsedDataset(
+            { rows: payload.rows, summary: payload.summary, filename: payload.filename },
+            payload.filename
+          );
+          clientMark(
+            ok ? "CLIENT_DATASET_LOADED" : "CLIENT_DATASET_EMPTY",
+            { rows: (payload.rows || []).length }
+          );
+          // Distinguish "scrape ran cleanly but Apify returned nothing" from
+          // a generic empty payload — single-URL submissions are most often
+          // a private / removed / wrong-link reel; multi-URL is a profile
+          // with no posts in the chosen window.
+          const emptyMsg =
+            (urls?.length || 0) === 1
+              ? "reel inaccessible — private, removed, or wrong URL"
+              : "scrape returned 0 items — target may be private, removed, or outside the time window";
+          patch({
+            status: ok ? "done" : "error",
+            phase: null,
+            finishedAt: Date.now(),
+            itemCount: (payload.rows || []).length,
+            error: ok ? null : emptyMsg,
+          });
+        },
+        onError: (err) => {
+          clientMark("CLIENT_ERROR_RECEIVED", {
+            aborted: !!err.aborted,
+            message: err.message,
+          });
+          patch({
+            status: err.aborted ? "stopped" : "error",
+            phase: null,
+            finishedAt: Date.now(),
+            error: err.message || (err.aborted ? "aborted" : "scrape failed"),
+          });
+        },
+      });
+    },
+    [streamAnalyze, _loadParsedDataset]
+  );
+
+  const stopApifyScrape = useCallback(() => {
+    abortRef.current["apify-scrape"]?.abort();
+  }, []);
+
+  const clearApifyRun = useCallback(() => {
+    if (apifyRun.status === "running") return; // safety — make user stop first
+    setApifyRun({ status: "idle" });
+  }, [apifyRun.status]);
+
   // ----- analyses (FAST / DEEP) -----
   // Both modes follow the original SWH flow: optionally transcribe the top-N
-  // most-engaged reels via Groq Whisper, then stream the framework analysis
-  // off the enriched rows. Exports stay disabled until status === "done".
+  // most-engaged reels via the Apify transcriber, then stream the framework
+  // analysis off the enriched rows. Exports stay disabled until status === "done".
   const TOP_N_TRANSCRIBE = 5;
 
   const runAnalysis = useCallback(
@@ -370,8 +622,8 @@ export function CsvProvider({ children }) {
       const id = nextId();
       const startedAt = Date.now();
 
-      // detect whether the dataset has any rows with audio URLs that lack a
-      // transcript; only those need a transcribe pass.
+      // detect whether the dataset has any rows with a resolved audio URL
+      // that lacks a transcript; only those need a Groq Whisper pass.
       const candidates = rows.filter(
         (r) =>
           r._audioUrl &&
@@ -438,7 +690,7 @@ export function CsvProvider({ children }) {
         await streamAnalyze({
           endpoint: "/api/transcribe",
           abortKey: `analysis-${id}-transcribe`,
-          payload: { rows, topN: TOP_N_TRANSCRIBE },
+          payload: { rows, topN: TOP_N_TRANSCRIBE, groqToken: readGroqToken() },
           onEvent: (event, payload) => {
             if (event === "start") {
               patch((x) => ({
@@ -621,7 +873,7 @@ export function CsvProvider({ children }) {
         await streamAnalyze({
           endpoint: "/api/transcribe",
           abortKey: `variation-${id}-transcribe`,
-          payload: { rows: [sourceVideo], topN: 1 },
+          payload: { rows: [sourceVideo], topN: 1, groqToken: readGroqToken() },
           onEvent: (event, payload) => {
             if (event === "start") {
               patch((x) => ({
@@ -788,6 +1040,11 @@ export function CsvProvider({ children }) {
       stopVariation,
       removeVariation,
       retryVariation,
+      // apify scraper
+      apifyRun,
+      runApifyScrape,
+      stopApifyScrape,
+      clearApifyRun,
     }),
     [
       stage,
@@ -818,6 +1075,10 @@ export function CsvProvider({ children }) {
       stopVariation,
       removeVariation,
       retryVariation,
+      apifyRun,
+      runApifyScrape,
+      stopApifyScrape,
+      clearApifyRun,
     ]
   );
 

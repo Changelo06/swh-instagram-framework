@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -9,8 +9,16 @@ import {
   CircleNotch,
   Moon,
   Sun,
+  Microphone,
+  Eye,
+  EyeSlash,
+  FloppyDisk,
+  Trash,
 } from "@phosphor-icons/react";
 import { API_STATE } from "../../components/ApiStatus.jsx";
+
+// Same key the dashboard / context read on every transcribe + scrape call.
+const GROQ_TOKEN_KEY = "swh-groq-token";
 
 const STATUS_CONF = {
   [API_STATE.CHECKING]: {
@@ -134,6 +142,7 @@ export default function SettingsDrawer({ open, onClose, health, theme, onThemeCh
               }}
             >
               <DisplaySection theme={theme} onThemeChange={onThemeChange} />
+              <GroqSection />
               <ApiSection health={health} />
             </div>
 
@@ -280,6 +289,251 @@ function DisplaySection({ theme, onThemeChange }) {
         Gray mode swaps the substrate to a lighter neutral tone for long
         sessions. Brand accents (signal blue, status green, error red) stay
         constant across themes.
+      </div>
+    </section>
+  );
+}
+
+
+// Groq Whisper transcription token. Stored in this browser only and read
+// at request time by the Dashboard (for /api/scrape) and the Analyze /
+// Scripts views (for /api/transcribe). The drawer mirrors ApifyView's save
+// flow — explicit SAVE button, dirty/clean status chip, no auto-persist.
+function GroqSection() {
+  const [token, setToken] = useState("");
+  const [savedToken, setSavedToken] = useState("");
+  const [showToken, setShowToken] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(GROQ_TOKEN_KEY) || "";
+    setToken(stored);
+    setSavedToken(stored);
+  }, []);
+
+  const persist = (next) => {
+    if (typeof window === "undefined") return;
+    if (next) window.localStorage.setItem(GROQ_TOKEN_KEY, next);
+    else window.localStorage.removeItem(GROQ_TOKEN_KEY);
+  };
+
+  const onSave = () => {
+    const trimmed = token.trim();
+    persist(trimmed);
+    setSavedToken(trimmed);
+    setToken(trimmed);
+    setSavedFlash(true);
+    setTimeout(() => setSavedFlash(false), 1500);
+  };
+
+  const onClear = () => {
+    persist("");
+    setToken("");
+    setSavedToken("");
+  };
+
+  const dirty = token.trim() !== savedToken;
+  const hasSaved = savedToken.length > 0;
+  const canSave = dirty;
+
+  let statusTone = "var(--tac-dim)";
+  let statusLabel = "// no token saved · transcripts will be skipped on scrape";
+  let StatusIcon = Warning;
+  if (savedFlash) {
+    statusTone = "#4AF626";
+    statusLabel = "TOKEN SAVED";
+    StatusIcon = CheckCircle;
+  } else if (dirty && token) {
+    statusTone = "#fbbf24";
+    statusLabel = "UNSAVED CHANGES · click SAVE to persist";
+  } else if (dirty && !token && hasSaved) {
+    statusTone = "#fbbf24";
+    statusLabel = "FIELD CLEARED · click SAVE to wipe stored token";
+  } else if (!dirty && hasSaved) {
+    statusTone = "#4AF626";
+    statusLabel = "TOKEN SAVED · transcripts enabled";
+    StatusIcon = CheckCircle;
+  }
+
+  return (
+    <section style={{ display: "grid", gap: 12 }}>
+      <header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div>
+          <div className="tac-label">SECTION G / GROQ</div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: 12,
+              color: "var(--tac-fg)",
+              marginTop: 4,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              fontWeight: 500,
+            }}
+          >
+            <Microphone size={13} weight="regular" color="#4f8dfe" />
+            WHISPER · TRANSCRIBER
+          </div>
+        </div>
+        <a
+          href="https://console.groq.com/keys"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            fontSize: 9,
+            color: "var(--tac-mute)",
+            letterSpacing: "0.12em",
+            border: "1px solid var(--tac-border)",
+            padding: "4px 8px",
+            textDecoration: "none",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          GET KEY
+        </a>
+      </header>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr auto auto",
+          gap: 6,
+          alignItems: "stretch",
+        }}
+      >
+        <div style={{ position: "relative" }}>
+          <input
+            type={showToken ? "text" : "password"}
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && canSave) {
+                e.preventDefault();
+                onSave();
+              }
+            }}
+            placeholder="gsk_…"
+            spellCheck={false}
+            autoComplete="off"
+            className="tac-input"
+            style={{
+              fontSize: 11,
+              padding: "8px 32px 8px 10px",
+              letterSpacing: "0.02em",
+              fontFamily: '"JetBrains Mono", monospace',
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowToken((s) => !s)}
+            aria-label={showToken ? "Hide token" : "Show token"}
+            style={{
+              position: "absolute",
+              right: 6,
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "transparent",
+              border: "none",
+              color: "var(--tac-mute)",
+              cursor: "pointer",
+              padding: 4,
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
+            {showToken ? (
+              <EyeSlash size={12} weight="regular" />
+            ) : (
+              <Eye size={12} weight="regular" />
+            )}
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={!canSave}
+          className="tac-btn tac-btn-accent"
+          style={{
+            padding: "0 10px",
+            fontSize: 10,
+            letterSpacing: "0.08em",
+            opacity: canSave ? 1 : 0.4,
+            cursor: canSave ? "pointer" : "not-allowed",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+          }}
+        >
+          <FloppyDisk size={11} weight="regular" />
+          SAVE
+        </button>
+        <button
+          type="button"
+          onClick={onClear}
+          disabled={!hasSaved && !token}
+          className="tac-btn"
+          style={{
+            padding: "0 10px",
+            fontSize: 10,
+            letterSpacing: "0.08em",
+            opacity: !hasSaved && !token ? 0.4 : 1,
+            cursor: !hasSaved && !token ? "not-allowed" : "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+          }}
+        >
+          <Trash size={11} weight="regular" />
+          CLEAR
+        </button>
+      </div>
+
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "5px 10px",
+          border: `1px solid ${statusTone}`,
+          background: `${statusTone}11`,
+          color: statusTone,
+          fontFamily: '"JetBrains Mono", monospace',
+          fontSize: 10,
+          letterSpacing: "0.08em",
+          fontWeight: 600,
+          alignSelf: "start",
+          transition: "border-color 200ms, background 200ms, color 200ms",
+        }}
+      >
+        <StatusIcon size={11} weight="regular" />
+        {statusLabel}
+      </div>
+
+      <div
+        style={{
+          padding: "10px 12px",
+          background: "var(--tac-bg)",
+          border: "1px solid var(--tac-border)",
+          fontSize: 10,
+          color: "var(--tac-mute)",
+          lineHeight: 1.6,
+          letterSpacing: "0.02em",
+        }}
+      >
+        Token rides in the request body to /api/scrape and /api/transcribe.
+        Server forwards it to Groq Whisper and never persists it. When unset,
+        scrapes still complete — they just ship without transcripts.
       </div>
     </section>
   );

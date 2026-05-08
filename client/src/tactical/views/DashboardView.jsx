@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  UploadSimple,
   Crosshair,
   Warning,
   PencilSimple,
   Check,
+  Robot,
+  Play,
+  ArrowRight,
+  FilmReel,
+  User as UserIcon,
 } from "@phosphor-icons/react";
-import { useCsv, STAGE } from "../state/CsvContext.jsx";
+import { Link } from "react-router-dom";
+import { useCsv, STAGE, ALL_HANDLE } from "../state/CsvContext.jsx";
 import {
   aggregateStats,
   uploadCadence,
@@ -22,9 +27,39 @@ import SkeletonGrid from "../widgets/SkeletonGrid.jsx";
 import Top10ReelsGrid from "../widgets/Top10ReelsGrid.jsx";
 import ScatterPlot from "../widgets/ScatterPlot.jsx";
 import ValidationGate from "../widgets/ValidationGate.jsx";
+import CreatorTabs from "../widgets/CreatorTabs.jsx";
+import ApifyRunPanel from "../widgets/ApifyRunPanel.jsx";
+
+// localStorage keys for the ScrapeIdle form. The shared token slots are read
+// here on the dashboard but written from their respective pages: Apify on
+// /app/apify and Groq from Settings.
+const TOKEN_KEY = "swh-apify-token";
+const GROQ_TOKEN_KEY = "swh-groq-token";
+const PROFILE_FORM_KEY = "swh-dash-profile-form";
+const REEL_FORM_KEY = "swh-dash-reel-form";
+const MODE_KEY = "swh-dash-mode";
+const LEGACY_CONFIG_KEY = "swh-apify-config"; // migrated away on mount
+
+const TIME_WINDOWS = [
+  { id: "WEEKLY", label: "WEEKLY", days: 7, hint: "last 7 days" },
+  { id: "MONTHLY", label: "MONTHLY", days: 30, hint: "last 30 days" },
+  { id: "YEARLY", label: "YEARLY", days: 365, hint: "last 365 days" },
+];
+
+function dateForWindow(windowId) {
+  const win = TIME_WINDOWS.find((w) => w.id === windowId) || TIME_WINDOWS[1];
+  const d = new Date(Date.now() - win.days * 86400000);
+  return d.toISOString().slice(0, 10);
+}
 
 export default function DashboardView() {
   const { stage, error } = useCsv();
+
+  // One-time migration: the legacy ApifyView config slot is now obsolete.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.removeItem(LEGACY_CONFIG_KEY);
+  }, []);
 
   return (
     <div
@@ -42,7 +77,7 @@ export default function DashboardView() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
           >
-            <UploadIdle error={error} />
+            <ScrapeIdle error={error} />
           </motion.div>
         )}
 
@@ -76,17 +111,107 @@ export default function DashboardView() {
   );
 }
 
-function UploadIdle({ error }) {
-  const inputRef = useRef(null);
-  const { ingest } = useCsv();
-  const [drag, setDrag] = useState(false);
+// PROFILE: scrape one or more IG profile URLs across a time window.
+// REEL: scrape a single reel URL for a focused case study.
+// Both modes drive the same `runApifyScrape` and land on the same
+// `_loadParsedDataset` flow that CSV upload used to hit.
+function ScrapeIdle({ error }) {
+  const { apifyRun, runApifyScrape } = useCsv();
 
-  const onDrop = (e) => {
-    e.preventDefault();
-    setDrag(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) ingest(file);
+  const [mode, setMode] = useState("PROFILE"); // 'PROFILE' | 'REEL'
+  const [urlsText, setUrlsText] = useState("");
+  const [windowId, setWindowId] = useState("MONTHLY");
+  const [resultsLimit, setResultsLimit] = useState(50);
+  const [reelUrl, setReelUrl] = useState("");
+  // Re-detected on mount + every submit attempt so an Apify-page wipe is felt.
+  const [tokenSet, setTokenSet] = useState(false);
+
+  // Hydrate persisted form state.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setTokenSet(!!window.localStorage.getItem(TOKEN_KEY));
+    const m = window.localStorage.getItem(MODE_KEY);
+    if (m === "PROFILE" || m === "REEL") setMode(m);
+    try {
+      const raw = window.localStorage.getItem(PROFILE_FORM_KEY);
+      if (raw) {
+        const cfg = JSON.parse(raw);
+        if (typeof cfg.urlsText === "string") setUrlsText(cfg.urlsText);
+        if (typeof cfg.window === "string") setWindowId(cfg.window);
+        if (Number.isFinite(Number(cfg.resultsLimit)))
+          setResultsLimit(Number(cfg.resultsLimit));
+      }
+    } catch {}
+    try {
+      const raw = window.localStorage.getItem(REEL_FORM_KEY);
+      if (raw) {
+        const cfg = JSON.parse(raw);
+        if (typeof cfg.reelUrl === "string") setReelUrl(cfg.reelUrl);
+      }
+    } catch {}
+  }, []);
+
+  // Persist on change. Token is *not* persisted here — that's owned by Apify view.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(MODE_KEY, mode);
+  }, [mode]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      PROFILE_FORM_KEY,
+      JSON.stringify({ urlsText, window: windowId, resultsLimit })
+    );
+  }, [urlsText, windowId, resultsLimit]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(REEL_FORM_KEY, JSON.stringify({ reelUrl }));
+  }, [reelUrl]);
+
+  const profileUrls = useMemo(
+    () =>
+      urlsText
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter(Boolean),
+    [urlsText]
+  );
+
+  const isRunning = apifyRun?.status === "running";
+
+  const refreshTokenSlot = () => {
+    if (typeof window === "undefined") return false;
+    const has = !!window.localStorage.getItem(TOKEN_KEY);
+    setTokenSet(has);
+    return has;
   };
+
+  const onRunProfile = () => {
+    if (!refreshTokenSlot()) return;
+    if (profileUrls.length === 0) return;
+    runApifyScrape({
+      token: window.localStorage.getItem(TOKEN_KEY),
+      groqToken: window.localStorage.getItem(GROQ_TOKEN_KEY) || "",
+      urls: profileUrls,
+      resultsLimit: Number(resultsLimit) || 50,
+      onlyPostsNewerThan: dateForWindow(windowId),
+    });
+  };
+
+  const onRunReel = () => {
+    if (!refreshTokenSlot()) return;
+    const url = reelUrl.trim();
+    if (!url) return;
+    runApifyScrape({
+      token: window.localStorage.getItem(TOKEN_KEY),
+      groqToken: window.localStorage.getItem(GROQ_TOKEN_KEY) || "",
+      urls: [url],
+      resultsLimit: 1,
+    });
+  };
+
+  const profileReady = tokenSet && profileUrls.length > 0 && !isRunning;
+  const reelReady = tokenSet && reelUrl.trim().length > 0 && !isRunning;
 
   return (
     <section
@@ -105,15 +230,16 @@ function UploadIdle({ error }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          gap: 16,
         }}
       >
         <div>
           <div className="tac-label">SECTION D-01 / DASHBOARD</div>
           <h1
             className="tac-display"
-            style={{ fontSize: 32, color: "var(--tac-fg)", marginTop: 4 }}
+            style={{ fontSize: 28, color: "var(--tac-fg)", marginTop: 4 }}
           >
-            AWAITING INPUT
+            AWAITING TARGET
           </h1>
         </div>
         <div
@@ -129,7 +255,7 @@ function UploadIdle({ error }) {
         >
           <span>STATE / IDLE</span>
           <span style={{ color: "#4f8dfe" }}>·</span>
-          <span>PIPELINE / READY</span>
+          <span>SCRAPER / READY</span>
         </div>
       </header>
 
@@ -137,127 +263,459 @@ function UploadIdle({ error }) {
         style={{
           background: "var(--tac-bg)",
           display: "grid",
-          placeItems: "center",
-          padding: 32,
+          placeItems: "start center",
+          padding: "24px",
+          overflowY: "auto",
         }}
       >
-        <motion.div
-          layoutId="upload-zone"
-          onClick={() => inputRef.current?.click()}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDrag(true);
-          }}
-          onDragLeave={() => setDrag(false)}
-          onDrop={onDrop}
-          className="tac-frame"
+        <div
           style={{
-            cursor: "pointer",
-            maxWidth: 720,
             width: "100%",
-            background: drag ? "var(--tac-surface)" : "var(--tac-surface2)",
-            borderColor: drag ? "#4f8dfe" : "var(--tac-border)",
-            transition: "background 120ms, border-color 120ms",
+            maxWidth: 720,
+            display: "grid",
+            gap: 18,
           }}
         >
-          <span className="tac-frame-corner-bl" />
-          <span className="tac-frame-corner-br" />
+          {!tokenSet && <TokenMissingBanner />}
 
-          <div
+          <ApifyRunPanel />
+
+          <ModeToggle value={mode} onChange={setMode} disabled={isRunning} />
+
+          {mode === "PROFILE" ? (
+            <ProfileForm
+              urlsText={urlsText}
+              setUrlsText={setUrlsText}
+              urlCount={profileUrls.length}
+              windowId={windowId}
+              setWindowId={setWindowId}
+              resultsLimit={resultsLimit}
+              setResultsLimit={setResultsLimit}
+              onRun={onRunProfile}
+              ready={profileReady}
+              tokenSet={tokenSet}
+              isRunning={isRunning}
+            />
+          ) : (
+            <ReelForm
+              reelUrl={reelUrl}
+              setReelUrl={setReelUrl}
+              onRun={onRunReel}
+              ready={reelReady}
+              tokenSet={tokenSet}
+              isRunning={isRunning}
+            />
+          )}
+
+          {error && (
+            <div className="tac-error-banner">
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Warning size={14} weight="regular" color="#ef4444" />
+                <span style={{ color: "#ef4444", fontWeight: 500 }}>
+                  PARSE_ERROR //
+                </span>
+                <span>{error}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TokenMissingBanner() {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "auto 1fr auto",
+        alignItems: "center",
+        gap: 14,
+        padding: "12px 14px",
+        background: "rgba(251, 191, 36, 0.08)",
+        border: "1px dashed #fbbf24",
+        fontFamily: '"JetBrains Mono", monospace',
+        fontSize: 11,
+      }}
+    >
+      <Warning size={14} weight="regular" color="#fbbf24" />
+      <div style={{ color: "var(--tac-fg)", lineHeight: 1.5 }}>
+        Apify token not set.{" "}
+        <span style={{ color: "var(--tac-mute)" }}>
+          Drop one in on the Apify page before running.
+        </span>
+      </div>
+      <Link
+        to="/app/apify"
+        style={{
+          fontSize: 10,
+          color: "#fbbf24",
+          letterSpacing: "0.1em",
+          textDecoration: "none",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          border: "1px solid #fbbf24",
+          padding: "6px 12px",
+          fontWeight: 600,
+        }}
+      >
+        SET TOKEN
+        <ArrowRight size={11} weight="bold" />
+      </Link>
+    </div>
+  );
+}
+
+function ModeToggle({ value, onChange, disabled }) {
+  const opts = [
+    { id: "PROFILE", label: "PROFILE", sub: "scrape a creator", icon: UserIcon },
+    { id: "REEL", label: "REEL", sub: "case-study one reel", icon: FilmReel },
+  ];
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 1,
+        background: "var(--tac-border)",
+        border: "1px solid var(--tac-border)",
+      }}
+    >
+      {opts.map((opt) => {
+        const active = opt.id === value;
+        const Icon = opt.icon;
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => !disabled && onChange(opt.id)}
+            disabled={disabled}
             style={{
+              background: active ? "var(--tac-bg)" : "var(--tac-surface)",
+              border: "none",
+              borderTop: active
+                ? "2px solid #4f8dfe"
+                : "2px solid transparent",
+              color: active ? "var(--tac-fg)" : "var(--tac-mute)",
+              padding: "12px 16px",
+              fontFamily: '"JetBrains Mono", monospace',
+              fontSize: 12,
+              cursor: disabled ? "not-allowed" : "pointer",
               display: "grid",
-              placeItems: "center",
-              gap: 18,
-              textAlign: "center",
+              gridTemplateColumns: "16px 1fr",
+              gap: 12,
+              alignItems: "center",
+              textAlign: "left",
+              opacity: disabled ? 0.5 : 1,
             }}
           >
-            <div
-              style={{
-                width: 56,
-                height: 56,
-                border: "1px solid var(--tac-border)",
-                display: "grid",
-                placeItems: "center",
-                position: "relative",
-              }}
-            >
-              <UploadSimple size={22} weight="regular" color="#4f8dfe" />
-              <Crosshair
-                size={11}
-                weight="regular"
-                color="#4f8dfe"
-                style={{ position: "absolute", top: -6, left: -6 }}
-              />
-              <Crosshair
-                size={11}
-                weight="regular"
-                color="#4f8dfe"
-                style={{ position: "absolute", bottom: -6, right: -6 }}
-              />
-            </div>
-
+            <Icon size={14} weight="regular" color={active ? "#4f8dfe" : "var(--tac-mute)"} />
             <div>
-              <div
-                className="tac-display"
-                style={{ fontSize: 22, color: "var(--tac-fg)", marginBottom: 8 }}
-              >
-                INJECT CSV PAYLOAD
+              <div style={{ fontWeight: 600, letterSpacing: "0.04em" }}>
+                {opt.label}
               </div>
               <div
                 style={{
-                  fontFamily: '"JetBrains Mono", monospace',
-                  fontSize: 11,
+                  fontSize: 9,
                   color: "var(--tac-mute)",
-                  letterSpacing: "0.04em",
-                  lineHeight: 1.6,
+                  marginTop: 2,
+                  letterSpacing: "0.06em",
                 }}
               >
-                drag .csv onto this zone &nbsp;//&nbsp; click to browse
-                <br />
-                schema validates before reveal &nbsp;//&nbsp; missing columns flagged inline
+                {opt.sub}
               </div>
             </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
-            <div
+function ProfileForm({
+  urlsText,
+  setUrlsText,
+  urlCount,
+  windowId,
+  setWindowId,
+  resultsLimit,
+  setResultsLimit,
+  onRun,
+  ready,
+  tokenSet,
+  isRunning,
+}) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gap: 14,
+      }}
+    >
+      <FormField
+        label="01 / CREATOR PROFILES"
+        sub="one per line · profile URL or @handle"
+      >
+        <textarea
+          value={urlsText}
+          onChange={(e) => setUrlsText(e.target.value)}
+          placeholder={
+            "https://www.instagram.com/hormozi/\n@chriswillx\nhttps://www.instagram.com/garyvee/"
+          }
+          spellCheck={false}
+          autoComplete="off"
+          disabled={isRunning}
+          rows={4}
+          className="tac-input"
+          style={{
+            fontSize: 12,
+            padding: "10px 12px",
+            fontFamily: '"JetBrains Mono", monospace',
+            resize: "vertical",
+            minHeight: 96,
+          }}
+        />
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            fontSize: 9,
+            color: "var(--tac-dim)",
+            marginTop: 4,
+            letterSpacing: "0.06em",
+          }}
+        >
+          <span>{urlCount} target{urlCount === 1 ? "" : "s"} detected</span>
+          <span>multi-creator scrapes split into per-creator tabs after load</span>
+        </div>
+      </FormField>
+
+      <FormField label="02 / TIME WINDOW" sub="filters posts newer than today − N days">
+        <WindowToggle
+          value={windowId}
+          onChange={setWindowId}
+          disabled={isRunning}
+        />
+      </FormField>
+
+      <FormField label="03 / RESULTS / URL" sub="max posts per creator · 1 – 1000">
+        <input
+          type="number"
+          min={1}
+          max={1000}
+          value={resultsLimit}
+          onChange={(e) => setResultsLimit(e.target.value)}
+          disabled={isRunning}
+          className="tac-input"
+          style={{
+            fontSize: 12,
+            padding: "10px 12px",
+            fontFamily: '"JetBrains Mono", monospace',
+            fontVariantNumeric: "tabular-nums",
+            width: 160,
+          }}
+        />
+      </FormField>
+
+      <RunButton
+        onClick={onRun}
+        ready={ready}
+        tokenSet={tokenSet}
+        isRunning={isRunning}
+        label="RUN SCRAPE"
+      />
+    </div>
+  );
+}
+
+function ReelForm({ reelUrl, setReelUrl, onRun, ready, tokenSet, isRunning }) {
+  return (
+    <div style={{ display: "grid", gap: 14 }}>
+      <FormField
+        label="01 / REEL URL"
+        sub="paste a public reel/post link · scrapes only that single reel"
+      >
+        <input
+          type="url"
+          value={reelUrl}
+          onChange={(e) => setReelUrl(e.target.value)}
+          placeholder="https://www.instagram.com/reel/DXz7Z6EyfdV/"
+          spellCheck={false}
+          autoComplete="off"
+          disabled={isRunning}
+          className="tac-input"
+          style={{
+            fontSize: 12,
+            padding: "10px 12px",
+            fontFamily: '"JetBrains Mono", monospace',
+          }}
+        />
+        <div
+          style={{
+            fontSize: 9,
+            color: "var(--tac-dim)",
+            marginTop: 4,
+            letterSpacing: "0.04em",
+            lineHeight: 1.5,
+          }}
+        >
+          accepts /reel/&#123;shortcode&#125;/ or /p/&#123;shortcode&#125;/ — not
+          /&#123;handle&#125;/reels/ listing pages.
+        </div>
+      </FormField>
+
+      <RunButton
+        onClick={onRun}
+        ready={ready}
+        tokenSet={tokenSet}
+        isRunning={isRunning}
+        label="RUN CASE STUDY"
+      />
+    </div>
+  );
+}
+
+function WindowToggle({ value, onChange, disabled }) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr 1fr",
+        gap: 1,
+        background: "var(--tac-border)",
+        border: "1px solid var(--tac-border)",
+      }}
+    >
+      {TIME_WINDOWS.map((w) => {
+        const active = w.id === value;
+        return (
+          <button
+            key={w.id}
+            type="button"
+            onClick={() => !disabled && onChange(w.id)}
+            disabled={disabled}
+            style={{
+              background: active ? "var(--tac-bg)" : "var(--tac-surface)",
+              border: "none",
+              borderTop: active
+                ? "2px solid #4f8dfe"
+                : "2px solid transparent",
+              color: active ? "var(--tac-fg)" : "var(--tac-mute)",
+              padding: "10px 14px",
+              fontFamily: '"JetBrains Mono", monospace',
+              fontSize: 11,
+              cursor: disabled ? "not-allowed" : "pointer",
+              display: "grid",
+              gap: 2,
+              textAlign: "left",
+              opacity: disabled ? 0.5 : 1,
+            }}
+          >
+            <span
               style={{
-                display: "inline-flex",
-                gap: 8,
-                fontFamily: '"JetBrains Mono", monospace',
-                fontSize: 9,
-                color: "var(--tac-mute)",
-                letterSpacing: "0.18em",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+                color: active ? "#4f8dfe" : "var(--tac-mute)",
               }}
             >
-              <span>[ .CSV ]</span>
-              <span>[ ≤ 50MB ]</span>
-              <span>[ SCHEMA-CHECK ]</span>
-            </div>
-          </div>
+              {w.label}
+            </span>
+            <span
+              style={{
+                fontSize: 9,
+                color: "var(--tac-mute)",
+                letterSpacing: "0.04em",
+              }}
+            >
+              {w.hint}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".csv,text/csv"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) ingest(f);
-              e.target.value = "";
+function RunButton({ onClick, ready, tokenSet, isRunning, label }) {
+  const disabled = !ready;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="tac-btn tac-btn-accent"
+      style={{
+        padding: "14px 18px",
+        fontSize: 13,
+        opacity: disabled ? 0.4 : 1,
+        cursor: disabled ? "not-allowed" : "pointer",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 10,
+        letterSpacing: "0.06em",
+      }}
+      title={
+        isRunning
+          ? "scrape already in flight"
+          : !tokenSet
+          ? "set your Apify token first"
+          : "fire the scrape"
+      }
+    >
+      {isRunning ? (
+        <>
+          <Robot size={14} weight="regular" />
+          SCRAPE IN FLIGHT…
+        </>
+      ) : (
+        <>
+          <Play size={14} weight="fill" />
+          {label}
+        </>
+      )}
+    </button>
+  );
+}
+
+function FormField({ label, sub, children }) {
+  return (
+    <div style={{ display: "grid", gap: 6 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+        }}
+      >
+        <span
+          style={{
+            fontSize: 10,
+            color: "#4f8dfe",
+            letterSpacing: "0.18em",
+            fontWeight: 600,
+            fontFamily: '"JetBrains Mono", monospace',
+          }}
+        >
+          {label}
+        </span>
+        {sub && (
+          <span
+            style={{
+              fontSize: 9,
+              color: "var(--tac-dim)",
+              letterSpacing: "0.04em",
+              fontFamily: '"JetBrains Mono", monospace',
             }}
-          />
-        </motion.div>
-
-        {error && (
-          <div className="tac-error-banner" style={{ marginTop: 24, maxWidth: 720, width: "100%" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Warning size={14} weight="regular" color="#ef4444" />
-              <span style={{ color: "#ef4444", fontWeight: 500 }}>PARSE_ERROR //</span>
-              <span>{error}</span>
-            </div>
-          </div>
+          >
+            {sub}
+          </span>
         )}
       </div>
-    </section>
+      {children}
+    </div>
   );
 }
 
@@ -266,10 +724,22 @@ function LiveGrid() {
     rows,
     filename,
     selectedCreator,
+    selectedHandle,
+    setSelectedHandle,
+    creators,
     validation,
     setCreatorAlias,
     perCreator,
   } = useCsv();
+
+  // Dashboard panels (KPIs, top reels, scatter) are per-creator — auto-bounce
+  // out of the unified ALL view back to the first creator if the user lands
+  // here after switching the dataset filter.
+  useEffect(() => {
+    if (selectedHandle === ALL_HANDLE && creators.length > 0) {
+      setSelectedHandle(creators[0].handle);
+    }
+  }, [selectedHandle, creators, setSelectedHandle]);
 
   const missing = useMemo(() => {
     const set = new Set();
@@ -320,7 +790,7 @@ function LiveGrid() {
     <section
       style={{
         display: "grid",
-        gridTemplateRows: "auto 1fr",
+        gridTemplateRows: "auto auto 1fr",
         gap: 1,
         background: "var(--tac-border)",
         minHeight: "calc(100dvh - 44px)",
@@ -379,6 +849,8 @@ function LiveGrid() {
           missingTimestamp={missing.has("timestamp")}
         />
       </header>
+
+      <CreatorTabs label="DASHBOARD // CREATOR" />
 
       <div
         style={{

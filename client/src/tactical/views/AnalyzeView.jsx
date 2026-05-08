@@ -14,10 +14,11 @@ import {
   ArrowsCounterClockwise,
   Warning,
 } from "@phosphor-icons/react";
-import { useCsv, STAGE } from "../state/CsvContext.jsx";
+import { useCsv, STAGE, ALL_HANDLE } from "../state/CsvContext.jsx";
 import ExportMenu from "../widgets/ExportMenu.jsx";
 import EmptyHint from "../widgets/EmptyHint.jsx";
 import ConfirmAction from "../widgets/ConfirmAction.jsx";
+import CreatorTabs from "../widgets/CreatorTabs.jsx";
 import { exportAnalysis } from "../lib/exporters.js";
 
 const TEMPLATES = [
@@ -61,6 +62,9 @@ export default function AnalyzeView() {
     rows,
     filename,
     selectedCreator,
+    selectedHandle,
+    setSelectedHandle,
+    creators,
     analyses,
     activeAnalysisId,
     setActiveAnalysisId,
@@ -71,6 +75,15 @@ export default function AnalyzeView() {
   } = useCsv();
 
   const [selectedTemplateId, setSelectedTemplateId] = useState("fast");
+
+  // Analyze runs against a single creator's reels (top-N transcribe + scripts).
+  // If the user lands here while the unified ALL filter is active, drop back
+  // to the first creator so the run has a coherent target.
+  useEffect(() => {
+    if (selectedHandle === ALL_HANDLE && creators.length > 0) {
+      setSelectedHandle(creators[0].handle);
+    }
+  }, [selectedHandle, creators, setSelectedHandle]);
 
   if (stage !== STAGE.READY || !rows.length) {
     return <AnalyzeEmpty />;
@@ -100,12 +113,22 @@ export default function AnalyzeView() {
     <section
       style={{
         display: "grid",
-        gridTemplateColumns: "260px 1fr",
+        gridTemplateRows: "auto 1fr",
         gap: 1,
         background: "var(--tac-border)",
         minHeight: "calc(100dvh - 44px)",
       }}
     >
+      <CreatorTabs label="ANALYZE // TARGET CREATOR" />
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "260px 1fr",
+          gap: 1,
+          background: "var(--tac-border)",
+        }}
+      >
       <aside
         style={{
           background: "var(--tac-surface2)",
@@ -312,6 +335,7 @@ export default function AnalyzeView() {
             }
           />
         )}
+      </div>
       </div>
     </section>
   );
