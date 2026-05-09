@@ -51,7 +51,10 @@ node scripts/launch.js --dry-run  # banner + checks only, no server spawn
 
 ## Ship a copy to someone else
 
-To hand a ready-to-run copy to a teammate or coaching client:
+There are two paths depending on how polished you want the recipient
+experience to be.
+
+### Tier 1 — Folder + launcher (Node required on their machine)
 
 ```bash
 npm run dist
@@ -70,9 +73,38 @@ their machine and their own `server/.env` (a `.env.example` is included).
 On their end, double-click the launcher → emerald banner → browser opens
 in ~2 seconds.
 
-> A truly standalone executable (`.exe` / `.app` with bundled Node) is a
-> bigger lift — Electron / Tauri / Node SEA — and would need a separate
-> packaging pass.
+### Tier 2 — Native Electron app (no Node prereq)
+
+```bash
+npm run electron:build:win    # Windows: NSIS installer (.exe)
+npm run electron:build:mac    # macOS: drag-to-Applications DMG
+npm run electron:build        # both, if you're on the right machine
+```
+
+Output lands in `dist-electron/`:
+
+- `dist-electron/win-unpacked/chiqo.ai.exe` — launchable today, copy the
+  whole folder anywhere
+- `dist-electron/chiqo.ai Setup <version>.exe` — proper NSIS installer
+  with desktop shortcut + Start Menu entry
+- `dist-electron/chiqo.ai-<version>.dmg` — macOS installer
+
+The Electron app **bundles Node** so the recipient needs nothing
+pre-installed. On first launch the app creates `%APPDATA%\chiqo.ai\.env`
+(or `~/Library/Application Support/chiqo.ai/.env` on macOS) from the
+template and prompts the user to fill in their API keys.
+
+**Windows quirk:** building the NSIS installer requires symbolic-link
+permission. Either run `npm run electron:build:win` from an Admin
+PowerShell, or enable Developer Mode (Windows Settings → Privacy &
+security → For developers → Developer Mode = On). The
+`win-unpacked/chiqo.ai.exe` is produced regardless and works on its own.
+
+**Code signing.** Builds are unsigned. Windows users will see a
+SmartScreen warning the first time they run the installer (More info →
+Run anyway). macOS users will need to right-click → Open the first time
+to bypass Gatekeeper. Real signing requires a paid certificate and is a
+separate setup step.
 
 ---
 

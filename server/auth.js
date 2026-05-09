@@ -16,15 +16,20 @@ import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const USERS_PATH = path.join(__dirname, "users.json");
+
+// CHIQO_DATA_DIR is set by the Electron main process so users.json,
+// .session-secret, and the .chiqo/ log dir all live in a writable
+// userData location (e.g. %APPDATA%\chiqo.ai\, ~/Library/Application Support/chiqo.ai/).
+// Falls back to the source-tree layout when the env var isn't set, which
+// keeps `npm run dev` and the .cmd/.command launcher working unchanged.
+const STATE_DIR = process.env.CHIQO_DATA_DIR || __dirname;
+fs.mkdirSync(STATE_DIR, { recursive: true });
+
+const USERS_PATH = path.join(STATE_DIR, "users.json");
+const SECRET_PATH = path.join(STATE_DIR, ".session-secret");
 
 const COOKIE_NAME = "chiqo_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
-
-// Session secret. Loaded from env if set, otherwise generated once and
-// persisted next to users.json so cookies survive server restarts. Living
-// outside the repo (gitignored beside users.json) is fine for a local app.
-const SECRET_PATH = path.join(__dirname, ".session-secret");
 function getSessionSecret() {
   if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
   if (fs.existsSync(SECRET_PATH)) return fs.readFileSync(SECRET_PATH, "utf8").trim();
@@ -231,8 +236,13 @@ export function loginRouter() {
 // Per-user usage logging — appends one JSONL row per model call.
 // ---------------------------------------------------------------------------
 
+// In dev / source-tree runs the .chiqo/ log dir is at the repo root; in
+// packaged Electron builds it lives under userData/logs (chosen by the
+// Electron main process and forwarded via CHIQO_DATA_DIR).
 const ROOT = path.resolve(__dirname, "..");
-const USAGE_LOG = path.join(ROOT, ".chiqo", "usage.jsonl");
+const USAGE_LOG = process.env.CHIQO_DATA_DIR
+  ? path.join(process.env.CHIQO_DATA_DIR, "logs", "usage.jsonl")
+  : path.join(ROOT, ".chiqo", "usage.jsonl");
 
 // Hard-coded Anthropic prices (USD per 1M tokens) for the models we actually
 // call from this app. If Anthropic changes pricing, edit here. Numbers are

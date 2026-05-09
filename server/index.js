@@ -6,7 +6,14 @@ import Anthropic from "@anthropic-ai/sdk";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import "dotenv/config";
+import dotenv from "dotenv";
+// Allow the Electron main process (or any launcher) to point us at a .env
+// in a writable user-data directory rather than next to the bundled
+// server/ folder. Falls through to dotenv's default lookup (cwd) when
+// unset.
+dotenv.config({
+  path: process.env.DOTENV_CONFIG_PATH || undefined,
+});
 import {
   attachUser,
   requireAuth,

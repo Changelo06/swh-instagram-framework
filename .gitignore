@@ -3,7 +3,11 @@ node_modules/
 
 # Build outputs
 dist/
-build/
+dist-electron/
+# build/ holds the Electron icon source (build/icon.png) — keep that
+# committed but ignore any other transient build artifacts.
+build/*
+!build/icon.png
 
 # Environment / secrets — NEVER commit
 .env
