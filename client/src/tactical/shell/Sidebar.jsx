@@ -1,4 +1,4 @@
-import { memo } from "react";
+﻿import { memo } from "react";
 import { NavLink } from "react-router-dom";
 import {
   ChartBar,
@@ -8,8 +8,6 @@ import {
   CaretLeft,
   CaretRight,
   Gear,
-  User,
-  Robot,
 } from "@phosphor-icons/react";
 import { useCsv } from "../state/CsvContext.jsx";
 
@@ -18,7 +16,6 @@ const NAV = [
   { to: "/dataset", label: "Dataset", icon: Table, key: "dataset" },
   { to: "/analyze", label: "Analyze", icon: Sparkle, key: "analyze" },
   { to: "/scripts", label: "Scripts", icon: NotePencil, key: "scripts" },
-  { to: "/apify", label: "Apify", icon: Robot, key: "apify" },
 ];
 
 function Sidebar({ collapsed, onToggleCollapsed, onOpenSettings }) {
@@ -36,7 +33,7 @@ function Sidebar({ collapsed, onToggleCollapsed, onOpenSettings }) {
         top: 0,
         left: 0,
         bottom: 0,
-        width: collapsed ? 56 : 200,
+        width: collapsed ? 56 : 216,
         background: "var(--tac-surface2)",
         borderRight: "1px solid var(--tac-border)",
         zIndex: 20,
@@ -50,50 +47,38 @@ function Sidebar({ collapsed, onToggleCollapsed, onOpenSettings }) {
         style={{
           display: "flex",
           alignItems: "center",
+          justifyContent: collapsed ? "center" : "flex-start",
           gap: 12,
-          padding: "0 16px",
+          padding: collapsed ? "0" : "0 16px",
           borderBottom: "1px solid var(--tac-border)",
         }}
       >
-        <div
+        <img
+          src="/chiqo.png"
+          alt="Chiqo.ai"
+          width={28}
+          height={28}
           style={{
-            width: 26,
-            height: 26,
-            background: "var(--tac-accent)",
-            borderRadius: 6,
-            display: "grid",
-            placeItems: "center",
-            color: "#ffffff",
-            fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
-            fontWeight: 700,
-            fontSize: 13,
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            objectFit: "cover",
+            display: "block",
             flexShrink: 0,
           }}
-        >
-          S
-        </div>
+        />
         <SlideLabel collapsed={collapsed}>
           <div
             style={{
               fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
               fontWeight: 600,
-              fontSize: 13,
+              fontSize: 15,
               color: "var(--tac-fg)",
               lineHeight: 1.2,
+              letterSpacing: "-0.01em",
             }}
           >
-            SWH Framework
-          </div>
-          <div
-            style={{
-              fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
-              fontSize: 11,
-              color: "var(--tac-mute)",
-              lineHeight: 1.2,
-              marginTop: 1,
-            }}
-          >
-            Instagram analytics
+            Chiqo.ai
           </div>
         </SlideLabel>
       </div>
@@ -115,7 +100,6 @@ function Sidebar({ collapsed, onToggleCollapsed, onOpenSettings }) {
             statusDot={
               (item.key === "scripts" && scriptRunning) ||
               (item.key === "analyze" && analyzeRunning) ||
-              (item.key === "apify" && apifyRunning) ||
               (item.key === "dashboard" && apifyRunning)
             }
           />
@@ -136,11 +120,6 @@ function Sidebar({ collapsed, onToggleCollapsed, onOpenSettings }) {
           onClick={onOpenSettings}
           Icon={Gear}
           label="Settings"
-        />
-        <FooterAction
-          collapsed={collapsed}
-          Icon={User}
-          label="Operator"
         />
         <button
           type="button"
@@ -196,9 +175,9 @@ const NavItem = memo(function NavItem({
         padding: collapsed ? "9px 0" : "9px 14px",
         marginLeft: collapsed ? 0 : 8,
         marginRight: collapsed ? 0 : 8,
-        borderRadius: 6,
+        borderRadius: 8,
         justifyContent: collapsed ? "center" : "flex-start",
-        background: isActive ? "var(--tac-surface)" : "transparent",
+        background: isActive ? "var(--tac-surface2)" : "transparent",
         color: isActive ? "var(--tac-fg)" : "var(--tac-mute)",
         textDecoration: "none",
         fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
@@ -209,31 +188,37 @@ const NavItem = memo(function NavItem({
         transition: "color 120ms, background 120ms",
       })}
     >
-      <Icon
-        size={16}
-        weight="regular"
-        style={{ flexShrink: 0 }}
-      />
-      <SlideLabel collapsed={collapsed}>
-        <span style={{ flex: 1 }}>{label}</span>
-        {badge && (
-          <span
-            style={{
-              fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
-              fontVariantNumeric: "tabular-nums",
-              fontSize: 11,
-              fontWeight: 500,
-              color: "var(--tac-mute)",
-              background: "var(--tac-surface2)",
-              borderRadius: 9999,
-              padding: "1px 7px",
-            }}
-          >
-            {badge}
-          </span>
-        )}
-        {statusDot && <span className="tac-dot-status" />}
-      </SlideLabel>
+      {({ isActive }) => (
+        <>
+          <Icon
+            size={16}
+            weight="regular"
+            color={isActive ? "var(--tac-accent)" : "currentColor"}
+            style={{ flexShrink: 0 }}
+          />
+          <SlideLabel collapsed={collapsed}>
+            <span style={{ flex: 1 }}>{label}</span>
+            {badge && (
+              <span
+                style={{
+                  fontFamily:
+                    '"Inter", ui-sans-serif, system-ui, sans-serif',
+                  fontVariantNumeric: "tabular-nums",
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: "var(--tac-mute)",
+                  background: "var(--tac-surface-inner)",
+                  borderRadius: 9999,
+                  padding: "1px 7px",
+                }}
+              >
+                {badge}
+              </span>
+            )}
+            {statusDot && <span className="tac-dot-status" />}
+          </SlideLabel>
+        </>
+      )}
     </NavLink>
   );
 });
@@ -279,6 +264,10 @@ function FooterAction({ collapsed, onClick, Icon, label }) {
 }
 
 function SlideLabel({ collapsed, children }) {
+  // When collapsed, the label is removed from layout entirely so the icon
+  // sits centered in its parent flex container instead of being pulled
+  // off-center by an invisible-but-present span.
+  if (collapsed) return null;
   return (
     <span
       style={{
@@ -286,12 +275,9 @@ function SlideLabel({ collapsed, children }) {
         display: "flex",
         alignItems: "center",
         gap: 8,
-        opacity: collapsed ? 0 : 1,
-        transform: collapsed ? "translateX(-8px)" : "translateX(0)",
-        transition: "opacity 120ms, transform 180ms",
         whiteSpace: "nowrap",
         overflow: "hidden",
-        pointerEvents: collapsed ? "none" : "auto",
+        transition: "opacity 120ms, transform 180ms",
       }}
     >
       {children}

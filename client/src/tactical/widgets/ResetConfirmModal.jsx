@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+﻿import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X as XIcon,
@@ -31,7 +31,7 @@ export default function ResetConfirmModal({ open, onClose, onConfirm }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  const baseName = `${(filename || "swh-export").replace(/\.csv$/i, "")}${
+  const baseName = `${(filename || "chiqo-export").replace(/\.csv$/i, "")}${
     selectedCreator?.handle ? `-${selectedCreator.handle}` : ""
   }`;
 
@@ -77,18 +77,22 @@ export default function ResetConfirmModal({ open, onClose, onConfirm }) {
             <div
               style={{
                 pointerEvents: "auto",
-                background: "var(--tac-surface2)",
+                background: "var(--tac-surface)",
                 border: "1px solid var(--tac-border)",
-                borderTop: "3px solid #ef4444",
+                borderRadius: 12,
                 width: "min(560px, 100%)",
-                fontFamily: '"JetBrains Mono", monospace',
+                fontFamily:
+                  '"Inter", ui-sans-serif, system-ui, sans-serif',
                 display: "grid",
                 gridTemplateRows: "auto 1fr auto",
+                boxShadow:
+                  "0 24px 60px -20px rgba(0, 0, 0, 0.6)",
+                overflow: "hidden",
               }}
             >
               <header
                 style={{
-                  padding: "16px 20px",
+                  padding: "18px 22px",
                   borderBottom: "1px solid var(--tac-border)",
                   display: "flex",
                   alignItems: "center",
@@ -97,20 +101,39 @@ export default function ResetConfirmModal({ open, onClose, onConfirm }) {
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <Warning size={18} weight="regular" color="#ef4444" />
+                  <span
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 999,
+                      display: "grid",
+                      placeItems: "center",
+                      background: "rgba(240, 68, 94, 0.12)",
+                      color: "var(--tac-danger)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Warning size={16} weight="regular" />
+                  </span>
                   <div>
-                    <div className="tac-label" style={{ color: "#ef4444" }}>
-                      DESTRUCTIVE OPERATION
-                    </div>
                     <div
-                      className="tac-display"
                       style={{
-                        fontSize: 18,
+                        fontSize: 16,
+                        fontWeight: 600,
                         color: "var(--tac-fg)",
-                        marginTop: 4,
+                        lineHeight: 1.25,
                       }}
                     >
-                      RESET PIPELINE
+                      Reset pipeline
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "var(--tac-mute)",
+                        marginTop: 2,
+                      }}
+                    >
+                      This action can't be undone
                     </div>
                   </div>
                 </div>
@@ -118,22 +141,8 @@ export default function ResetConfirmModal({ open, onClose, onConfirm }) {
                   type="button"
                   onClick={onClose}
                   aria-label="Cancel"
-                  style={{
-                    background: "transparent",
-                    border: "1px solid var(--tac-border)",
-                    color: "var(--tac-mute)",
-                    padding: 6,
-                    cursor: "pointer",
-                    transition: "color 120ms, border-color 120ms",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = "var(--tac-fg)";
-                    e.currentTarget.style.borderColor = "#4f8dfe";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = "var(--tac-mute)";
-                    e.currentTarget.style.borderColor = "var(--tac-border)";
-                  }}
+                  className="tac-btn"
+                  style={{ padding: 6 }}
                 >
                   <XIcon size={13} weight="regular" />
                 </button>
@@ -141,34 +150,39 @@ export default function ResetConfirmModal({ open, onClose, onConfirm }) {
 
               <div
                 style={{
-                  padding: "16px 20px",
+                  padding: "18px 22px",
                   display: "grid",
                   gap: 14,
                 }}
               >
-                <div
+                <p
                   style={{
-                    fontSize: 11,
+                    margin: 0,
+                    fontSize: 13,
                     color: "var(--tac-fg)",
                     lineHeight: 1.6,
                   }}
                 >
-                  Continuing will erase the loaded dataset and every in-memory
-                  analysis run + script variation page. This cannot be undone.
-                  <br />
-                  <span style={{ color: "var(--tac-mute)" }}>
-                    // export anything you want to keep before resetting.
-                  </span>
-                </div>
+                  Continuing will erase the loaded dataset along with every
+                  in-memory analysis run and script variation. Export anything
+                  you want to keep first.
+                </p>
 
-                <div style={{ display: "grid", gap: 1, background: "var(--tac-border)" }}>
+                <div
+                  style={{
+                    background: "var(--tac-surface2)",
+                    border: "1px solid var(--tac-border)",
+                    borderRadius: 10,
+                    overflow: "hidden",
+                  }}
+                >
                   <Counter
-                    label="DATASET ROWS"
+                    label="Dataset rows"
                     value={rows.length}
                     sub={filename}
                   />
                   <Counter
-                    label="ANALYSIS RUNS"
+                    label="Analysis runs"
                     value={analyses.length}
                     sub={
                       analyses.length
@@ -179,7 +193,7 @@ export default function ResetConfirmModal({ open, onClose, onConfirm }) {
                     }
                   />
                   <Counter
-                    label="SCRIPT PAGES"
+                    label="Script pages"
                     value={variations.length}
                     sub={
                       variations.length
@@ -188,19 +202,20 @@ export default function ResetConfirmModal({ open, onClose, onConfirm }) {
                           } running`
                         : "—"
                     }
+                    last
                   />
                 </div>
 
                 {hasUnsaved && (
                   <div
                     style={{
-                      padding: "10px 14px",
-                      background: "var(--tac-bg)",
-                      border: "1px solid var(--tac-border)",
-                      borderLeft: "3px solid #fbbf24",
-                      fontSize: 11,
+                      padding: "12px 14px",
+                      background: "rgba(245, 184, 46, 0.08)",
+                      border: "1px solid rgba(245, 184, 46, 0.25)",
+                      borderRadius: 10,
+                      fontSize: 13,
                       color: "var(--tac-fg)",
-                      lineHeight: 1.6,
+                      lineHeight: 1.55,
                       display: "grid",
                       gridTemplateColumns: "1fr auto",
                       gap: 12,
@@ -208,8 +223,10 @@ export default function ResetConfirmModal({ open, onClose, onConfirm }) {
                     }}
                   >
                     <span>
-                      <span style={{ color: "#fbbf24" }}>// recommendation: </span>
-                      export the dataset + any pages you care about first.
+                      <span style={{ color: "var(--tac-warning)", fontWeight: 500 }}>
+                        Tip ·{" "}
+                      </span>
+                      Export the dataset and any pages you care about first.
                     </span>
                     <ExportBundle
                       analyses={analyses}
@@ -223,31 +240,26 @@ export default function ResetConfirmModal({ open, onClose, onConfirm }) {
 
               <footer
                 style={{
-                  padding: "12px 20px",
+                  padding: "14px 22px",
                   borderTop: "1px solid var(--tac-border)",
+                  background: "var(--tac-surface2)",
                   display: "flex",
                   justifyContent: "space-between",
                   gap: 8,
                   alignItems: "center",
                 }}
               >
-                <span
-                  style={{
-                    fontSize: 9,
-                    color: "var(--tac-mute)",
-                    letterSpacing: "0.1em",
-                  }}
-                >
-                  // ESC to cancel
+                <span style={{ fontSize: 12, color: "var(--tac-mute)" }}>
+                  Press Esc to cancel
                 </span>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
                     type="button"
                     onClick={onClose}
                     className="tac-btn"
-                    style={{ padding: "8px 14px", fontSize: 11 }}
+                    style={{ padding: "8px 14px", fontSize: 13 }}
                   >
-                    CANCEL
+                    Cancel
                   </button>
                   <button
                     type="button"
@@ -255,33 +267,11 @@ export default function ResetConfirmModal({ open, onClose, onConfirm }) {
                       onConfirm?.();
                       onClose();
                     }}
-                    style={{
-                      background: "#ef4444",
-                      border: "1px solid #ef4444",
-                      color: "var(--tac-bg)",
-                      fontFamily: '"JetBrains Mono", monospace',
-                      fontSize: 11,
-                      fontWeight: 600,
-                      letterSpacing: "0.06em",
-                      textTransform: "uppercase",
-                      padding: "8px 16px",
-                      cursor: "pointer",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
-                      transition: "background 120ms, border-color 120ms",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "#f87171";
-                      e.currentTarget.style.borderColor = "#f87171";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "#ef4444";
-                      e.currentTarget.style.borderColor = "#ef4444";
-                    }}
+                    className="tac-btn tac-btn-danger"
+                    style={{ padding: "8px 16px", fontSize: 13 }}
                   >
                     <ArrowCounterClockwise size={12} weight="regular" />
-                    DESTROY ANYWAY
+                    Reset anyway
                   </button>
                 </div>
               </footer>
@@ -293,31 +283,31 @@ export default function ResetConfirmModal({ open, onClose, onConfirm }) {
   );
 }
 
-function Counter({ label, value, sub }) {
+function Counter({ label, value, sub, last }) {
   return (
     <div
       style={{
-        background: "var(--tac-surface)",
-        padding: "10px 14px",
+        padding: "12px 16px",
         display: "grid",
         gridTemplateColumns: "auto 1fr auto",
         alignItems: "center",
         gap: 12,
+        borderBottom: last ? "none" : "1px solid var(--tac-border)",
       }}
     >
       <span
         style={{
-          fontSize: 9,
-          color: "var(--tac-mute)",
-          letterSpacing: "0.1em",
+          fontSize: 13,
+          color: "var(--tac-fg)",
+          fontWeight: 500,
         }}
       >
         {label}
       </span>
       <span
         style={{
-          fontSize: 10,
-          color: "var(--tac-dim)",
+          fontSize: 12,
+          color: "var(--tac-mute)",
           whiteSpace: "nowrap",
           overflow: "hidden",
           textOverflow: "ellipsis",
@@ -327,10 +317,10 @@ function Counter({ label, value, sub }) {
         {sub}
       </span>
       <span
-        className="tac-display"
         style={{
-          fontSize: 14,
-          color: value ? "#4f8dfe" : "var(--tac-dim)",
+          fontSize: 15,
+          fontWeight: 600,
+          color: value ? "var(--tac-fg)" : "var(--tac-dim)",
           fontVariantNumeric: "tabular-nums",
         }}
       >
@@ -368,5 +358,5 @@ function ExportBundle({ analyses, variations, rows, baseName }) {
     }
   };
 
-  return <ExportMenu label="EXPORT ALL" onExport={onExport} />;
+  return <ExportMenu label="Export all" onExport={onExport} />;
 }

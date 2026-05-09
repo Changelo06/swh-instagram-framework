@@ -1,4 +1,4 @@
-import { memo } from "react";
+﻿import { memo } from "react";
 import WidgetFrame from "./WidgetFrame.jsx";
 
 function StatusMatrix({ name, cells = [], cols = 12 }) {
@@ -19,7 +19,7 @@ function StatusMatrix({ name, cells = [], cols = 12 }) {
             style={{
               fontFamily: '"JetBrains Mono", monospace',
               fontSize: 11,
-              color: "#4AF626",
+              color: "var(--tac-success)",
             }}
           >
             PASS {trueCount}
@@ -28,7 +28,7 @@ function StatusMatrix({ name, cells = [], cols = 12 }) {
             style={{
               fontFamily: '"JetBrains Mono", monospace',
               fontSize: 11,
-              color: "#4f8dfe",
+              color: "var(--tac-accent)",
             }}
           >
             FAIL {falseCount}
@@ -50,9 +50,9 @@ function StatusMatrix({ name, cells = [], cols = 12 }) {
                 aspectRatio: "1 / 1",
                 background:
                   c.state === true
-                    ? "#4AF626"
+                    ? "var(--tac-success)"
                     : c.state === false
-                    ? "#4f8dfe"
+                    ? "var(--tac-accent)"
                     : "var(--tac-border)",
                 opacity: c.state == null ? 0.3 : 1,
                 animation:
@@ -79,13 +79,13 @@ function StatusMatrix({ name, cells = [], cols = 12 }) {
         >
           <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
             <span
-              style={{ width: 8, height: 8, background: "#4AF626", display: "inline-block" }}
+              style={{ width: 8, height: 8, background: "var(--tac-success)", display: "inline-block" }}
             />
             TRUE
           </span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
             <span
-              style={{ width: 8, height: 8, background: "#4f8dfe", display: "inline-block" }}
+              style={{ width: 8, height: 8, background: "var(--tac-accent)", display: "inline-block" }}
             />
             FALSE
           </span>

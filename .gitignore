@@ -31,3 +31,10 @@ yarn-error.log*
 
 # Claude Code (user-local settings)
 .claude/settings.local.json
+
+# chiqo.ai launcher runtime — install/build/server logs + per-user usage rows
+.chiqo/
+
+# Per-user credentials (passwords, API keys) — same posture as .env
+server/users.json
+server/.session-secret

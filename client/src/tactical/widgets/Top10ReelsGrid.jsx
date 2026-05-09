@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from "react";
+﻿import { memo, useMemo, useState } from "react";
 import { ArrowSquareOut } from "@phosphor-icons/react";
 import WidgetFrame from "./WidgetFrame.jsx";
 
@@ -56,13 +56,14 @@ function Top10ReelsGrid({ rows = [], missing = false }) {
             lineHeight: 1.6,
           }}
         >
-          Missing required columns
+          Required columns missing
           <br />
           <span style={{ color: "var(--tac-mute)", fontSize: 12 }}>
-            Top-10 ranking needs view + url columns.
+            Add view and URL columns to rank reels.
           </span>
         </div>
       ) : (
+        <div className="tac-table-wrap">
         <table className="tac-table">
           <thead>
             <tr>
@@ -94,6 +95,7 @@ function Top10ReelsGrid({ rows = [], missing = false }) {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </WidgetFrame>
   );
@@ -144,8 +146,13 @@ const ReelRow = memo(function ReelRow({ reel, rank, sortId }) {
     caption.length > 80 ? caption.slice(0, 79) + "…" : caption;
 
   const isFirst = rank === 1;
-  const accentColor = (col) =>
-    sortId === col ? "var(--tac-fg)" : "var(--tac-fg)";
+  const cellStyle = (col) => ({
+    color:
+      sortId === col ? "var(--tac-accent)" : "var(--tac-fg)",
+    fontWeight: sortId === col ? 600 : 400,
+    background:
+      sortId === col ? "var(--tac-accent-soft)" : "transparent",
+  });
 
   return (
     <tr
@@ -180,31 +187,13 @@ const ReelRow = memo(function ReelRow({ reel, rank, sortId }) {
       >
         {captionShort || "(no caption)"}
       </td>
-      <td
-        className="num"
-        style={{
-          color: accentColor("views"),
-          fontWeight: sortId === "views" ? 600 : 400,
-        }}
-      >
+      <td className="num" style={cellStyle("views")}>
         {fmt(views)}
       </td>
-      <td
-        className="num"
-        style={{
-          color: accentColor("likes"),
-          fontWeight: sortId === "likes" ? 600 : 400,
-        }}
-      >
+      <td className="num" style={cellStyle("likes")}>
         {fmt(likes)}
       </td>
-      <td
-        className="num"
-        style={{
-          color: accentColor("comments"),
-          fontWeight: sortId === "comments" ? 600 : 400,
-        }}
-      >
+      <td className="num" style={cellStyle("comments")}>
         {fmt(comments)}
       </td>
       <td className="num" style={{ color: "var(--tac-mute)" }}>
@@ -217,15 +206,15 @@ const ReelRow = memo(function ReelRow({ reel, rank, sortId }) {
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Open reel"
+            title="Open reel"
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-              fontSize: 12,
+              display: "inline-grid",
+              placeItems: "center",
+              width: 26,
+              height: 26,
               color: "var(--tac-mute)",
               textDecoration: "none",
-              padding: "2px 6px",
-              borderRadius: 4,
+              borderRadius: 6,
               transition: "color 120ms, background 120ms",
             }}
             onMouseEnter={(e) => {
@@ -237,8 +226,7 @@ const ReelRow = memo(function ReelRow({ reel, rank, sortId }) {
               e.currentTarget.style.background = "transparent";
             }}
           >
-            Open
-            <ArrowSquareOut size={12} weight="regular" />
+            <ArrowSquareOut size={13} weight="regular" />
           </a>
         )}
       </td>

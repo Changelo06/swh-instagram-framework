@@ -109,7 +109,7 @@ function LiveTimeline({ name, events = [] }) {
             lineHeight: 1.5,
           }}
         >
-          Based on posts in this dataset.
+          Posts by day of week.
         </div>
       </div>
     </WidgetFrame>

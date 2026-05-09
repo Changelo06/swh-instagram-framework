@@ -6,18 +6,71 @@ import SettingsDrawer from "./SettingsDrawer.jsx";
 import { useApiHealth } from "../../components/ApiStatus.jsx";
 import { CsvProvider, useCsv } from "../state/CsvContext.jsx";
 import ResetConfirmModal from "../widgets/ResetConfirmModal.jsx";
+import LoginView from "../views/LoginView.jsx";
 
 const THEME_STORAGE_KEY = "tac-theme";
 
+// Auth gate. Until /api/me confirms a session, the rest of the shell stays
+// unmounted so the CsvProvider doesn't fire any /api/* requests prematurely.
+// On 401 we show LoginView; on success the form calls back into here and we
+// re-fetch /api/me to confirm + transition.
 export default function AnalyticsShell() {
+  const [authState, setAuthState] = useState("checking"); // "checking" | "in" | "out"
+  const [user, setUser] = useState(null);
+
+  const refreshSession = async () => {
+    try {
+      const res = await fetch("/api/me", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setUser(data.user || null);
+        setAuthState("in");
+      } else {
+        setUser(null);
+        setAuthState("out");
+      }
+    } catch {
+      setUser(null);
+      setAuthState("out");
+    }
+  };
+
+  useEffect(() => {
+    refreshSession();
+  }, []);
+
+  if (authState === "checking") {
+    // Tiny placeholder so the page isn't blank while /api/me resolves.
+    return (
+      <div
+        className="tac-root"
+        style={{
+          minHeight: "100dvh",
+          display: "grid",
+          placeItems: "center",
+          color: "var(--tac-mute)",
+          fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+          fontSize: 13,
+        }}
+      >
+        Loading…
+      </div>
+    );
+  }
+
+  if (authState === "out") {
+    return <LoginView onSignedIn={refreshSession} />;
+  }
+
   return (
     <CsvProvider>
-      <ShellInner />
+      <ShellInner currentUser={user} />
     </CsvProvider>
   );
 }
 
-function ShellInner() {
+// eslint-disable-next-line no-unused-vars
+function ShellInner({ currentUser }) {
   const health = useApiHealth();
   const [collapsed, setCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -37,7 +90,7 @@ function ShellInner() {
   }, [theme]);
 
   const { reset } = useCsv();
-  const sidebarWidth = collapsed ? 56 : 200;
+  const sidebarWidth = collapsed ? 56 : 216;
 
   return (
     <div

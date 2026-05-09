@@ -12,15 +12,15 @@ import {
 } from "recharts";
 import WidgetFrame from "./WidgetFrame.jsx";
 
-// Sequential ramp — duration is ordinal, so the colors should walk in one
-// direction (cool → warm) rather than splash across hues. Rooted in the
-// brand blue, ending on a softer accent.
+// Brand-controlled ramp — duration is ordinal but the brand wants neon
+// data accents, so each bucket gets a distinct hue from the palette while
+// still walking from short (green/cyan) to long (purple/pink).
 const DURATION_BUCKETS = [
-  { max: 15, color: "#3b6dd6", label: "0–15s" },
-  { max: 30, color: "#4f8dfe", label: "15–30s" },
-  { max: 60, color: "#7aaeff", label: "30–60s" },
-  { max: 120, color: "#a78bfa", label: "60–120s" },
-  { max: Infinity, color: "#c4b5fd", label: "120s+" },
+  { max: 15, color: "#21d07a", label: "0–15s" },
+  { max: 30, color: "#2ed3ff", label: "15–30s" },
+  { max: 60, color: "#f5b82e", label: "30–60s" },
+  { max: 120, color: "#7c5cff", label: "60–120s" },
+  { max: Infinity, color: "#f03b9f", label: "120s+" },
 ];
 
 function bucketColor(duration) {
@@ -74,10 +74,10 @@ function ScatterPlot({ rows = [], missing = false }) {
               lineHeight: 1.6,
             }}
           >
-            Missing required columns
+            Required columns missing
             <br />
             <span style={{ color: "var(--tac-mute)", fontSize: 12 }}>
-              The scatter plot needs view + engagement data.
+              Add view and engagement columns to plot reels.
             </span>
           </div>
         ) : (

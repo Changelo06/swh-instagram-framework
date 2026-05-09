@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Crosshair,
@@ -7,11 +7,12 @@ import {
   Check,
   Robot,
   Play,
-  ArrowRight,
   FilmReel,
   User as UserIcon,
+  Eye,
+  ChartLineUp,
+  Pulse,
 } from "@phosphor-icons/react";
-import { Link } from "react-router-dom";
 import { useCsv, STAGE, ALL_HANDLE } from "../state/CsvContext.jsx";
 import {
   aggregateStats,
@@ -31,15 +32,15 @@ import CreatorTabs from "../widgets/CreatorTabs.jsx";
 import PerformanceIntelligence from "../widgets/PerformanceIntelligence.jsx";
 import ApifyRunPanel from "../widgets/ApifyRunPanel.jsx";
 
-// localStorage keys for the ScrapeIdle form. The shared token slots are read
-// here on the dashboard but written from their respective pages: Apify on
-// /app/apify and Groq from Settings.
-const TOKEN_KEY = "swh-apify-token";
-const GROQ_TOKEN_KEY = "swh-groq-token";
+// localStorage keys for the ScrapeIdle form. Apify + Groq tokens are now
+// configured via server/.env, so the dashboard only persists form state
+// (URLs, time window, results limit, mode).
 const PROFILE_FORM_KEY = "swh-dash-profile-form";
 const REEL_FORM_KEY = "swh-dash-reel-form";
 const MODE_KEY = "swh-dash-mode";
 const LEGACY_CONFIG_KEY = "swh-apify-config"; // migrated away on mount
+const LEGACY_APIFY_TOKEN_KEY = "swh-apify-token"; // wiped on mount
+const LEGACY_GROQ_TOKEN_KEY = "swh-groq-token"; // wiped on mount
 
 const TIME_WINDOWS = [
   { id: "WEEKLY", label: "Weekly", days: 7, hint: "Last 7 days" },
@@ -56,10 +57,14 @@ function dateForWindow(windowId) {
 export default function DashboardView() {
   const { stage, error } = useCsv();
 
-  // One-time migration: the legacy ApifyView config slot is now obsolete.
+  // One-time migration: legacy slots are obsolete now that:
+  //  - Apify config moved off the dedicated page
+  //  - Apify + Groq tokens are server env vars, not browser-stored
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.removeItem(LEGACY_CONFIG_KEY);
+    window.localStorage.removeItem(LEGACY_APIFY_TOKEN_KEY);
+    window.localStorage.removeItem(LEGACY_GROQ_TOKEN_KEY);
   }, []);
 
   return (
@@ -124,13 +129,10 @@ function ScrapeIdle({ error }) {
   const [windowId, setWindowId] = useState("MONTHLY");
   const [resultsLimit, setResultsLimit] = useState(50);
   const [reelUrl, setReelUrl] = useState("");
-  // Re-detected on mount + every submit attempt so an Apify-page wipe is felt.
-  const [tokenSet, setTokenSet] = useState(false);
 
   // Hydrate persisted form state.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setTokenSet(!!window.localStorage.getItem(TOKEN_KEY));
     const m = window.localStorage.getItem(MODE_KEY);
     if (m === "PROFILE" || m === "REEL") setMode(m);
     try {
@@ -180,19 +182,11 @@ function ScrapeIdle({ error }) {
 
   const isRunning = apifyRun?.status === "running";
 
-  const refreshTokenSlot = () => {
-    if (typeof window === "undefined") return false;
-    const has = !!window.localStorage.getItem(TOKEN_KEY);
-    setTokenSet(has);
-    return has;
-  };
-
+  // Token resolution lives on the server now: /api/scrape pulls APIFY_TOKEN
+  // and GROQ_API_KEY from env. The client just sends the form payload.
   const onRunProfile = () => {
-    if (!refreshTokenSlot()) return;
     if (profileUrls.length === 0) return;
     runApifyScrape({
-      token: window.localStorage.getItem(TOKEN_KEY),
-      groqToken: window.localStorage.getItem(GROQ_TOKEN_KEY) || "",
       urls: profileUrls,
       resultsLimit: Number(resultsLimit) || 50,
       onlyPostsNewerThan: dateForWindow(windowId),
@@ -200,163 +194,96 @@ function ScrapeIdle({ error }) {
   };
 
   const onRunReel = () => {
-    if (!refreshTokenSlot()) return;
     const url = reelUrl.trim();
     if (!url) return;
     runApifyScrape({
-      token: window.localStorage.getItem(TOKEN_KEY),
-      groqToken: window.localStorage.getItem(GROQ_TOKEN_KEY) || "",
       urls: [url],
       resultsLimit: 1,
     });
   };
 
-  const profileReady = tokenSet && profileUrls.length > 0 && !isRunning;
-  const reelReady = tokenSet && reelUrl.trim().length > 0 && !isRunning;
+  const profileReady = profileUrls.length > 0 && !isRunning;
+  const reelReady = reelUrl.trim().length > 0 && !isRunning;
 
   return (
     <section
       style={{
-        display: "grid",
-        gridTemplateRows: "auto 1fr",
-        gap: 1,
-        background: "var(--tac-border)",
+        background: "var(--tac-bg)",
         minHeight: "calc(100dvh - 44px)",
+        display: "grid",
+        placeItems: "start center",
+        padding: "32px 24px",
+        overflowY: "auto",
       }}
     >
-      <header
+      <div
         style={{
-          background: "var(--tac-bg)",
-          padding: "24px 24px 20px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 16,
+          width: "100%",
+          maxWidth: 720,
+          display: "grid",
+          gap: 20,
         }}
       >
+        <ApifyRunPanel />
+
         <div>
-          <h1
+          <h2
             style={{
               fontFamily:
                 '"Inter", ui-sans-serif, system-ui, sans-serif',
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: 600,
               color: "var(--tac-fg)",
-              margin: 0,
+              margin: "0 0 14px",
+              letterSpacing: "-0.01em",
             }}
           >
-            Start a scrape
-          </h1>
-          <div
-            style={{
-              fontSize: 13,
-              color: "var(--tac-mute)",
-              marginTop: 4,
-            }}
-          >
-            Pull Instagram posts via Apify and run them through the framework.
-          </div>
+            Begin scraping
+          </h2>
+
+          <ModeToggle
+            value={mode}
+            onChange={setMode}
+            disabled={isRunning}
+          />
         </div>
-        <span className="tac-pill">Scraper ready</span>
-      </header>
 
-      <div
-        style={{
-          background: "var(--tac-bg)",
-          display: "grid",
-          placeItems: "start center",
-          padding: "24px",
-          overflowY: "auto",
-        }}
-      >
-        <div
-          style={{
-            width: "100%",
-            maxWidth: 720,
-            display: "grid",
-            gap: 18,
-          }}
-        >
-          {!tokenSet && <TokenMissingBanner />}
+        {mode === "PROFILE" ? (
+          <ProfileForm
+            urlsText={urlsText}
+            setUrlsText={setUrlsText}
+            urlCount={profileUrls.length}
+            windowId={windowId}
+            setWindowId={setWindowId}
+            resultsLimit={resultsLimit}
+            setResultsLimit={setResultsLimit}
+            onRun={onRunProfile}
+            ready={profileReady}
+            isRunning={isRunning}
+          />
+        ) : (
+          <ReelForm
+            reelUrl={reelUrl}
+            setReelUrl={setReelUrl}
+            onRun={onRunReel}
+            ready={reelReady}
+            isRunning={isRunning}
+          />
+        )}
 
-          <ApifyRunPanel />
-
-          <ModeToggle value={mode} onChange={setMode} disabled={isRunning} />
-
-          {mode === "PROFILE" ? (
-            <ProfileForm
-              urlsText={urlsText}
-              setUrlsText={setUrlsText}
-              urlCount={profileUrls.length}
-              windowId={windowId}
-              setWindowId={setWindowId}
-              resultsLimit={resultsLimit}
-              setResultsLimit={setResultsLimit}
-              onRun={onRunProfile}
-              ready={profileReady}
-              tokenSet={tokenSet}
-              isRunning={isRunning}
-            />
-          ) : (
-            <ReelForm
-              reelUrl={reelUrl}
-              setReelUrl={setReelUrl}
-              onRun={onRunReel}
-              ready={reelReady}
-              tokenSet={tokenSet}
-              isRunning={isRunning}
-            />
-          )}
-
-          {error && (
-            <div className="tac-error-banner">
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <Warning size={14} weight="regular" color="var(--tac-danger)" />
-                <span style={{ color: "var(--tac-danger)", fontWeight: 500 }}>
-                  Parse error
-                </span>
-                <span>{error}</span>
-              </div>
+        {error && (
+          <div className="tac-error-banner">
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Warning size={14} weight="regular" color="var(--tac-danger)" />
+              <span style={{ color: "var(--tac-danger)", fontWeight: 500 }}>
+                Parse error
+              </span>
+              <span>{error}</span>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </section>
-  );
-}
-
-function TokenMissingBanner() {
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "auto 1fr auto",
-        alignItems: "center",
-        gap: 14,
-        padding: "12px 16px",
-        background: "rgba(245, 158, 11, 0.08)",
-        border: "1px solid rgba(245, 158, 11, 0.3)",
-        borderRadius: 8,
-        fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
-        fontSize: 13,
-      }}
-    >
-      <Warning size={16} weight="regular" color="var(--tac-warning)" />
-      <div style={{ color: "var(--tac-fg)", lineHeight: 1.5 }}>
-        <span style={{ fontWeight: 500 }}>Apify token not set.</span>{" "}
-        <span style={{ color: "var(--tac-mute)" }}>
-          Add one on the Apify page before running.
-        </span>
-      </div>
-      <Link
-        to="/apify"
-        className="tac-btn"
-        style={{ fontSize: 12, padding: "6px 12px", textDecoration: "none" }}
-      >
-        Set token
-        <ArrowRight size={12} weight="regular" />
-      </Link>
-    </div>
   );
 }
 
@@ -447,7 +374,6 @@ function ProfileForm({
   setResultsLimit,
   onRun,
   ready,
-  tokenSet,
   isRunning,
 }) {
   return (
@@ -532,7 +458,6 @@ function ProfileForm({
       <RunButton
         onClick={onRun}
         ready={ready}
-        tokenSet={tokenSet}
         isRunning={isRunning}
         label="Run scrape"
       />
@@ -540,7 +465,7 @@ function ProfileForm({
   );
 }
 
-function ReelForm({ reelUrl, setReelUrl, onRun, ready, tokenSet, isRunning }) {
+function ReelForm({ reelUrl, setReelUrl, onRun, ready, isRunning }) {
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <FormField
@@ -579,7 +504,6 @@ function ReelForm({ reelUrl, setReelUrl, onRun, ready, tokenSet, isRunning }) {
       <RunButton
         onClick={onRun}
         ready={ready}
-        tokenSet={tokenSet}
         isRunning={isRunning}
         label="Run case study"
       />
@@ -640,7 +564,7 @@ function WindowToggle({ value, onChange, disabled }) {
   );
 }
 
-function RunButton({ onClick, ready, tokenSet, isRunning, label }) {
+function RunButton({ onClick, ready, isRunning, label }) {
   const disabled = !ready;
   return (
     <button
@@ -658,18 +582,12 @@ function RunButton({ onClick, ready, tokenSet, isRunning, label }) {
         justifyContent: "center",
         gap: 10,
       }}
-      title={
-        isRunning
-          ? "Scrape already in flight"
-          : !tokenSet
-          ? "Set your Apify token first"
-          : "Fire the scrape"
-      }
+      title={isRunning ? "Scrape already in flight" : "Run scrape"}
     >
       {isRunning ? (
         <>
           <Robot size={15} weight="regular" />
-          Scrape running…
+          Scraping…
         </>
       ) : (
         <>
@@ -791,136 +709,163 @@ function LiveGrid() {
         style={{
           background: "var(--tac-bg)",
           padding: "20px 24px 16px",
-          display: "grid",
-          gridTemplateColumns: "auto 1fr",
-          alignItems: "center",
-          gap: 24,
+          display: "flex",
+          alignItems: "baseline",
+          gap: 14,
+          flexWrap: "wrap",
         }}
       >
-        <div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              gap: 14,
-              flexWrap: "wrap",
-            }}
-          >
-            <EditableHandle
-              value={handleLabel}
-              fallback={baseHandle}
-              hasAlias={!!creatorAlias}
-              onChange={(next) =>
-                selectedCreator &&
-                setCreatorAlias(selectedCreator.handle, next)
-              }
-              disabled={!selectedCreator}
-            />
-            <span
-              style={{
-                fontFamily:
-                  '"Inter", ui-sans-serif, system-ui, sans-serif',
-                fontSize: 12,
-                color: "var(--tac-mute)",
-              }}
-              title={filename}
-            >
-              {filename}
-            </span>
-          </div>
-        </div>
-
-        <MustHaves
-          totalPosts={rows.length}
-          oldest={dateInfo.oldest}
-          newest={dateInfo.newest}
-          spanDays={dateInfo.span}
-          datasetType={dateInfo.type}
-          missingTimestamp={missing.has("timestamp")}
+        <EditableHandle
+          value={handleLabel}
+          fallback={baseHandle}
+          hasAlias={!!creatorAlias}
+          onChange={(next) =>
+            selectedCreator &&
+            setCreatorAlias(selectedCreator.handle, next)
+          }
+          disabled={!selectedCreator}
         />
+        <span
+          style={{
+            fontFamily:
+              '"Inter", ui-sans-serif, system-ui, sans-serif',
+            fontSize: 12,
+            color: "var(--tac-mute)",
+          }}
+          title={filename}
+        >
+          {filename}
+        </span>
       </header>
 
       <CreatorTabs label="Creators" />
 
       <div
         style={{
-          padding: "16px 24px 24px",
+          padding: "20px 24px 28px",
           display: "grid",
-          gap: 16,
-          gridTemplateColumns: "1fr",
+          gap: 28,
         }}
       >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
-            gap: 16,
-          }}
-        >
-          <SparklineCard
-            name="Avg views per post"
-            kpi={missing.has("views") ? "MISSING" : stats.avgViews}
-            delta={missing.has("views") ? null : computeDelta(viewSeries)}
-            series={missing.has("views") ? [] : viewSeries}
-          />
-          <SparklineCard
-            name="Median views"
-            kpi={missing.has("views") ? "MISSING" : stats.medianViews}
-            series={missing.has("views") ? [] : viewSeries}
-          />
-          <SparklineCard
-            name="Engagement rate"
-            kpi={
-              missing.has("likes") || missing.has("comments")
-                ? "MISSING"
-                : `${stats.avgEngRate}`
-            }
-            unit={
-              missing.has("likes") || missing.has("comments") ? "" : "%"
-            }
-            delta={
-              missing.has("likes") || missing.has("comments")
-                ? null
-                : computeDelta(engSeries)
-            }
-            series={
-              missing.has("likes") || missing.has("comments") ? [] : engSeries
-            }
-          />
-        </div>
+        {/* Overview */}
+        <section className="tac-section">
+          <header className="tac-section-header">
+            <div>
+              <div className="tac-section-title">Overview</div>
+              <div className="tac-section-copy">
+                Headline performance metrics for this creator.
+              </div>
+            </div>
+            <DatasetSummaryStrip
+              totalPosts={rows.length}
+              oldest={dateInfo.oldest}
+              newest={dateInfo.newest}
+              spanDays={dateInfo.span}
+              datasetType={dateInfo.type}
+              missingTimestamp={missing.has("timestamp")}
+            />
+          </header>
+          <div className="tac-grid-hero">
+            <SparklineCard
+              accent
+              icon={Eye}
+              iconTone="accent"
+              name="Avg views per post"
+              kpi={missing.has("views") ? "MISSING" : stats.avgViews}
+              delta={missing.has("views") ? null : computeDelta(viewSeries)}
+              series={missing.has("views") ? [] : viewSeries}
+            />
+            <SparklineCard
+              icon={ChartLineUp}
+              iconTone="cyan"
+              name="Median views"
+              kpi={missing.has("views") ? "MISSING" : stats.medianViews}
+              series={missing.has("views") ? [] : viewSeries}
+            />
+            <SparklineCard
+              icon={Pulse}
+              iconTone="purple"
+              name="Engagement rate"
+              kpi={
+                missing.has("likes") || missing.has("comments")
+                  ? "MISSING"
+                  : `${stats.avgEngRate}`
+              }
+              unit={
+                missing.has("likes") || missing.has("comments") ? "" : "%"
+              }
+              delta={
+                missing.has("likes") || missing.has("comments")
+                  ? null
+                  : computeDelta(engSeries)
+              }
+              series={
+                missing.has("likes") || missing.has("comments")
+                  ? []
+                  : engSeries
+              }
+            />
+          </div>
+        </section>
 
-        <PerformanceIntelligence rows={rows} />
+        {/* Performance intelligence */}
+        <section className="tac-section">
+          <header className="tac-section-header">
+            <div>
+              <div className="tac-section-title">Performance intelligence</div>
+              <div className="tac-section-copy">
+                Distribution, consistency, and pruning signals from this dataset.
+              </div>
+            </div>
+          </header>
+          <PerformanceIntelligence rows={rows} hideHeader />
+        </section>
 
-        <Top10ReelsGrid
-          rows={rows}
-          missing={missing.has("views") || missing.has("url")}
-        />
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "7fr 3fr",
-            gap: 16,
-          }}
-        >
-          <ScatterPlot
+        {/* Content breakdown */}
+        <section className="tac-section">
+          <header className="tac-section-header">
+            <div>
+              <div className="tac-section-title">Content breakdown</div>
+              <div className="tac-section-copy">
+                Top reels and how they cluster across the data.
+              </div>
+            </div>
+          </header>
+          <Top10ReelsGrid
             rows={rows}
-            missing={
-              missing.has("views") ||
-              missing.has("likes") ||
-              missing.has("comments")
-            }
+            missing={missing.has("views") || missing.has("url")}
           />
-          <LiveTimeline name="Upload cadence" events={cadenceEvents} />
-        </div>
+          <div className="tac-grid-2-wide">
+            <ScatterPlot
+              rows={rows}
+              missing={
+                missing.has("views") ||
+                missing.has("likes") ||
+                missing.has("comments")
+              }
+            />
+            <LiveTimeline name="Upload cadence" events={cadenceEvents} />
+          </div>
+        </section>
 
-        <CommandInput name="Query dataset" />
+        {/* Operations */}
+        <section className="tac-section">
+          <header className="tac-section-header">
+            <div>
+              <div className="tac-section-title">Operations</div>
+              <div className="tac-section-copy">
+                Ad-hoc queries against the loaded dataset.
+              </div>
+            </div>
+          </header>
+          <CommandInput name="Query dataset" />
+        </section>
       </div>
     </section>
   );
 }
 
-function MustHaves({
+function DatasetSummaryStrip({
   totalPosts,
   oldest,
   newest,
@@ -933,112 +878,86 @@ function MustHaves({
     return d.toISOString().slice(0, 10);
   };
 
+  const items = [
+    {
+      label: "Posts",
+      value: totalPosts.toLocaleString(),
+      tone: "accent",
+    },
+    {
+      label: "First post",
+      value: missingTimestamp ? "Missing" : fmtDate(oldest),
+      tone: missingTimestamp ? "warn" : "default",
+    },
+    {
+      label: "Latest post",
+      value: missingTimestamp ? "Missing" : fmtDate(newest),
+      tone: missingTimestamp ? "warn" : "default",
+    },
+    {
+      label: "Span",
+      value: missingTimestamp
+        ? "Missing"
+        : spanDays
+        ? `${spanDays} days`
+        : "—",
+      tone: missingTimestamp ? "warn" : "default",
+    },
+  ];
+
   return (
     <div
       style={{
-        justifySelf: "end",
-        display: "grid",
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "center",
         gap: 8,
-        minWidth: 0,
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          justifyContent: "flex-end",
-        }}
-      >
-        <span
-          style={{
-            fontFamily:
-              '"Inter", ui-sans-serif, system-ui, sans-serif',
-            fontSize: 12,
-            color: "var(--tac-mute)",
-            fontWeight: 500,
-          }}
-        >
-          Dataset summary
+      {datasetType && datasetType !== "UNKNOWN" && (
+        <span className="tac-pill tac-pill--ok">
+          {datasetType.toLowerCase()}
         </span>
-        {datasetType && datasetType !== "UNKNOWN" && (
-          <span className="tac-pill tac-pill--ok">{datasetType.toLowerCase()}</span>
-        )}
-      </div>
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          flexWrap: "wrap",
-        }}
-      >
-        <Tile label="Posts" value={totalPosts.toLocaleString()} accent />
-        <Tile
-          label="First post"
-          value={missingTimestamp ? "Missing" : fmtDate(oldest)}
-          warn={missingTimestamp}
-        />
-        <Tile
-          label="Latest post"
-          value={missingTimestamp ? "Missing" : fmtDate(newest)}
-          warn={missingTimestamp}
-        />
-        <Tile
-          label="Span"
-          value={
-            missingTimestamp
-              ? "Missing"
-              : spanDays
-              ? `${spanDays} days`
-              : "—"
-          }
-          warn={missingTimestamp}
-        />
-      </div>
+      )}
+      {items.map((it) => (
+        <SummaryChip key={it.label} {...it} />
+      ))}
     </div>
   );
 }
 
-function Tile({ label, value, accent, warn }) {
+function SummaryChip({ label, value, tone }) {
+  const valueColor =
+    tone === "accent"
+      ? "var(--tac-accent)"
+      : tone === "warn"
+      ? "var(--tac-danger)"
+      : "var(--tac-fg)";
   return (
-    <div
+    <span
       style={{
+        display: "inline-flex",
+        alignItems: "baseline",
+        gap: 6,
+        padding: "4px 10px",
         background: "var(--tac-surface)",
         border: "1px solid var(--tac-border)",
-        borderRadius: 8,
-        padding: "8px 12px",
-        minWidth: 96,
-        display: "grid",
-        gap: 2,
+        borderRadius: 9999,
+        fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+        fontSize: 12,
       }}
     >
-      <div
+      <span style={{ color: "var(--tac-mute)" }}>{label}</span>
+      <span
         style={{
-          fontFamily:
-            '"Inter", ui-sans-serif, system-ui, sans-serif',
-          fontSize: 11,
-          color: "var(--tac-mute)",
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontFamily:
-            '"Inter", ui-sans-serif, system-ui, sans-serif',
-          fontSize: 14,
-          color: warn
-            ? "var(--tac-danger)"
-            : accent
-            ? "var(--tac-accent)"
-            : "var(--tac-fg)",
+          color: valueColor,
           fontWeight: 600,
           fontVariantNumeric: "tabular-nums",
         }}
       >
         {value}
-      </div>
-    </div>
+      </span>
+    </span>
   );
 }
 
@@ -1091,12 +1010,12 @@ function EditableHandle({ value, fallback, hasAlias, onChange, disabled }) {
           display: "inline-flex",
           alignItems: "baseline",
           gap: 4,
-          background: "rgba(79, 141, 254, 0.06)",
-          border: "1px dashed #4f8dfe",
+          background: "var(--tac-accent-soft)",
+          border: "1px dashed var(--tac-accent)",
           padding: "2px 6px",
         }}
       >
-        <span style={{ color: "#4f8dfe" }}>@</span>
+        <span style={{ color: "var(--tac-accent)" }}>@</span>
         <input
           ref={inputRef}
           value={draft.replace(/^@/, "")}
@@ -1136,7 +1055,7 @@ function EditableHandle({ value, fallback, hasAlias, onChange, disabled }) {
           style={{
             background: "transparent",
             border: "none",
-            color: "#4f8dfe",
+            color: "var(--tac-accent)",
             cursor: "pointer",
             padding: 2,
             display: "grid",
@@ -1173,7 +1092,7 @@ function EditableHandle({ value, fallback, hasAlias, onChange, disabled }) {
       }}
       onMouseEnter={(e) => {
         if (!disabled)
-          e.currentTarget.style.background = "rgba(79, 141, 254, 0.06)";
+          e.currentTarget.style.background = "var(--tac-accent-soft)";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = "transparent";

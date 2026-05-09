@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import {
   Robot,
   Eye,
@@ -84,52 +84,39 @@ export default function ApifyView() {
           gap: 16,
         }}
       >
-        <div>
-          <div className="tac-label">SECTION D-05 / APIFY</div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              marginTop: 4,
-            }}
-          >
-            <Robot size={20} weight="regular" color="#4f8dfe" />
-            <h1
-              className="tac-display"
-              style={{ fontSize: 22, color: "var(--tac-fg)", margin: 0 }}
-            >
-              ACCOUNT · USAGE
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <Robot size={22} weight="regular" color="var(--tac-accent)" />
+          <div>
+            <h1 className="tac-section-title" style={{ margin: 0 }}>
+              Apify account
             </h1>
+            <div className="tac-section-copy">
+              Token, account profile, and monthly usage.
+            </div>
           </div>
         </div>
         <a
           href="https://console.apify.com/account#/integrations"
           target="_blank"
           rel="noopener noreferrer"
+          className="tac-btn"
           style={{
-            fontSize: 10,
-            color: "var(--tac-mute)",
-            letterSpacing: "0.12em",
+            fontSize: 12,
             display: "inline-flex",
             alignItems: "center",
             gap: 6,
             textDecoration: "none",
-            border: "1px solid var(--tac-border)",
             padding: "6px 12px",
-            transition: "color 120ms, border-color 120ms",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = "var(--tac-fg)";
-            e.currentTarget.style.borderColor = "#4f8dfe";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = "var(--tac-mute)";
-            e.currentTarget.style.borderColor = "var(--tac-border)";
           }}
         >
-          GET TOKEN
-          <ArrowSquareOut size={11} weight="regular" />
+          Get token
+          <ArrowSquareOut size={12} weight="regular" />
         </a>
       </header>
 
@@ -149,8 +136,8 @@ export default function ApifyView() {
           }}
         >
           <Section
-            label="01 / API TOKEN"
-            sub="apify.com → Settings → Integrations · stored in this browser only"
+            label="API token"
+            sub="Stored in this browser only"
           >
             <div
               style={{
@@ -176,10 +163,10 @@ export default function ApifyView() {
                   autoComplete="off"
                   className="tac-input"
                   style={{
-                    fontSize: 12,
+                    fontSize: 13,
                     padding: "10px 36px 10px 12px",
-                    letterSpacing: "0.02em",
-                    fontFamily: '"JetBrains Mono", monospace',
+                    fontFamily:
+                      '"JetBrains Mono", ui-monospace, monospace',
                   }}
                 />
                 <button
@@ -214,44 +201,26 @@ export default function ApifyView() {
                 className="tac-btn tac-btn-accent"
                 title={
                   canSave
-                    ? "Persist this token to localStorage (Enter)"
+                    ? "Save this token (Enter)"
                     : hasSaved
                     ? "Already saved"
                     : "Paste a token first"
                 }
-                style={{
-                  padding: "0 14px",
-                  fontSize: 11,
-                  letterSpacing: "0.08em",
-                  opacity: canSave ? 1 : 0.4,
-                  cursor: canSave ? "pointer" : "not-allowed",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
+                style={{ padding: "0 16px", fontSize: 13 }}
               >
                 <FloppyDisk size={13} weight="regular" />
-                SAVE
+                Save
               </button>
               <button
                 type="button"
                 onClick={onClearToken}
                 disabled={!hasSaved && !token}
                 className="tac-btn"
-                title="Wipe the saved token from this browser"
-                style={{
-                  padding: "0 12px",
-                  fontSize: 11,
-                  letterSpacing: "0.08em",
-                  opacity: !hasSaved && !token ? 0.4 : 1,
-                  cursor: !hasSaved && !token ? "not-allowed" : "pointer",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
+                title="Remove the saved token from this browser"
+                style={{ padding: "0 14px", fontSize: 13 }}
               >
                 <Trash size={12} weight="regular" />
-                CLEAR
+                Clear
               </button>
             </div>
 
@@ -263,9 +232,9 @@ export default function ApifyView() {
             />
 
             <Hint>
-              Token is forwarded to api.apify.com per request and never persisted
-              server-side. Scrapes are kicked off from the{" "}
-              <span style={{ color: "#4f8dfe" }}>Dashboard</span>.
+              Tokens are sent per request and never persisted on the server.
+              Start a scrape from the{" "}
+              <span style={{ color: "var(--tac-accent)" }}>Dashboard</span>.
             </Hint>
           </Section>
 
@@ -340,30 +309,28 @@ function AccountSection({ token }) {
 
   return (
     <Section
-      label="02 / ACCOUNT · USAGE"
-      sub="live readout from /v2/users/me"
+      label="Account & usage"
+      sub="Live from your Apify account"
     >
       <div
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          marginBottom: 8,
+          marginBottom: 10,
         }}
       >
         <span
           style={{
-            fontSize: 9,
+            fontSize: 12,
             color: tokenSet ? "var(--tac-mute)" : "var(--tac-dim)",
-            letterSpacing: "0.06em",
-            fontFamily: '"JetBrains Mono", monospace',
           }}
         >
           {refreshedAt
-            ? `last refreshed ${fmtAgo(refreshedAt)}`
+            ? `Last refreshed ${fmtAgo(refreshedAt)}`
             : tokenSet
-            ? "loading…"
-            : "// enter a token above to load account data"}
+            ? "Loading…"
+            : "Save a token above to load account data"}
         </span>
         <button
           type="button"
@@ -371,41 +338,33 @@ function AccountSection({ token }) {
           disabled={!tokenSet || loading}
           className="tac-btn"
           style={{
-            padding: "6px 10px",
-            fontSize: 9,
+            padding: "5px 10px",
+            fontSize: 12,
             opacity: !tokenSet || loading ? 0.4 : 1,
             cursor: !tokenSet || loading ? "not-allowed" : "pointer",
           }}
         >
           <ArrowsClockwise
-            size={11}
+            size={12}
             weight="regular"
             style={{
               animation: loading ? "spin 1s linear infinite" : "none",
             }}
           />
-          REFRESH
+          Refresh
         </button>
       </div>
 
       {error && (
-        <div
-          style={{
-            padding: "10px 12px",
-            background: "#1f1212",
-            border: "1px solid #ef4444",
-            color: "#ef4444",
-            fontSize: 11,
-            fontFamily: '"JetBrains Mono", monospace',
-            letterSpacing: "0.04em",
-            lineHeight: 1.5,
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 8,
-          }}
-        >
-          <Warning size={13} weight="regular" style={{ marginTop: 1, flexShrink: 0 }} />
-          <span style={{ wordBreak: "break-word" }}>// {error}</span>
+        <div className="tac-error-banner" style={{ marginBottom: 10 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <Warning
+              size={14}
+              color="var(--tac-danger)"
+              style={{ marginTop: 2, flexShrink: 0 }}
+            />
+            <span style={{ wordBreak: "break-word" }}>{error}</span>
+          </div>
         </div>
       )}
 
@@ -416,43 +375,50 @@ function AccountSection({ token }) {
             display: "grid",
             placeItems: "center",
             color: "var(--tac-mute)",
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 11,
+            fontSize: 12,
           }}
         >
           <CircleNotch
             size={16}
             weight="regular"
-            color="#4f8dfe"
+            color="var(--tac-accent)"
             style={{ animation: "spin 1s linear infinite" }}
           />
         </div>
       )}
 
       {user && (
-        <div style={{ display: "grid", gap: 1, background: "var(--tac-border)" }}>
+        <div
+          style={{
+            background: "var(--tac-surface)",
+            border: "1px solid var(--tac-border)",
+            borderRadius: 10,
+            overflow: "hidden",
+            display: "grid",
+          }}
+        >
           <KV
-            k="USERNAME"
+            k="Username"
             v={
               <span
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 6,
-                  color: "#4f8dfe",
+                  color: "var(--tac-accent)",
                 }}
               >
-                <CheckCircle size={11} weight="regular" />
+                <CheckCircle size={12} weight="regular" />
                 {user.username || user.profile?.name || "—"}
               </span>
             }
             accent
           />
-          {user.email && <KV k="EMAIL" v={user.email} />}
+          {user.email && <KV k="Email" v={user.email} />}
           {(user.plan?.id || user.plan) && (
             <KV
-              k="PLAN"
-              v={(user.plan?.id || user.plan || "").toString().toUpperCase()}
+              k="Plan"
+              v={(user.plan?.id || user.plan || "").toString()}
             />
           )}
           <UsageRows usage={usage} user={user} />
@@ -492,7 +458,7 @@ function UsageRows({ usage, user }) {
     <>
       {usdUsed != null && (
         <KV
-          k="MONTHLY USD"
+          k="Monthly usage"
           v={
             <UsageBar
               used={usdUsed}
@@ -504,7 +470,7 @@ function UsageRows({ usage, user }) {
       )}
       {computeUsed != null && (
         <KV
-          k="COMPUTE UNITS"
+          k="Compute units"
           v={
             <UsageBar
               used={computeUsed}
@@ -515,11 +481,11 @@ function UsageRows({ usage, user }) {
         />
       )}
       {datasetReads != null && (
-        <KV k="DATASET READS / MO" v={datasetReads.toLocaleString()} />
+        <KV k="Dataset reads (this month)" v={datasetReads.toLocaleString()} />
       )}
       {proxyServiceUsage != null && (
         <KV
-          k="PROXY (RESIDENTIAL)"
+          k="Residential proxy"
           v={`${proxyServiceUsage.toFixed(2)} GB`}
         />
       )}
@@ -529,13 +495,12 @@ function UsageRows({ usage, user }) {
 
 function UsageBar({ used, limit, format }) {
   const pct = limit && limit > 0 ? Math.min(100, (used / limit) * 100) : null;
-  const tone = pct == null ? "#4f8dfe" : pct >= 90 ? "#ef4444" : pct >= 70 ? "#fbbf24" : "#4AF626";
+  const tone = pct == null ? "var(--tac-accent)" : pct >= 90 ? "var(--tac-danger)" : pct >= 70 ? "var(--tac-warning)" : "var(--tac-success)";
   return (
-    <div style={{ display: "grid", gap: 4, minWidth: 160 }}>
+    <div style={{ display: "grid", gap: 5, minWidth: 180 }}>
       <span
         style={{
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 11,
+          fontSize: 13,
           color: "var(--tac-fg)",
           fontVariantNumeric: "tabular-nums",
         }}
@@ -551,8 +516,9 @@ function UsageBar({ used, limit, format }) {
       {pct != null && (
         <div
           style={{
-            height: 3,
-            background: "var(--tac-bg)",
+            height: 4,
+            background: "var(--tac-surface2)",
+            borderRadius: 2,
             position: "relative",
             overflow: "hidden",
           }}
@@ -565,6 +531,7 @@ function UsageBar({ used, limit, format }) {
               bottom: 0,
               width: `${pct}%`,
               background: tone,
+              borderRadius: 2,
               transition: "width 240ms ease",
             }}
           />
@@ -590,36 +557,29 @@ function fmtAgo(ts) {
 
 function Section({ label, sub, children }) {
   return (
-    <div style={{ display: "grid", gap: 8 }}>
+    <div
+      className="tac-card"
+      style={{ padding: "18px 20px", display: "grid", gap: 12 }}
+    >
       <div
         style={{
           display: "flex",
           alignItems: "baseline",
           justifyContent: "space-between",
+          gap: 8,
         }}
       >
         <span
           style={{
-            fontSize: 10,
-            color: "#4f8dfe",
-            letterSpacing: "0.18em",
+            fontSize: 14,
+            color: "var(--tac-fg)",
             fontWeight: 600,
-            fontFamily: '"JetBrains Mono", monospace',
           }}
         >
           {label}
         </span>
         {sub && (
-          <span
-            style={{
-              fontSize: 9,
-              color: "var(--tac-dim)",
-              letterSpacing: "0.04em",
-              fontFamily: '"JetBrains Mono", monospace',
-            }}
-          >
-            {sub}
-          </span>
+          <span style={{ fontSize: 12, color: "var(--tac-mute)" }}>{sub}</span>
         )}
       </div>
       {children}
@@ -630,48 +590,34 @@ function Section({ label, sub, children }) {
 function TokenStatus({ dirty, hasSaved, flash, hasInput }) {
   // Communicates the relationship between the editor and persisted state at
   // a glance — no token / saved+clean / unsaved edits / flashing-after-save.
-  let tone = "var(--tac-dim)";
-  let label = "// no token saved · paste one and click SAVE";
+  let variant = "";
+  let label = "No token saved";
   let Icon = Warning;
   if (flash) {
-    tone = "#4AF626";
-    label = "TOKEN SAVED";
+    variant = "ok";
+    label = "Token saved";
     Icon = CheckCircle;
   } else if (dirty && hasInput) {
-    tone = "#fbbf24";
-    label = "UNSAVED CHANGES · click SAVE to persist";
+    variant = "warn";
+    label = "Unsaved changes — click Save to persist";
     Icon = Warning;
   } else if (dirty && !hasInput && hasSaved) {
-    tone = "#fbbf24";
-    label = "FIELD CLEARED · click SAVE to wipe stored token, or paste a new one";
+    variant = "warn";
+    label = "Field cleared — click Save to remove the saved token";
     Icon = Warning;
   } else if (!dirty && hasSaved) {
-    tone = "#4AF626";
-    label = "TOKEN SAVED · ready for scrapes";
+    variant = "ok";
+    label = "Token saved — ready for scrapes";
     Icon = CheckCircle;
   }
   return (
-    <div
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        marginTop: 8,
-        padding: "5px 10px",
-        border: `1px solid ${tone}`,
-        background: `${tone}11`,
-        color: tone,
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 10,
-        letterSpacing: "0.08em",
-        fontWeight: 600,
-        alignSelf: "start",
-        transition: "border-color 200ms, background 200ms, color 200ms",
-      }}
+    <span
+      className={`tac-pill${variant ? ` tac-pill--${variant}` : ""}`}
+      style={{ alignSelf: "start", marginTop: 6 }}
     >
-      <Icon size={11} weight="regular" />
+      <Icon size={12} weight="regular" />
       {label}
-    </div>
+    </span>
   );
 }
 
@@ -679,12 +625,10 @@ function Hint({ children }) {
   return (
     <div
       style={{
-        fontSize: 10,
-        color: "var(--tac-dim)",
-        marginTop: 4,
-        letterSpacing: "0.04em",
-        lineHeight: 1.5,
-        fontFamily: '"JetBrains Mono", monospace',
+        fontSize: 12,
+        color: "var(--tac-mute)",
+        marginTop: 2,
+        lineHeight: 1.55,
       }}
     >
       {children}
@@ -696,30 +640,27 @@ function KV({ k, v, accent }) {
   return (
     <div
       style={{
-        background: "var(--tac-surface)",
-        padding: "10px 14px",
+        padding: "12px 16px",
         display: "grid",
         gridTemplateColumns: "160px 1fr",
         gap: 12,
         alignItems: "center",
+        borderBottom: "1px solid var(--tac-border)",
       }}
     >
       <span
         style={{
-          fontSize: 9,
+          fontSize: 12,
           color: "var(--tac-mute)",
-          letterSpacing: "0.1em",
-          fontFamily: '"JetBrains Mono", monospace',
         }}
       >
         {k}
       </span>
       <span
         style={{
-          fontSize: 11,
-          color: accent ? "#4f8dfe" : "var(--tac-fg)",
-          fontWeight: accent ? 600 : 400,
-          fontFamily: '"JetBrains Mono", monospace',
+          fontSize: 13,
+          color: accent ? "var(--tac-accent)" : "var(--tac-fg)",
+          fontWeight: accent ? 600 : 500,
         }}
       >
         {v ?? "—"}

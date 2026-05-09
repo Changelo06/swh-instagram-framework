@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState } from "react";
 import {
   DownloadSimple,
   FileText,
+  FileMd,
   FileCsv,
   Code,
   FilePdf,
@@ -9,17 +10,18 @@ import {
 } from "@phosphor-icons/react";
 
 const FORMATS = [
-  { id: "txt", label: "TEXT", icon: FileText, sub: "raw .txt" },
-  { id: "csv", label: "CSV", icon: FileCsv, sub: "tabular .csv" },
-  { id: "json", label: "JSON", icon: Code, sub: "structured .json" },
-  { id: "pdf", label: "PDF", icon: FilePdf, sub: "printable .pdf" },
+  { id: "pdf", label: "PDF", icon: FilePdf, sub: "Printable document" },
+  { id: "md", label: "Markdown", icon: FileMd, sub: "Source markdown (.md)" },
+  { id: "txt", label: "Plain text", icon: FileText, sub: "Raw text (.txt)" },
+  { id: "json", label: "JSON", icon: Code, sub: "Structured data (.json)" },
+  { id: "csv", label: "CSV", icon: FileCsv, sub: "Tabular (.csv)" },
 ];
 
 function ExportMenu({
   onExport,
   disabled,
-  formats = ["txt", "csv", "json", "pdf"],
-  label = "EXPORT",
+  formats = ["pdf", "md", "txt", "json", "csv"],
+  label = "Export",
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(null);
@@ -63,14 +65,14 @@ function ExportMenu({
         onClick={() => setOpen((o) => !o)}
         className="tac-btn"
         style={{
-          padding: "6px 10px",
-          fontSize: 10,
+          padding: "6px 12px",
+          fontSize: 12,
           opacity: disabled ? 0.4 : 1,
         }}
       >
-        <DownloadSimple size={11} weight="regular" />
+        <DownloadSimple size={13} weight="regular" />
         {label}
-        <CaretDown size={9} weight="bold" />
+        <CaretDown size={11} weight="bold" />
       </button>
       {open && (
         <div
@@ -78,13 +80,16 @@ function ExportMenu({
             position: "absolute",
             top: "100%",
             right: 0,
-            marginTop: 4,
-            background: "var(--tac-surface2)",
+            marginTop: 6,
+            background: "var(--tac-surface)",
             border: "1px solid var(--tac-border)",
+            borderRadius: 10,
             zIndex: 50,
-            minWidth: 200,
+            minWidth: 230,
             display: "grid",
-            gap: 1,
+            padding: 4,
+            gap: 2,
+            boxShadow: "0 16px 40px -28px rgba(0, 0, 0, 0.85)",
           }}
         >
           {visible.map((f) => {
@@ -98,46 +103,47 @@ function ExportMenu({
                 disabled={isBusy}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "16px 1fr auto",
-                  gap: 10,
+                  gridTemplateColumns: "20px 1fr",
+                  gap: 12,
                   alignItems: "center",
-                  padding: "10px 12px",
-                  background: "var(--tac-surface)",
+                  padding: "9px 12px",
+                  background: "transparent",
                   border: "none",
+                  borderRadius: 6,
                   color: "var(--tac-fg)",
-                  cursor: "pointer",
-                  fontFamily: '"JetBrains Mono", monospace',
-                  fontSize: 11,
+                  cursor: isBusy ? "wait" : "pointer",
+                  fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+                  fontSize: 13,
                   textAlign: "left",
-                  letterSpacing: "0.04em",
-                  transition: "background 100ms, color 100ms",
-                  opacity: isBusy ? 0.5 : 1,
+                  letterSpacing: 0,
+                  transition: "background 100ms",
+                  opacity: isBusy ? 0.6 : 1,
                 }}
                 onMouseEnter={(e) => {
-                  if (!isBusy) e.currentTarget.style.background = "var(--tac-bg)";
+                  if (!isBusy)
+                    e.currentTarget.style.background = "var(--tac-surface2)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "var(--tac-surface)";
+                  e.currentTarget.style.background = "transparent";
                 }}
               >
-                <Icon size={13} weight="regular" color="#4f8dfe" />
+                <Icon
+                  size={15}
+                  weight="regular"
+                  color="var(--tac-accent)"
+                />
                 <div>
-                  <div>{f.label}</div>
+                  <div style={{ fontWeight: 500 }}>{f.label}</div>
                   <div
-                    style={{ fontSize: 9, color: "var(--tac-mute)", marginTop: 1 }}
+                    style={{
+                      fontSize: 11,
+                      color: "var(--tac-mute)",
+                      marginTop: 1,
+                    }}
                   >
-                    {isBusy ? "writing..." : f.sub}
+                    {isBusy ? "Writing…" : f.sub}
                   </div>
                 </div>
-                <span
-                  style={{
-                    fontSize: 9,
-                    color: "var(--tac-dim)",
-                    letterSpacing: "0.1em",
-                  }}
-                >
-                  ←
-                </span>
               </button>
             );
           })}

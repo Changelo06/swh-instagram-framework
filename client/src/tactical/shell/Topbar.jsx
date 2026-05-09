@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from "react";
+import { memo } from "react";
 import { useLocation } from "react-router-dom";
 import { MagnifyingGlass, ArrowCounterClockwise } from "@phosphor-icons/react";
 import { useCsv, STAGE } from "../state/CsvContext.jsx";
@@ -9,12 +9,14 @@ const SECTION_LABEL = {
   "/dataset": "Dataset",
   "/analyze": "Analyze",
   "/scripts": "Scripts",
-  "/apify": "Apify",
 };
 
+// DEGRADED is reserved for "Anthropic OK + optional Groq missing". Since
+// Groq is no longer surfaced in the UI, collapse it into ONLINE for the
+// header pill. The underlying state machine is left untouched.
 const HEALTH_PILL = {
   [API_STATE.ONLINE]: { variant: "ok", label: "Online" },
-  [API_STATE.DEGRADED]: { variant: "warn", label: "Groq missing" },
+  [API_STATE.DEGRADED]: { variant: "ok", label: "Online" },
   [API_STATE.OFFLINE]: { variant: "err", label: "Offline" },
   [API_STATE.CHECKING]: { variant: "default", label: "Checking…" },
 };
@@ -25,8 +27,6 @@ function Topbar({ healthState, onReset, search, onSearchChange }) {
   const { stage, filename, parsed } = useCsv();
   const rowCount = parsed?.rows?.length || 0;
 
-  const operatorId = useOperatorId();
-
   const showSearch = pathname === "/dataset";
   const health = HEALTH_PILL[healthState] || HEALTH_PILL[API_STATE.CHECKING];
 
@@ -36,7 +36,7 @@ function Topbar({ healthState, onReset, search, onSearchChange }) {
       style={{
         position: "absolute",
         inset: 0,
-        background: "var(--tac-bg)",
+        background: "var(--tac-surface)",
         borderBottom: "1px solid var(--tac-border)",
         display: "grid",
         gridTemplateColumns: "auto 1fr auto",
@@ -102,7 +102,6 @@ function Topbar({ healthState, onReset, search, onSearchChange }) {
           display: "flex",
           alignItems: "center",
           padding: "0 16px",
-          background: "var(--tac-bg)",
         }}
       >
         {showSearch ? (
@@ -158,7 +157,11 @@ function Topbar({ healthState, onReset, search, onSearchChange }) {
         )}
 
         <span
-          className={`tac-pill tac-pill--${health.variant === "default" ? "" : health.variant}`}
+          className={
+            health.variant === "default"
+              ? "tac-pill"
+              : `tac-pill tac-pill--${health.variant}`
+          }
           title={`API status: ${health.label}`}
         >
           <span
@@ -176,17 +179,6 @@ function Topbar({ healthState, onReset, search, onSearchChange }) {
           />
           {health.label}
         </span>
-
-        <div
-          style={{
-            fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
-            fontSize: 12,
-            color: "var(--tac-mute)",
-            fontVariantNumeric: "tabular-nums",
-          }}
-        >
-          {operatorId}
-        </div>
       </div>
     </header>
   );
@@ -229,21 +221,6 @@ function ParseStatus({ stage }) {
     );
   }
   return <span className="tac-pill">Awaiting input</span>;
-}
-
-function useOperatorId() {
-  const [id, setId] = useState("OP-0000");
-  useEffect(() => {
-    const stored = localStorage.getItem("tac-operator-id");
-    if (stored) {
-      setId(stored);
-      return;
-    }
-    const fresh = `OP-${Math.floor(Math.random() * 9000 + 1000)}`;
-    localStorage.setItem("tac-operator-id", fresh);
-    setId(fresh);
-  }, []);
-  return id;
 }
 
 export default memo(Topbar);

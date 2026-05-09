@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react";
+﻿import { memo, useEffect, useRef, useState } from "react";
 
 // Two-stage confirm: first click arms, second click fires. Auto-disarms after
 // `armedMs` if the user doesn't follow through.
@@ -26,7 +26,7 @@ function ConfirmAction({
   }, [armed, armedMs]);
 
   const armColor =
-    tone === "danger" ? "#ef4444" : tone === "warn" ? "#fbbf24" : "#4f8dfe";
+    tone === "danger" ? "var(--tac-danger)" : tone === "warn" ? "var(--tac-warning)" : "var(--tac-accent)";
 
   const click = () => {
     if (disabled) return;
@@ -38,8 +38,8 @@ function ConfirmAction({
     onConfirm?.();
   };
 
-  const padding = size === "sm" ? "4px 10px" : "6px 12px";
-  const fontSize = size === "sm" ? 9 : 10;
+  const padding = size === "sm" ? "5px 10px" : "6px 12px";
+  const fontSize = size === "sm" ? 12 : 12.5;
 
   return (
     <button
@@ -53,11 +53,10 @@ function ConfirmAction({
           ? `1px solid ${armColor}`
           : "1px solid var(--tac-border)",
         color: armed ? "var(--tac-bg)" : "var(--tac-fg)",
-        fontFamily: '"JetBrains Mono", monospace',
+        fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
         fontSize,
-        fontWeight: armed ? 700 : 500,
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
+        fontWeight: armed ? 600 : 500,
+        borderRadius: 6,
         padding,
         cursor: disabled ? "not-allowed" : "pointer",
         display: "inline-flex",

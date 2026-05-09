@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from "react";
+﻿import { memo, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import WidgetFrame from "./WidgetFrame.jsx";
 
@@ -78,7 +78,7 @@ function IntelligentList({ name, items = [], showRank = true }) {
               >
                 {item.label}
               </span>
-              <span style={{ color: "#4f8dfe", fontVariantNumeric: "tabular-nums" }}>
+              <span style={{ color: "var(--tac-accent)", fontVariantNumeric: "tabular-nums" }}>
                 {item.value}
               </span>
             </motion.li>

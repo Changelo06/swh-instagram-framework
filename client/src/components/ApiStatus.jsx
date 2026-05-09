@@ -8,17 +8,6 @@ const STATE = {
   OFFLINE: "offline",
 };
 
-const GROQ_TOKEN_KEY = "swh-groq-token";
-
-function readLocalGroqToken() {
-  if (typeof window === "undefined") return "";
-  try {
-    return window.localStorage.getItem(GROQ_TOKEN_KEY) || "";
-  } catch {
-    return "";
-  }
-}
-
 export function useApiHealth() {
   const [state, setState] = useState(STATE.CHECKING);
   const [details, setDetails] = useState(null);
@@ -32,12 +21,14 @@ export function useApiHealth() {
       if (!res.ok) throw new Error(`Health check failed (HTTP ${res.status})`);
       const data = await res.json();
       setDetails(data);
-      const anthropicOk = data.services?.anthropic?.configured ?? data.anthropicConfigured;
-      const groqEnvOk = data.services?.groq?.configured ?? data.groqConfigured;
-      // Operator may also drop their Groq token in Settings — counts as configured.
-      const groqOk = groqEnvOk || !!readLocalGroqToken();
+      const anthropicOk =
+        data.services?.anthropic?.configured ?? data.anthropicConfigured;
+      const groqOk =
+        data.services?.groq?.configured ?? data.groqConfigured;
+      const apifyOk =
+        data.services?.apify?.configured ?? data.apifyConfigured;
       if (!anthropicOk) setState(STATE.OFFLINE);
-      else if (!groqOk) setState(STATE.DEGRADED);
+      else if (!groqOk || !apifyOk) setState(STATE.DEGRADED);
       else setState(STATE.ONLINE);
     } catch (e) {
       setError(e.message);

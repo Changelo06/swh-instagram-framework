@@ -1,15 +1,21 @@
 {
-  "name": "swh-instagram-framework",
-  "version": "1.2.0",
+  "name": "chiqo-ai",
+  "version": "1.3.0",
   "private": true,
   "type": "module",
-  "description": "SWH Instagram Framework Builder — one-click launcher orchestrates the client build + production server.",
+  "description": "chiqo.ai — local creator intelligence workspace by Macroview Studio.",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "setup": "npm --prefix server install && npm --prefix client install",
     "build": "npm --prefix client run build",
-    "start": "npm run setup && npm run build && node start.js",
-    "start:fast": "node start.js",
+    "start": "node scripts/launch.js",
+    "dev": "concurrently --kill-others-on-fail --names server,client --prefix-colors blue,magenta \"npm:dev:server\" \"npm:dev:client\"",
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }

@@ -1,55 +1,110 @@
 import { memo } from "react";
 
-function WidgetFrame({ name, children, accent = false, onClick, action }) {
+function WidgetFrame({
+  name,
+  children,
+  accent = false,
+  onClick,
+  action,
+  iconBadge,
+  iconTone = "default",
+}) {
+  const interactive = typeof onClick === "function";
   return (
     <div
       onClick={onClick}
+      className={accent ? "tac-card tac-panel-active" : "tac-card"}
       style={{
-        background: "var(--tac-surface)",
-        border: `1px solid ${accent ? "var(--tac-accent)" : "var(--tac-border)"}`,
-        borderRadius: 10,
         display: "grid",
         gridTemplateRows: name ? "auto 1fr" : "1fr",
-        cursor: onClick ? "pointer" : "default",
+        cursor: interactive ? "pointer" : "default",
         position: "relative",
         overflow: "hidden",
-        transition: "border-color 120ms, background 120ms",
       }}
     >
       {name && (
         <div
+          className="tac-card-header"
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "14px 20px 12px",
             gap: 12,
           }}
         >
-          <span
+          <div
             style={{
-              fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
-              fontSize: 14,
-              fontWeight: 600,
-              color: "var(--tac-fg)",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              minWidth: 0,
             }}
           >
-            {name}
-          </span>
-          {action && (
-            <div onClick={(e) => e.stopPropagation()}>{action}</div>
-          )}
+            {iconBadge && <IconBadge icon={iconBadge} tone={iconTone} />}
+            <span
+              className="tac-section-title"
+              style={{
+                fontSize: 14,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {name}
+            </span>
+          </div>
+          {action && <div onClick={(e) => e.stopPropagation()}>{action}</div>}
         </div>
       )}
       <div
-        style={{
-          padding: name ? "0 20px 20px" : 20,
-          overflow: "hidden",
-        }}
+        className={name ? "tac-card-body" : "tac-card-body--first"}
+        style={{ overflow: "hidden" }}
       >
         {children}
       </div>
     </div>
+  );
+}
+
+const TONE_TO_VAR = {
+  default: "var(--tac-mute)",
+  accent: "var(--tac-accent)",
+  cyan: "var(--tac-cyan)",
+  pink: "var(--tac-pink)",
+  purple: "var(--tac-purple)",
+  warning: "var(--tac-warning)",
+  danger: "var(--tac-danger)",
+};
+
+const TONE_TO_BG = {
+  default: "var(--tac-surface2)",
+  accent: "rgba(33, 208, 122, 0.13)",
+  cyan: "rgba(46, 211, 255, 0.13)",
+  pink: "rgba(240, 59, 159, 0.13)",
+  purple: "rgba(124, 92, 255, 0.13)",
+  warning: "rgba(245, 184, 46, 0.13)",
+  danger: "rgba(240, 68, 94, 0.13)",
+};
+
+function IconBadge({ icon: Icon, tone }) {
+  const color = TONE_TO_VAR[tone] || TONE_TO_VAR.default;
+  const bg = TONE_TO_BG[tone] || TONE_TO_BG.default;
+  return (
+    <span
+      style={{
+        display: "grid",
+        placeItems: "center",
+        width: 26,
+        height: 26,
+        background: bg,
+        borderRadius: 7,
+        color,
+        flexShrink: 0,
+      }}
+      aria-hidden
+    >
+      <Icon size={13} weight="regular" />
+    </span>
   );
 }
 

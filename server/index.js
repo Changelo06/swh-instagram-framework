@@ -7,6 +7,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import "dotenv/config";
+import {
+  attachUser,
+  requireAuth,
+  loginRouter,
+  logUsage,
+} from "./auth.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +34,12 @@ const anthropic = new Anthropic();
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
+
+// Resolve req.user for every request (no-op when no cookie). Routes that need
+// auth opt in via `requireAuth`; /api/health and /api/login stay public so
+// the launcher can poll and unauthenticated clients can sign in.
+app.use(attachUser);
+app.use("/api", loginRouter());
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -336,9 +348,15 @@ async function pMapBounded(items, limit, fn, onProgress) {
 // Read the operator's Apify account profile + monthly usage. Both calls go
 // through the server purely so the browser never touches CORS edge cases on
 // console.apify.com endpoints; the token is per-request and not persisted.
-app.post("/api/apify/account", async (req, res) => {
-  const token = String(req.body?.token || "").trim();
-  if (!token) return res.status(400).json({ error: "token required" });
+app.post("/api/apify/account", requireAuth, async (req, res) => {
+  // Same fallback rule as /api/scrape — body token first, env second.
+  const token =
+    String(req.body?.token || "").trim() || process.env.APIFY_TOKEN || "";
+  if (!token) {
+    return res
+      .status(400)
+      .json({ error: "APIFY_TOKEN is not configured on the server" });
+  }
   try {
     const [userResp, usageResp] = await Promise.all([
       fetch(`${APIFY_BASE}/users/me?token=${encodeURIComponent(token)}`),
@@ -359,7 +377,7 @@ app.post("/api/apify/account", async (req, res) => {
   }
 });
 
-app.post("/api/scrape", async (req, res) => {
+app.post("/api/scrape", requireAuth, async (req, res) => {
   const {
     token,
     urls,
@@ -425,10 +443,18 @@ app.post("/api/scrape", async (req, res) => {
     onlyPostsNewerThan: onlyPostsNewerThan || null,
   });
 
-  const cleanToken = String(token || "").trim();
+  // Apify token resolution: prefer the per-request body token (legacy
+  // browser-stored value, kept for backward compat), fall back to the
+  // server's APIFY_TOKEN env. The client no longer needs to send a token —
+  // operator config lives in `.env` now.
+  const cleanToken =
+    String(token || "").trim() || process.env.APIFY_TOKEN || "";
   if (!cleanToken) {
     mark("REJECT_NO_TOKEN");
-    send("error", { message: "Apify token is required" });
+    send("error", {
+      message:
+        "Apify token is not configured on the server. Set APIFY_TOKEN in server/.env.",
+    });
     return res.end();
   }
 
@@ -691,7 +717,7 @@ function synthesizeScrapeFilename(urls) {
   return `apify-${head}${more}-${stamp}.json`;
 }
 
-app.post("/api/parse", upload.single("file"), (req, res) => {
+app.post("/api/parse", requireAuth, upload.single("file"), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
     const text = req.file.buffer.toString("utf8").replace(/^﻿/, "");
@@ -767,7 +793,7 @@ function engagementScore(row) {
 // `row._audioUrl` (typically the direct mp4 download URL). Groq Whisper has
 // a 24 MB upload ceiling, enforced inside `downloadAudio`.
 
-app.post("/api/transcribe", async (req, res) => {
+app.post("/api/transcribe", requireAuth, async (req, res) => {
   const { rows, topN, groqToken } = req.body || {};
   if (!Array.isArray(rows) || rows.length === 0) {
     return res.status(400).json({ error: "rows[] required" });
@@ -888,7 +914,7 @@ app.post("/api/transcribe", async (req, res) => {
   if (isOpen()) res.end();
 });
 
-app.post("/api/analyze", async (req, res) => {
+app.post("/api/analyze", requireAuth, async (req, res) => {
   const { rows, filename, scriptCount, mode, dna, dnaFilename } = req.body || {};
   if (!Array.isArray(rows) || rows.length === 0) {
     return res.status(400).json({ error: "rows[] required" });
@@ -923,69 +949,106 @@ app.post("/api/analyze", async (req, res) => {
         : null;
 
     const userMessageRB = [
-      `# SINGLE-REEL SCRIPT BLUEPRINT REQUEST`,
+      `# SCRIPT VARIATIONS REQUEST`,
       ``,
-      `You are NOT analyzing a dataset. You are doing a focused deep-dive on a SINGLE reel and producing ${scriptCountClamped} replicable script variation${scriptCountClamped > 1 ? "s" : ""}.`,
+      `You are generating production-ready short-form video scripts using ONE source reel as reference material. The user does NOT want a long analysis essay — they want record-ready scripts with a short context brief at the top of each.`,
       ``,
-      `## TARGET REEL`,
+      `Produce exactly ${scriptCountClamped} script variation${scriptCountClamped > 1 ? "s" : ""}. Vary the topical angle while preserving the source reel's structural mechanics (hook → tension → payoff → CTA, or whatever its actual shape is).`,
       ``,
-      `<target_reel>`,
+      `## SOURCE REEL`,
+      ``,
+      `<source_reel>`,
       JSON.stringify(target, null, 2),
-      `</target_reel>`,
+      `</source_reel>`,
       ``,
       `Source dataset: ${filename || "unknown.csv"}`,
       target.timestamp ? `Posted at: ${target.timestamp}` : ``,
       target.url ? `URL: ${target.url}` : ``,
       target[TRANSCRIPT_FIELD]
-        ? `Groq Whisper transcript captured (${String(target[TRANSCRIPT_FIELD]).length} chars).`
-        : `No transcript captured — analyze caption + metadata only.`,
+        ? `Transcript captured (${String(target[TRANSCRIPT_FIELD]).length} chars).`
+        : `No transcript captured — work from caption + metadata.`,
       dnaText
-        ? `\nA DNA brief was uploaded by the operator (filename: ${dnaFilename || "dna"}). The variations MUST reshape the target reel's voice / style / constraints toward this DNA, while keeping the structural blueprint of the source.\n\n<dna_brief>\n${dnaText}\n</dna_brief>\n`
+        ? `\nA brand voice brief was uploaded (filename: ${dnaFilename || "brief"}). Each script MUST follow this brand voice while preserving the source reel's structural mechanics.\n\n<brand_voice_brief>\n${dnaText}\n</brand_voice_brief>\n`
         : ``,
       ``,
       `## OUTPUT FORMAT`,
       ``,
-      `Stream raw markdown — DO NOT use the <<<PART…>>> markers, do not wrap in JSON, do not use code fences around the whole response.`,
+      `Stream raw markdown. Start directly with "## Script 1: <title>". Do NOT include any of the following sections:`,
+      `- Why it went viral`,
+      `- Posting metadata`,
+      `- Caption breakdown`,
+      `- Word-level analysis`,
+      `- Emotional weight map`,
+      `- Length / duration analysis`,
+      `- Structural blueprint preamble`,
+      `- Hook variations list`,
+      `- Source reel explanation`,
       ``,
-      `Produce these sections in this exact order, using \`##\` for top-level headings:`,
+      `For each variation, use EXACTLY this structure (markdown). Pay close attention to where blank lines must appear — they affect the rendered document layout.`,
       ``,
-      `## WHY IT WENT VIRAL`,
-      `Concrete reasoning grounded in the reel's metrics, hook, structure, timing, and caption signals.`,
+      `## Script N: <short, vivid title>`,
       ``,
-      `## POSTING METADATA`,
-      `Bullet points covering: when posted (date), day of week, time of day if available, post type (reel/clip/video), duration, audio source (original vs licensed) if known, hashtags used.`,
+      `### Context Brief`,
+      `- **Original context:** one sentence on what the source reel actually was.`,
+      `- **Why it worked:** one sentence on the underlying mechanism.`,
+      `- **Emotional context:** one sentence on the emotional arc the viewer travelled.`,
+      `- **Transfer principle:** one sentence on what to reuse for THIS variation.`,
       ``,
-      `## CAPTION BREAKDOWN`,
-      `The full caption verbatim (in a blockquote), then a per-line analysis of caption beats, character/emoji choices, line breaks, and CTAs embedded in the caption.`,
+      `### Hook`,
       ``,
-      `## WORD-LEVEL ANALYSIS`,
-      `If a transcript exists: identify hook words (first 3-5s), pivot words, payoff words. If no transcript: do this on the caption only and explicitly note "transcript not available".`,
+      `[Tight crop, eye level — describe the visual]`,
       ``,
-      `## EMOTIONAL WEIGHT MAP`,
-      `Plot the emotional arc across the reel: OPEN (0-3s) → BUILD → MID → PAYOFF → CLOSE. Name the dominant emotion at each beat and the SWITCH triggers between them.`,
+      `"Spoken hook line, 8-14 words max."`,
       ``,
-      `## LENGTH + DURATION ANALYSIS`,
-      `Why this length works for this hook + topic. Include the duration in seconds and benchmark it against typical Instagram reel windows (0-15s / 15-30s / 30-60s / 60-120s+).`,
+      `### Full Script`,
       ``,
-      `## STRUCTURAL BLUEPRINT`,
-      `The reusable beat-by-beat skeleton of this reel: HOOK → PROOF → ESCALATION → PAYOFF → CTA (or whatever the actual structure is). Each beat as a single line.`,
+      `Break the script into 3-5 numbered beats. Each beat uses a fourth-level heading like "#### Beat 1: Setup", "#### Beat 2: Tension", etc. Inside each beat, alternate shot directions (in [square brackets] on their own paragraph) with the spoken lines (in "double quotes" on their own paragraph). Leave a blank line between every shot direction and every spoken line so they render as separate paragraphs. Example shape:`,
       ``,
-      `## CTAs`,
-      `Every CTA detected (in caption + transcript) — explicit and implicit. Where each lands in the reel timeline.`,
+      `#### Beat 1: <short name>`,
       ``,
-      `## HOOK VARIATIONS`,
-      `5 alternative opening lines that preserve the original hook's mechanism but swap the topical surface.`,
+      `[Shot direction here.]`,
       ``,
-      `## SCRIPT VARIATIONS (×${scriptCountClamped})`,
-      `Produce exactly ${scriptCountClamped} full script variation${scriptCountClamped > 1 ? "s" : ""}. Each variation must:`,
-      `- have a numbered heading: "### Variation 1", "### Variation 2", etc.`,
-      `- include shot directions in [brackets]`,
-      `- include all spoken lines and on-screen text`,
-      `- close with a clearly labeled CTA line`,
-      `- preserve the structural blueprint above${dnaText ? `, but rewrite voice + tone to match the uploaded DNA brief` : ``}`,
-      `- vary by topical angle, not by structure — same skeleton, different surface`,
+      `"Spoken line that lands on a single thought."`,
       ``,
-      `Keep the entire output in markdown. Do not announce yourself or describe what you are about to do — start directly with "## WHY IT WENT VIRAL".`,
+      `[Cut to b-roll or graphic.]`,
+      ``,
+      `"Next spoken beat that builds the tension."`,
+      ``,
+      `Repeat for each beat. Aim for 3-5 beats total covering setup, tension, payoff, and CTA framing.`,
+      ``,
+      `### On-screen Text`,
+      ``,
+      `Short lines, one per bullet. These are the exact words that appear on screen during the cut.`,
+      ``,
+      `- First on-screen line`,
+      `- Second on-screen line`,
+      ``,
+      `### Shot Notes`,
+      ``,
+      `- Tight, practical bullets the editor can act on (camera, framing, b-roll, audio cues, transitions).`,
+      `- One bullet per discrete instruction.`,
+      ``,
+      `### CTA`,
+      ``,
+      `[Direct address — return to a single tight crop on the speaker.]`,
+      ``,
+      `"Final spoken CTA line."`,
+      ``,
+      `### Caption`,
+      ``,
+      `> One short caption to ship with the post. Use a markdown blockquote so it stands out in the document.`,
+      ``,
+      `Hard rules:`,
+      `- The very first non-whitespace token of your response must be "## Script 1:".`,
+      `- Use the EXACT subsection headings above ("### Context Brief", "### Hook", "### Full Script", "### On-screen Text", "### Shot Notes", "### CTA", "### Caption") so downstream tooling can split and render each script.`,
+      `- Inside Full Script, use "#### Beat N: <name>" headings for every beat.`,
+      `- Every shot direction MUST be on its own paragraph in [square brackets].`,
+      `- Every spoken line MUST be on its own paragraph wrapped in "double quotes".`,
+      `- Leave a blank line between every shot direction and every spoken line.`,
+      `- The Context Brief must be exactly four bullets. Do not add a fifth.`,
+      `- Each script must be ready to record — no meta-placeholders like "[insert your line here]". Specific, real lines only.`,
+      `- Vary by topical angle and surface phrasing, not by structure.`,
+      `- Do NOT announce yourself or describe what you are about to do.`,
     ].filter(Boolean).join("\n");
 
     res.setHeader("Content-Type", "text/event-stream");
@@ -1024,6 +1087,12 @@ app.post("/api/analyze", async (req, res) => {
         stopReason: final.stop_reason,
         usage: final.usage,
       });
+      logUsage({
+        userId: req.user?.id,
+        model: MODEL,
+        usage: final.usage,
+        route: "/api/analyze (reel-blueprint)",
+      });
       res.end();
     } catch (e) {
       console.error(e);
@@ -1032,6 +1101,101 @@ app.post("/api/analyze", async (req, res) => {
     }
     return;
   }
+
+  const fastLayerSpec = [
+    `## Overview`,
+    `2-3 sentences: who this creator is, the shape of the dataset, and the single sharpest takeaway.`,
+    ``,
+    `## Layer 1: Performance Snapshot`,
+    `### Summary`,
+    `2 sentences: top-tier vs bottom-tier views, dominant duration window, best day if obvious.`,
+    `### Evidence`,
+    `3-5 bullets, each citing a real metric, post, or quoted line from the CSV.`,
+    `### What to do next`,
+    `1-3 bullets: concrete moves grounded in the snapshot.`,
+    ``,
+    `## Layer 2: Winning Hook Pattern`,
+    `### Summary`,
+    `2 sentences naming the single dominant hook formula and why it works for this audience.`,
+    `### Evidence`,
+    `3-5 bullets — include 2 quoted hook lines from the dataset and a reusable template ("[setup] → [tension] → [payoff]" form).`,
+    `### What to do next`,
+    `1-3 bullets: how to repeat or tighten the hook pattern.`,
+    ``,
+    `## Layer 3: Content Structure Pattern`,
+    `### Summary`,
+    `2 sentences on the dominant pacing / beat structure across top performers.`,
+    `### Evidence`,
+    `3-5 bullets: section-by-section breakdown of one top performer plus the recurring beat shape.`,
+    `### What to do next`,
+    `1-3 bullets: which beats to keep, which to drop.`,
+    ``,
+    `## Layer 4: Next Moves`,
+    `### Summary`,
+    `1-2 sentences on the strategic posture for the next 30 days.`,
+    `### Evidence`,
+    `3-5 bullets pulling specifically from Layers 1-3.`,
+    `### What to do next`,
+    `3-5 bullets, prioritized: repeat, stop, test next.`,
+  ].join("\n");
+
+  const deepLayerSpec = [
+    `## Overview`,
+    `3-5 sentences: dataset shape, the sharpest signals, and the strategic question this report answers.`,
+    ``,
+    `## Layer 1: Performance Signals`,
+    `### Summary`,
+    `2-3 sentences on top-tier vs bottom-tier views, dominant duration, best day, and whether the account's wins are durable hits or viral flukes.`,
+    `### Evidence`,
+    `4-6 bullets citing real metrics or posts (views, likes, comments, engagement-rate outliers, posting cadence).`,
+    `### What to do next`,
+    `2-4 bullets of concrete performance-driven moves.`,
+    ``,
+    `## Layer 2: Hook & Scroll Stopper`,
+    `### Summary`,
+    `2-3 sentences on the dominant hook formula plus the scroll-stop mechanics (visual / audio / verbal).`,
+    `### Evidence`,
+    `4-6 bullets — include written-vs-spoken hook mismatches if transcripts exist, and 3 reusable hook templates with quoted examples from the dataset.`,
+    `### What to do next`,
+    `2-4 bullets on which hook variants to push, which to retire.`,
+    ``,
+    `## Layer 3: Structure & Retention`,
+    `### Summary`,
+    `2-3 sentences on the dominant pacing arc and the retention drivers behind top performers (cuts, b-roll cadence, loop hooks).`,
+    `### Evidence`,
+    `4-6 bullets: beat-by-beat shape of 2 top performers plus the pacing patterns that suppress retention in bottom-tier posts.`,
+    `### What to do next`,
+    `2-4 bullets on structural moves to repeat or change.`,
+    ``,
+    `## Layer 4: Emotional & Identity Triggers`,
+    `### Summary`,
+    `2-3 sentences on the primary emotion this creator triggers and the identity hooks (worldview, in-group / out-group framing).`,
+    `### Evidence`,
+    `4-6 bullets covering the emotional arc across top performers, vulnerability usage and its performance impact, and identity markers in caption + transcript language.`,
+    `### What to do next`,
+    `2-4 bullets on emotional / identity moves to lean into or correct.`,
+    ``,
+    `## Layer 5: Follower-Base Dynamics`,
+    `This layer is about how this creator BUILDS AND CONDITIONS their audience over time — not how they go viral. Do NOT recommend script variations here. Recommend audience-building moves.`,
+    `### Summary`,
+    `3-4 sentences naming: the worldview being reinforced, the loyalty loops being run, and whether the creator is building loyal followers or only viral reach.`,
+    `### Evidence`,
+    `5-7 bullets covering: repeated beliefs / claims being instilled in the audience, recurring promises and callbacks, community identity markers (how followers are taught to see themselves), audience expectations being set, parasocial trust signals (direct address, vulnerability rituals, behind-the-scenes pacing), and concrete signs from the data of loyal-follower vs viral-only behavior (engagement-rate consistency, comment depth, repeated commenters if visible, save/share signals).`,
+    `### What to do next`,
+    `3-5 bullets of audience-building moves: which loyalty loops to deepen, which beliefs to reinforce more directly, where parasocial trust is leaking.`,
+    ``,
+    `## Layer 6: Strategic Moves`,
+    `### Summary`,
+    `2-3 sentences naming the strategic posture for the next 30-90 days.`,
+    `### Evidence`,
+    `4-6 bullets pulling from Layers 1-5: content gaps to fill, topics to retire, audience-building bets ranked by leverage.`,
+    `### What to do next`,
+    `4-6 bullets, prioritized and concrete: what to ship next, what to stop, what to test.`,
+  ].join("\n");
+
+  const layerSpec = fastMode ? fastLayerSpec : deepLayerSpec;
+  const layerCount = fastMode ? 4 : 6;
+  const wordTarget = fastMode ? "~700-1000 words" : "~2000-3500 words";
 
   const userMessage = [
     `Apify Instagram CSV export attached below as JSON.`,
@@ -1043,46 +1207,34 @@ app.post("/api/analyze", async (req, res) => {
     summary.audioField
       ? `Audio URL field: ${summary.audioField} (transcribed via Groq Whisper into reel-transcript)`
       : `Audio URL field: none detected`,
-    `Script variations requested: ${scriptCountClamped}`,
-    `Mode: ${
-      fastMode
-        ? "fast (1-part condensed summary, ~30s)"
-        : scriptsOnly
-        ? "scripts-only (skip Parts 1 & 2 — produce only Part 3)"
-        : "full framework"
-    }`,
+    `Mode: ${fastMode ? "fast analyze (4 layers)" : "deep analyze (6 layers)"}`,
+    ``,
+    `# TASK`,
     ``,
     fastMode
-      ? `FAST MODE: Produce a single condensed framework summary in Part 1, ~500–700 words total. Cover ONLY: (1) Performance signals — top vs bottom tier views, dominant duration window, best-performing day if obvious; (2) The single dominant hook pattern with 2 example lines from the dataset and a reusable template; (3) The dominant emotional arc (OPEN → MID → CLOSE) in one line; (4) ONE ready-to-use script blueprint (60-90 seconds) following the dominant structure. Skip raw layer-by-layer breakdowns.`
-      : scriptsOnly
-      ? `SCRIPTS-ONLY MODE: Run a fast internal analysis to identify the dominant hook patterns, structure pipeline, emotional arc and topic angles in the dataset, but DO NOT output Parts 1 or 2. Produce ONLY Part 3 (Script Blueprints) including the Reel Structure Blueprint, Top 3 Performance Breakdowns, Emotional Arc, and ${scriptCountClamped} Script Variations.`
-      : `Run the full SWH Content Framework analysis (all six layers + the 10-section report) on this dataset. Output the complete framework in the exact format specified in your instructions. Use markdown.`,
+      ? `Run a Fast Analyze pass on this dataset. Compact, action-oriented diagnosis. ${layerCount} layers, ${wordTarget} total. Focus on content diagnosis and immediate next moves.`
+      : `Run a Deep Analyze pass on this dataset. ${layerCount} layers, ${wordTarget} total. Focus on content diagnosis, creator strategy, and audience / follower-base dynamics. This is a strategic report, not a quick scan.`,
     ``,
-    `## OUTPUT FORMAT REQUIREMENT`,
+    `**Analyze mode rule (hard):** Do NOT generate any scripts, script variations, beats, shot directions, hook variations lists, or production-ready prose. Script generation is owned by a separate Scripts workflow downstream. Stay in diagnostic + strategic territory only. The "What to do next" bullets are direction, not scripts.`,
     ``,
-    `Stream the report as plain markdown using these exact delimiter markers between parts. Each marker must appear on its own line, with nothing else on that line:`,
+    `Override the system prompt's SECTION 01-10 output format and the SCRIPTING HANDOFF section. The exact output structure is specified below.`,
     ``,
-    `<<<PART1>>>`,
-    `<the markdown for Part 1 — Data Analysis>`,
+    `# OUTPUT STRUCTURE`,
     ``,
-    `<<<PART2>>>`,
-    `<the markdown for Part 2 — Content Strategy>`,
+    `Stream raw markdown. The very first non-whitespace token of your response MUST be "## Overview". No preamble, no JSON, no code fences, no <<<PART>>> markers.`,
     ``,
-    `<<<PART3>>>`,
-    `<the markdown for Part 3 — Script Blueprints>`,
+    `Use these exact level-2 headings, in this order:`,
     ``,
-    `Hard rules for the streamed format:`,
-    `- The very first non-whitespace token of your response must be a "<<<PART…>>>" marker.`,
-    `- Do NOT wrap the response in JSON, in code fences, or in any introductory prose.`,
-    `- Markers must appear in ascending order (PART1, then PART2, then PART3) and each at most once.`,
-    `- Inside Part 2 include explicit subsections titled "Hook Gap Opportunities" and "Hook Patterns to Retire".`,
-    `- Inside Part 3 include explicit subsections titled "Reel Structure Blueprint", "Top 3 Performance Breakdowns", "Emotional Arc", and "Script Variations".`,
-    `- Include exactly ${scriptCountClamped} script variations in Part 3.`,
-    fastMode
-      ? `- FAST MODE: emit ONLY <<<PART1>>> followed by the condensed summary. Do not emit <<<PART2>>> or <<<PART3>>>.`
-      : scriptsOnly
-      ? `- SCRIPTS-ONLY MODE: emit ONLY <<<PART3>>> followed by the script blueprints content. Do not emit <<<PART1>>> or <<<PART2>>>.`
-      : `- Emit all three parts in order with all required subsections.`,
+    layerSpec,
+    ``,
+    `# HARD RULES`,
+    ``,
+    `- Use these exact "## Layer N: <Title>" headings — downstream tooling splits the report on them.`,
+    `- Inside each layer, use exactly the three "### Summary", "### Evidence", "### What to do next" subsection headings.`,
+    `- Every claim must be traceable to a specific post, metric, or quoted line in the CSV. No generic advice.`,
+    `- Sentence-case body text. No ALL-CAPS section titles.`,
+    `- No scripts, no script variations, no shot lists, no beat-by-beat production scripts. Diagnostic + strategic content only.`,
+    `- If a field is missing (e.g., transcripts absent), say so in the relevant Evidence bullet rather than fabricating signal.`,
     ``,
     `<csv_data>`,
     JSON.stringify(rowsForClaude, null, 2),
@@ -1128,6 +1280,12 @@ app.post("/api/analyze", async (req, res) => {
       stopReason: final.stop_reason,
       usage: final.usage,
     });
+    logUsage({
+      userId: req.user?.id,
+      model: MODEL,
+      usage: final.usage,
+      route: `/api/analyze (${fastMode ? "fast" : "deep"})`,
+    });
     res.end();
   } catch (e) {
     console.error(e);
@@ -1157,33 +1315,34 @@ if (SERVE_CLIENT && fs.existsSync(CLIENT_DIST)) {
 app.get("/api/health", (_req, res) => {
   const anthropicConfigured = !!process.env.ANTHROPIC_API_KEY;
   const groqEnvConfigured = !!process.env.GROQ_API_KEY;
-  // Apify + Groq tokens are per-request — the operator sets them via the UI
-  // (Apify on the Apify page, Groq in Settings). The env-side flags below are
-  // optional fallbacks for local dev only.
+  const apifyConfigured = !!process.env.APIFY_TOKEN;
+  // All three tokens are now env-driven (Apify joined Anthropic + Groq).
+  // The legacy `services.*.perRequest` flags are kept for any older client
+  // builds in the wild that still test them.
   res.json({
     ok: anthropicConfigured,
     model: MODEL,
     groqModel: GROQ_MODEL,
     services: {
       anthropic: { configured: anthropicConfigured, required: true },
-      groq: { configured: groqEnvConfigured, required: false, perRequest: true },
+      groq: { configured: groqEnvConfigured, required: false },
+      apify: { configured: apifyConfigured, required: false },
     },
     anthropicConfigured,
     groqConfigured: groqEnvConfigured,
+    apifyConfigured,
   });
 });
 
 app.listen(PORT, () => {
-  console.log(`SWH server listening on http://localhost:${PORT}`);
+  console.log(`chiqo.ai server listening on http://localhost:${PORT}`);
   if (SERVE_CLIENT && fs.existsSync(CLIENT_DIST)) {
-    console.log(`Client UI:    http://localhost:${PORT}/  (served from client/dist)`);
+    console.log(`Client UI: http://localhost:${PORT}`);
   }
   console.log(`Claude model: ${MODEL}`);
   console.log(
     `Groq Whisper: ${GROQ_MODEL} (${
-      process.env.GROQ_API_KEY
-        ? "env key configured"
-        : "no env key — operator must set token in Settings"
+      process.env.GROQ_API_KEY ? "env key configured" : "no env key set"
     })`
   );
 });

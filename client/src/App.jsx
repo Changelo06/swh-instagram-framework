@@ -4,7 +4,9 @@ import DashboardView from "./tactical/views/DashboardView.jsx";
 import DatasetView from "./tactical/views/DatasetView.jsx";
 import AnalyzeView from "./tactical/views/AnalyzeView.jsx";
 import ScriptsView from "./tactical/views/ScriptsView.jsx";
-import ApifyView from "./tactical/views/ApifyView.jsx";
+
+// Apify lives in the Settings drawer now. The /apify and /app/apify paths
+// redirect home so old bookmarks don't 404.
 
 export default function App() {
   return (
@@ -14,14 +16,14 @@ export default function App() {
         <Route path="dataset" element={<DatasetView />} />
         <Route path="analyze" element={<AnalyzeView />} />
         <Route path="scripts" element={<ScriptsView />} />
-        <Route path="apify" element={<ApifyView />} />
       </Route>
       {/* Legacy /app/* deep-links continue to work. */}
       <Route path="/app" element={<Navigate to="/" replace />} />
       <Route path="/app/dataset" element={<Navigate to="/dataset" replace />} />
       <Route path="/app/analyze" element={<Navigate to="/analyze" replace />} />
       <Route path="/app/scripts" element={<Navigate to="/scripts" replace />} />
-      <Route path="/app/apify" element={<Navigate to="/apify" replace />} />
+      <Route path="/apify" element={<Navigate to="/" replace />} />
+      <Route path="/app/apify" element={<Navigate to="/" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

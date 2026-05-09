@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react";
+﻿import { memo, useEffect, useRef, useState } from "react";
 import { ArrowSquareOut, ArrowRight, X as XIcon } from "@phosphor-icons/react";
 import WidgetFrame from "./WidgetFrame.jsx";
 import { useCsv } from "../state/CsvContext.jsx";
@@ -84,7 +84,7 @@ function CommandInput({ name = "Query dataset" }) {
           onFocus={(e) => {
             e.currentTarget.style.borderColor = "var(--tac-accent)";
             e.currentTarget.style.boxShadow =
-              "0 0 0 3px rgba(79, 141, 254, 0.2)";
+              "0 0 0 3px var(--tac-accent-soft-strong)";
           }}
           onBlur={(e) => {
             e.currentTarget.style.borderColor = "var(--tac-border)";
@@ -105,7 +105,7 @@ function CommandInput({ name = "Query dataset" }) {
             ref={inputRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={!text ? hintText : ""}
+            placeholder={!text ? `Ask a question about this dataset — ${hintText}` : ""}
             spellCheck={false}
             autoComplete="off"
             style={{
@@ -278,11 +278,11 @@ function StatResult({ result }) {
 function RowsResult({ result }) {
   return (
     <div
+      className="tac-table-wrap"
       style={{
         background: "var(--tac-surface)",
         border: "1px solid var(--tac-border)",
         borderRadius: 8,
-        overflow: "hidden",
       }}
     >
       <table className="tac-table">

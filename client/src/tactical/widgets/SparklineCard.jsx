@@ -2,20 +2,32 @@ import { memo, useMemo } from "react";
 import { TrendUp, TrendDown, Minus } from "@phosphor-icons/react";
 import WidgetFrame from "./WidgetFrame.jsx";
 
-function SparklineCard({ name, kpi, delta, series = [], unit = "" }) {
+function SparklineCard({
+  name,
+  kpi,
+  delta,
+  series = [],
+  unit = "",
+  accent = false,
+  icon,
+  iconTone = "accent",
+}) {
   const dir = delta == null || delta === 0 ? "flat" : delta > 0 ? "up" : "down";
-  const deltaColor =
-    dir === "up"
-      ? "var(--tac-success)"
-      : dir === "down"
-      ? "var(--tac-danger)"
-      : "var(--tac-mute)";
+  const deltaVariant =
+    dir === "up" ? "ok" : dir === "down" ? "err" : "default";
   const DeltaIcon = dir === "up" ? TrendUp : dir === "down" ? TrendDown : Minus;
+  const formatted = formatKpi(kpi);
+  const isMissing = formatted === "Missing";
 
   const path = useSparklinePath(series);
 
   return (
-    <WidgetFrame name={name}>
+    <WidgetFrame
+      name={name}
+      accent={accent}
+      iconBadge={icon}
+      iconTone={iconTone}
+    >
       <div
         style={{
           display: "grid",
@@ -23,21 +35,22 @@ function SparklineCard({ name, kpi, delta, series = [], unit = "" }) {
           gap: 14,
         }}
       >
-        <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            gap: 10,
+            flexWrap: "wrap",
+          }}
+        >
           <span
+            className="tac-kpi-value"
             style={{
-              fontFamily:
-                '"Inter", ui-sans-serif, system-ui, sans-serif',
-              fontSize: 30,
-              fontWeight: 600,
-              color: "var(--tac-fg)",
-              fontVariantNumeric: "tabular-nums",
-              letterSpacing: "-0.01em",
-              lineHeight: 1.05,
+              color: isMissing ? "var(--tac-mute)" : "var(--tac-fg)",
             }}
           >
-            {formatKpi(kpi)}
-            {unit && (
+            {formatted}
+            {unit && !isMissing && (
               <span
                 style={{
                   fontSize: 16,
@@ -52,19 +65,14 @@ function SparklineCard({ name, kpi, delta, series = [], unit = "" }) {
           </span>
           {delta != null && (
             <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                color: deltaColor,
-                fontFamily:
-                  '"Inter", ui-sans-serif, system-ui, sans-serif',
-                fontSize: 12,
-                fontWeight: 500,
-                fontVariantNumeric: "tabular-nums",
-              }}
+              className={
+                deltaVariant === "default"
+                  ? "tac-pill"
+                  : `tac-pill tac-pill--${deltaVariant}`
+              }
+              style={{ alignSelf: "center" }}
             >
-              <DeltaIcon size={12} weight="bold" />
+              <DeltaIcon size={11} weight="bold" />
               {dir === "flat" ? "0%" : `${delta > 0 ? "+" : ""}${delta}%`}
             </span>
           )}
@@ -77,30 +85,51 @@ function SparklineCard({ name, kpi, delta, series = [], unit = "" }) {
             overflow: "hidden",
           }}
         >
-          {path && (
-            <div
-              className="tac-marquee-track"
-              style={{ height: "100%", gap: 0 }}
+          {path && !isMissing && (
+            <svg
+              viewBox="0 0 100 30"
+              preserveAspectRatio="none"
+              style={{
+                width: "100%",
+                height: "100%",
+                display: "block",
+              }}
             >
-              {[0, 1, 2].map((i) => (
-                <svg
-                  key={i}
-                  viewBox="0 0 100 30"
-                  preserveAspectRatio="none"
-                  style={{ width: 200, height: "100%", display: "block" }}
-                  aria-hidden={i > 0}
+              <defs>
+                <linearGradient
+                  id="spark-fill"
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
                 >
-                  <path
-                    d={path}
-                    fill="none"
-                    stroke="var(--tac-accent)"
-                    strokeWidth={1.25}
-                    strokeLinecap="round"
-                    vectorEffect="non-scaling-stroke"
+                  <stop
+                    offset="0%"
+                    stopColor="var(--tac-accent)"
+                    stopOpacity="0.18"
                   />
-                </svg>
-              ))}
-            </div>
+                  <stop
+                    offset="100%"
+                    stopColor="var(--tac-accent)"
+                    stopOpacity="0"
+                  />
+                </linearGradient>
+              </defs>
+              <path
+                d={`${path} L 100 30 L 0 30 Z`}
+                fill="url(#spark-fill)"
+                stroke="none"
+              />
+              <path
+                d={path}
+                fill="none"
+                stroke="var(--tac-accent)"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
           )}
         </div>
       </div>
@@ -127,7 +156,10 @@ function useSparklinePath(series) {
 
 function formatKpi(v) {
   if (v == null) return "—";
-  if (typeof v === "string") return v;
+  if (typeof v === "string") {
+    if (v.toUpperCase() === "MISSING") return "Missing";
+    return v;
+  }
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
   if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
   return v.toLocaleString();

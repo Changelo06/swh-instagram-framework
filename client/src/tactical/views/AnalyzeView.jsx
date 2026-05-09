@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -12,47 +12,49 @@ import {
   Clock,
   Microphone,
   ArrowsCounterClockwise,
-  Warning,
+  FolderOpen,
+  FileText,
+  FileCode,
 } from "@phosphor-icons/react";
 import { useCsv, STAGE, ALL_HANDLE } from "../state/CsvContext.jsx";
 import ExportMenu from "../widgets/ExportMenu.jsx";
 import EmptyHint from "../widgets/EmptyHint.jsx";
 import ConfirmAction from "../widgets/ConfirmAction.jsx";
-import CreatorTabs from "../widgets/CreatorTabs.jsx";
 import { exportAnalysis } from "../lib/exporters.js";
+import { parseAnalysisLayers } from "../lib/analysisLayers.js";
 
 const TEMPLATES = [
   {
     id: "fast",
-    name: "FAST",
-    eta: "≈ 40s",
-    description: "4 layers · single page",
+    name: "Fast",
+    eta: "≈ 40 seconds",
+    description: "4 layers · compact, action-oriented",
     icon: Lightning,
-    body: `// FAST · single-page diagnostic
-// Top performance signals · dominant hooks ·
-// structural beats · topic ranking.
-
-run({
-  mode: "fast",
-  layers: 4,
-  blueprintsPart3: false,
-});`,
+    summary:
+      "A quick-read diagnosis: performance snapshot, the winning hook pattern, the structural pattern behind top performers, and a prioritized list of next moves.",
+    sections: [
+      "Performance Snapshot — top vs bottom tier, duration, best day",
+      "Winning Hook Pattern — the dominant formula with quoted examples",
+      "Content Structure Pattern — the recurring beat shape across top performers",
+      "Next Moves — repeat, stop, test next",
+    ],
   },
   {
     id: "full",
-    name: "DEEP",
-    eta: "1–3 min",
-    description: "6 layers · script blueprints",
+    name: "Deep",
+    eta: "1–3 minutes",
+    description: "6 layers · strategic report on content + audience",
     icon: Sparkle,
-    body: `// DEEP · full breakdown
-// 6 layers + replicable script blueprints
-// for the top voice patterns.
-
-run({
-  mode: "full",
-  layers: 6,
-  blueprintsPart3: true,
-});`,
+    summary:
+      "A strategic report covering content diagnosis, creator strategy, and how this creator builds and conditions their audience over time. No scripts — script generation lives in the Scripts workflow.",
+    sections: [
+      "Performance Signals — durable hits vs viral flukes",
+      "Hook & Scroll Stopper — written-vs-spoken mismatches, reusable templates",
+      "Structure & Retention — pacing arc and retention drivers",
+      "Emotional & Identity Triggers — worldview, in-group framing, vulnerability",
+      "Follower-Base Dynamics — loyalty loops, parasocial trust, loyal vs viral reach",
+      "Strategic Moves — 30-90 day posture, content gaps, audience-building bets",
+    ],
   },
 ];
 
@@ -119,8 +121,6 @@ export default function AnalyzeView() {
         minHeight: "calc(100dvh - 44px)",
       }}
     >
-      <CreatorTabs label="ANALYZE // TARGET CREATOR" />
-
       <div
         style={{
           display: "grid",
@@ -131,34 +131,30 @@ export default function AnalyzeView() {
       >
       <aside
         style={{
-          background: "var(--tac-surface2)",
+          background: "var(--tac-surface)",
           display: "grid",
           gridTemplateRows: "auto auto 1fr",
         }}
       >
         <div
           style={{
-            padding: "12px 14px",
+            padding: "14px 14px 12px",
             borderBottom: "1px solid var(--tac-border)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
           }}
         >
-          <span className="tac-label">TEMPLATES</span>
           <span
             style={{
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 9,
-              color: "var(--tac-dim)",
-              letterSpacing: "0.1em",
+              fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+              fontSize: 12,
+              fontWeight: 500,
+              color: "var(--tac-mute)",
             }}
           >
-            CLICK · CONFIGURE · RUN
+            Templates
           </span>
         </div>
 
-        <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+        <ul style={{ listStyle: "none", margin: 0, padding: "6px 0" }}>
           {TEMPLATES.map((t) => {
             const Icon = t.icon;
             const isActive = !showingRun && selectedTemplateId === t.id;
@@ -168,20 +164,25 @@ export default function AnalyzeView() {
                   type="button"
                   onClick={() => onPickTemplate(t.id)}
                   style={{
-                    width: "100%",
+                    width: "calc(100% - 12px)",
                     textAlign: "left",
-                    padding: "12px 14px",
-                    background: isActive ? "var(--tac-surface)" : "transparent",
-                    borderLeft: isActive
-                      ? "2px solid #4f8dfe"
-                      : "2px solid transparent",
+                    padding: "10px 14px",
+                    margin: "1px 6px",
+                    background: isActive
+                      ? "var(--tac-surface2)"
+                      : "transparent",
+                    borderRadius: 6,
                     border: "none",
+                    borderLeft: isActive
+                      ? "2px solid var(--tac-accent)"
+                      : "2px solid transparent",
                     color: isActive ? "var(--tac-fg)" : "var(--tac-mute)",
                     cursor: "pointer",
                     display: "grid",
                     gap: 4,
-                    fontFamily: '"JetBrains Mono", monospace',
-                    fontSize: 11,
+                    fontFamily:
+                      '"Inter", ui-sans-serif, system-ui, sans-serif',
+                    fontSize: 13,
                     transition: "color 120ms, background 120ms",
                   }}
                 >
@@ -193,13 +194,17 @@ export default function AnalyzeView() {
                     }}
                   >
                     <Icon
-                      size={12}
+                      size={14}
                       weight="regular"
-                      color={isActive ? "#4f8dfe" : "var(--tac-mute)"}
+                      color={
+                        isActive ? "var(--tac-accent)" : "var(--tac-mute)"
+                      }
                     />
-                    <span style={{ letterSpacing: "0.04em" }}>{t.name}</span>
+                    <span style={{ fontWeight: isActive ? 500 : 400 }}>
+                      {t.name}
+                    </span>
                   </div>
-                  <div style={{ fontSize: 9, color: "var(--tac-dim)" }}>
+                  <div style={{ fontSize: 12, color: "var(--tac-mute)" }}>
                     {t.eta} · {t.description}
                   </div>
                 </button>
@@ -218,20 +223,32 @@ export default function AnalyzeView() {
         >
           <div
             style={{
-              padding: "10px 14px",
+              padding: "12px 14px",
+              borderTop: "1px solid var(--tac-border)",
               borderBottom: "1px solid var(--tac-border)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
             }}
           >
-            <span className="tac-label">RUN HISTORY</span>
             <span
               style={{
-                fontFamily: '"JetBrains Mono", monospace',
-                fontSize: 9,
-                color: "var(--tac-dim)",
-                letterSpacing: "0.1em",
+                fontFamily:
+                  '"Inter", ui-sans-serif, system-ui, sans-serif',
+                fontSize: 12,
+                fontWeight: 500,
+                color: "var(--tac-mute)",
+              }}
+            >
+              Run history
+            </span>
+            <span
+              style={{
+                fontFamily:
+                  '"Inter", ui-sans-serif, system-ui, sans-serif',
+                fontSize: 12,
+                color: "var(--tac-mute)",
+                fontVariantNumeric: "tabular-nums",
               }}
             >
               {analyses.length}
@@ -241,22 +258,22 @@ export default function AnalyzeView() {
             style={{
               listStyle: "none",
               margin: 0,
-              padding: 0,
+              padding: "6px 0",
               overflowY: "auto",
             }}
           >
             {analyses.length === 0 && (
               <li
                 style={{
-                  padding: "16px 14px",
-                  color: "var(--tac-dim)",
-                  fontFamily: '"JetBrains Mono", monospace',
-                  fontSize: 10,
-                  letterSpacing: "0.04em",
+                  padding: "12px 14px",
+                  color: "var(--tac-mute)",
+                  fontFamily:
+                    '"Inter", ui-sans-serif, system-ui, sans-serif',
+                  fontSize: 12,
                   lineHeight: 1.6,
                 }}
               >
-                // no runs yet · pick a template above and click RUN
+                No runs yet. Pick a template above, then click Run.
               </li>
             )}
             {[...analyses].reverse().map((a) => {
@@ -267,20 +284,25 @@ export default function AnalyzeView() {
                     type="button"
                     onClick={() => onPickRun(a.id)}
                     style={{
-                      width: "100%",
+                      width: "calc(100% - 12px)",
                       textAlign: "left",
-                      padding: "10px 14px",
-                      background: isSelected ? "var(--tac-surface)" : "transparent",
+                      padding: "8px 14px",
+                      margin: "1px 6px",
+                      borderRadius: 6,
+                      background: isSelected
+                        ? "var(--tac-surface2)"
+                        : "transparent",
                       borderLeft: isSelected
-                        ? "2px solid #4f8dfe"
+                        ? "2px solid var(--tac-accent)"
                         : "2px solid transparent",
                       border: "none",
                       color: isSelected ? "var(--tac-fg)" : "var(--tac-mute)",
                       cursor: "pointer",
                       display: "grid",
                       gap: 3,
-                      fontFamily: '"JetBrains Mono", monospace',
-                      fontSize: 10,
+                      fontFamily:
+                        '"Inter", ui-sans-serif, system-ui, sans-serif',
+                      fontSize: 12.5,
                       transition: "color 120ms, background 120ms",
                     }}
                   >
@@ -292,12 +314,12 @@ export default function AnalyzeView() {
                         gap: 8,
                       }}
                     >
-                      <span style={{ letterSpacing: "0.04em" }}>
-                        {a.mode === "full" ? "DEEP" : "FAST"}
+                      <span style={{ fontWeight: isSelected ? 500 : 400 }}>
+                        {a.mode === "full" ? "Deep" : "Fast"}
                       </span>
                       <RunStatusDot status={a.status} />
                     </div>
-                    <div style={{ fontSize: 9, color: "var(--tac-dim)" }}>
+                    <div style={{ fontSize: 11, color: "var(--tac-mute)" }}>
                       {fmtTime(a.startedAt)} · {fmtChars(a.text.length)}
                     </div>
                   </button>
@@ -346,75 +368,123 @@ function TemplatePanel({ template, onRun, rowCount, handleLabel }) {
     <>
       <header
         style={{
-          background: "var(--tac-surface2)",
+          background: "var(--tac-surface)",
           borderBottom: "1px solid var(--tac-border)",
-          padding: "12px 16px",
+          padding: "16px 24px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          gap: 12,
         }}
       >
         <div>
-          <span className="tac-label">SECTION D-03 / ANALYZE</span>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              gap: 12,
-              marginTop: 4,
-            }}
-          >
-            <span
-              className="tac-display"
-              style={{ fontSize: 18, color: "var(--tac-fg)" }}
-            >
-              {template.name}
-            </span>
-            <span
-              style={{
-                fontFamily: '"JetBrains Mono", monospace',
-                fontSize: 10,
-                color: "var(--tac-mute)",
-              }}
-            >
-              {handleLabel} · {rowCount.toLocaleString()} rows · {template.eta}
-            </span>
+          <div className="tac-section-title">{template.name} analysis</div>
+          <div className="tac-section-copy">
+            {handleLabel} · {rowCount.toLocaleString()} rows · {template.eta}
           </div>
         </div>
         <button
           type="button"
           onClick={onRun}
           className="tac-btn tac-btn-accent"
-          style={{ padding: "8px 16px", fontSize: 11 }}
+          style={{ padding: "8px 16px", fontSize: 13 }}
         >
-          <Play size={12} weight="fill" />
-          RUN {template.name}
+          <Play size={13} weight="fill" />
+          Run {template.name.toLowerCase()}
         </button>
       </header>
 
       <div
         style={{
-          padding: "16px",
+          padding: "24px",
           overflow: "auto",
-          fontFamily: '"JetBrains Mono", monospace',
         }}
       >
-        <Editor body={template.body} />
         <div
+          className="tac-card"
           style={{
-            marginTop: 18,
-            padding: "12px 14px",
-            background: "var(--tac-surface2)",
-            border: "1px solid var(--tac-border)",
-            fontSize: 10,
-            color: "var(--tac-mute)",
-            lineHeight: 1.6,
-            letterSpacing: "0.02em",
+            maxWidth: 720,
+            padding: "20px 22px",
+            display: "grid",
+            gap: 14,
           }}
         >
-          // template renders read-only · click RUN to start a streaming pass.
-          The REPORT tab updates as deltas arrive — you can switch templates or
-          run history while a stream is in flight.
+          <div>
+            <div
+              style={{
+                fontFamily:
+                  '"Inter", ui-sans-serif, system-ui, sans-serif',
+                fontSize: 14,
+                fontWeight: 600,
+                color: "var(--tac-fg)",
+                marginBottom: 6,
+              }}
+            >
+              What this run produces
+            </div>
+            <div
+              style={{
+                fontSize: 13,
+                color: "var(--tac-mute)",
+                lineHeight: 1.6,
+              }}
+            >
+              {template.summary}
+            </div>
+          </div>
+          <ul
+            style={{
+              listStyle: "none",
+              margin: 0,
+              padding: 0,
+              display: "grid",
+              gap: 8,
+            }}
+          >
+            {template.sections.map((section, i) => (
+              <li
+                key={i}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "20px 1fr",
+                  gap: 10,
+                  alignItems: "baseline",
+                  fontSize: 13,
+                  color: "var(--tac-fg)",
+                  lineHeight: 1.55,
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily:
+                      '"Inter", ui-sans-serif, system-ui, sans-serif',
+                    fontVariantNumeric: "tabular-nums",
+                    color: "var(--tac-mute)",
+                    fontSize: 12,
+                  }}
+                >
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span>{section}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div
+          style={{
+            marginTop: 14,
+            maxWidth: 720,
+            padding: "10px 14px",
+            background: "var(--tac-surface2)",
+            border: "1px solid var(--tac-border)",
+            borderRadius: 8,
+            fontSize: 12,
+            color: "var(--tac-mute)",
+            lineHeight: 1.55,
+          }}
+        >
+          Click Run to start streaming. You can switch templates or open a
+          past run while a stream is in flight.
         </div>
       </div>
     </>
@@ -439,9 +509,9 @@ function RunPanel({ analysis, stop, remove, retry, baseName }) {
     <>
       <header
         style={{
-          background: "var(--tac-surface2)",
+          background: "var(--tac-surface)",
           borderBottom: "1px solid var(--tac-border)",
-          padding: "10px 16px",
+          padding: "12px 24px",
           display: "grid",
           gridTemplateColumns: "auto 1fr auto",
           alignItems: "center",
@@ -449,22 +519,24 @@ function RunPanel({ analysis, stop, remove, retry, baseName }) {
         }}
       >
         <div>
-          <span className="tac-label">RUN //</span>
-          <span
-            className="tac-display"
-            style={{ fontSize: 14, color: "var(--tac-fg)", marginLeft: 8 }}
-          >
-            {template.name}
-          </span>
+          <div className="tac-section-title" style={{ fontSize: 15 }}>
+            {template.name} analysis
+          </div>
+          <div className="tac-section-copy">
+            {analysis.mode === "full" ? "6 layers" : "4 layers"} ·{" "}
+            {fmtTime(analysis.startedAt)}
+          </div>
         </div>
 
         <div
           style={{
             display: "flex",
-            gap: 1,
-            background: "var(--tac-border)",
-            border: "1px solid var(--tac-border)",
+            gap: 4,
             justifySelf: "start",
+            padding: 3,
+            background: "var(--tac-surface-inner)",
+            border: "1px solid var(--tac-border)",
+            borderRadius: 8,
           }}
         >
           <Tab
@@ -472,7 +544,7 @@ function RunPanel({ analysis, stop, remove, retry, baseName }) {
             active={tab === "config"}
             onClick={() => setTab("config")}
           >
-            CONFIG
+            Config
           </Tab>
           <Tab
             id="report"
@@ -482,12 +554,12 @@ function RunPanel({ analysis, stop, remove, retry, baseName }) {
               isRunning && (
                 <span
                   className="tac-dot-status"
-                  style={{ background: "#4f8dfe" }}
+                  style={{ background: "var(--tac-accent)" }}
                 />
               )
             }
           >
-            REPORT
+            Report
           </Tab>
         </div>
 
@@ -498,43 +570,21 @@ function RunPanel({ analysis, stop, remove, retry, baseName }) {
               type="button"
               onClick={() => stop(analysis.id)}
               aria-label="Stop run"
-              style={{
-                background: "#ef4444",
-                border: "1px solid #ef4444",
-                color: "var(--tac-bg)",
-                fontFamily: '"JetBrains Mono", monospace',
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                padding: "8px 14px",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                transition: "background 120ms, border-color 120ms",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#f87171";
-                e.currentTarget.style.borderColor = "#f87171";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#ef4444";
-                e.currentTarget.style.borderColor = "#ef4444";
-              }}
+              className="tac-btn tac-btn-danger"
+              style={{ padding: "6px 12px", fontSize: 12 }}
             >
               <Stop size={12} weight="fill" />
-              STOP
+              Stop
             </button>
           ) : (
             <>
               <ConfirmAction
                 onConfirm={() => retry(analysis.id)}
-                label="RETRY"
-                armedLabel="CONFIRM RETRY"
+                label="Retry"
+                armedLabel="Confirm retry"
                 Icon={ArrowsCounterClockwise}
                 tone="warn"
-                title="re-run from a fresh transcribe + analyze pass · the current page is replaced"
+                title="Re-run from a fresh transcribe + analyze pass — the current run is replaced."
               />
               <ExportMenu
                 disabled={analysis.status !== "done" || !analysis.text}
@@ -548,25 +598,320 @@ function RunPanel({ analysis, stop, remove, retry, baseName }) {
             aria-label="Delete run"
             disabled={isRunning}
             className="tac-btn"
-            style={{ padding: "6px 8px", fontSize: 10, opacity: isRunning ? 0.4 : 1 }}
+            style={{
+              padding: "6px 10px",
+              fontSize: 12,
+              opacity: isRunning ? 0.4 : 1,
+            }}
           >
-            <Trash size={11} weight="regular" />
+            <Trash size={12} weight="regular" />
           </button>
         </div>
       </header>
 
-      <div style={{ overflow: "auto", padding: 16 }}>
-        {tab === "config" && <Editor body={template.body} />}
-        {tab === "report" && (
-          <>
-            {analysis.phase === "transcribing" && (
-              <TranscribeStrip analysis={analysis} />
-            )}
-            <ReportStream analysis={analysis} />
-          </>
-        )}
-      </div>
+      {tab === "config" && (
+        <div style={{ overflow: "auto", padding: 24 }}>
+          <div
+            className="tac-card"
+            style={{
+              maxWidth: 720,
+              padding: "20px 22px",
+              display: "grid",
+              gap: 14,
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontFamily:
+                    '"Inter", ui-sans-serif, system-ui, sans-serif',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "var(--tac-fg)",
+                  marginBottom: 6,
+                }}
+              >
+                What this run produces
+              </div>
+              <div
+                style={{
+                  fontSize: 13,
+                  color: "var(--tac-mute)",
+                  lineHeight: 1.6,
+                }}
+              >
+                {template.summary}
+              </div>
+            </div>
+            <ul
+              style={{
+                listStyle: "none",
+                margin: 0,
+                padding: 0,
+                display: "grid",
+                gap: 8,
+              }}
+            >
+              {template.sections.map((section, i) => (
+                <li
+                  key={i}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "20px 1fr",
+                    gap: 10,
+                    alignItems: "baseline",
+                    fontSize: 13,
+                    color: "var(--tac-fg)",
+                    lineHeight: 1.55,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily:
+                        '"Inter", ui-sans-serif, system-ui, sans-serif',
+                      fontVariantNumeric: "tabular-nums",
+                      color: "var(--tac-mute)",
+                      fontSize: 12,
+                    }}
+                  >
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span>{section}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {tab === "report" && (
+        <ReportLayers analysis={analysis} isRunning={isRunning} />
+      )}
     </>
+  );
+}
+
+// ============================================================
+// Layer explorer — splits a streamed/streamed analysis into a
+// folder of focused layer files. Phase 1: UI-only parsing.
+// ============================================================
+function ReportLayers({ analysis, isRunning }) {
+  const text = analysis.text || "";
+  const parsed = useMemo(
+    () => parseAnalysisLayers(text, analysis.mode),
+    [text, analysis.mode]
+  );
+
+  const items = useMemo(() => {
+    const list = [parsed.overview, ...parsed.layers];
+    list.push({
+      id: "raw",
+      title: "Full report",
+      markdown: parsed.raw || "",
+      isFallback: true,
+    });
+    return list;
+  }, [parsed]);
+
+  const [selectedId, setSelectedId] = useState("overview");
+  useEffect(() => {
+    if (!items.find((i) => i.id === selectedId)) setSelectedId("overview");
+  }, [items, selectedId]);
+
+  const selected = items.find((i) => i.id === selectedId) || items[0];
+  const containerRef = useRef(null);
+  const lastLenRef = useRef(0);
+  const [autoScroll, setAutoScroll] = useState(true);
+  useEffect(() => {
+    if (!autoScroll || !containerRef.current) return;
+    if (text.length === lastLenRef.current) return;
+    lastLenRef.current = text.length;
+    containerRef.current.scrollTop = containerRef.current.scrollHeight;
+  }, [text, autoScroll]);
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "240px 1fr",
+        gap: 0,
+        flex: 1,
+        minHeight: 0,
+      }}
+    >
+      <aside
+        style={{
+          background: "var(--tac-surface)",
+          borderRight: "1px solid var(--tac-border)",
+          overflowY: "auto",
+          padding: "10px 0",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "6px 14px 10px",
+            fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+            fontSize: 12,
+          }}
+        >
+          <FolderOpen size={14} weight="regular" color="var(--tac-mute)" />
+          <span style={{ color: "var(--tac-fg)", fontWeight: 600 }}>
+            {analysis.mode === "fast" ? "Fast" : "Deep"} analysis
+          </span>
+        </div>
+        <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+          {items.map((item) => (
+            <LayerRow
+              key={item.id}
+              item={item}
+              isSelected={item.id === selectedId}
+              isAvailable={
+                item.isFallback ? !!parsed.raw : !!item.markdown
+              }
+              onSelect={() => setSelectedId(item.id)}
+            />
+          ))}
+        </ul>
+      </aside>
+
+      <div
+        ref={containerRef}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          const atBottom =
+            el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+          setAutoScroll(atBottom);
+        }}
+        style={{
+          background: "var(--tac-bg)",
+          overflowY: "auto",
+          padding: 24,
+        }}
+      >
+        {analysis.phase === "transcribing" && (
+          <div style={{ maxWidth: 820, margin: "0 auto 16px" }}>
+            <TranscribeStrip analysis={analysis} />
+          </div>
+        )}
+        <article
+          className="tac-report"
+          style={{
+            maxWidth: 820,
+            margin: "0 auto",
+            background: "var(--tac-surface)",
+            border: "1px solid var(--tac-border)",
+            borderRadius: 12,
+            padding: "24px 28px",
+            color: "var(--tac-fg)",
+            fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+            fontSize: 14,
+            lineHeight: 1.65,
+            minHeight: 200,
+          }}
+        >
+          {selected.markdown ? (
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={MD_COMPONENTS}
+            >
+              {selected.markdown}
+            </ReactMarkdown>
+          ) : isRunning ? (
+            <span style={{ color: "var(--tac-mute)" }}>
+              Streaming — this layer hasn't landed yet.
+            </span>
+          ) : !text ? (
+            <span style={{ color: "var(--tac-mute)" }}>
+              No output. The run was aborted before any deltas arrived.
+            </span>
+          ) : (
+            <span style={{ color: "var(--tac-mute)" }}>
+              {selected.title} not found in this report. Open{" "}
+              <em>Full report</em> for the raw output.
+            </span>
+          )}
+          {isRunning && selected.id !== "raw" && (
+            <span
+              style={{
+                display: "inline-block",
+                width: 6,
+                height: 14,
+                background: "var(--tac-accent)",
+                verticalAlign: "middle",
+                marginLeft: 4,
+                animation: "tac-pulse 1s ease-in-out infinite",
+              }}
+              aria-hidden
+            />
+          )}
+        </article>
+      </div>
+    </div>
+  );
+}
+
+function LayerRow({ item, isSelected, isAvailable, onSelect }) {
+  const Icon = item.isFallback ? FileCode : FileText;
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onSelect}
+        style={{
+          width: "calc(100% - 12px)",
+          textAlign: "left",
+          display: "grid",
+          gridTemplateColumns: "16px 1fr",
+          alignItems: "center",
+          gap: 10,
+          padding: "8px 10px 8px 22px",
+          margin: "1px 6px",
+          borderRadius: 6,
+          background: isSelected ? "var(--tac-surface2)" : "transparent",
+          borderLeft: isSelected
+            ? "2px solid var(--tac-accent)"
+            : "2px solid transparent",
+          border: "none",
+          color: isSelected
+            ? "var(--tac-fg)"
+            : isAvailable
+            ? "var(--tac-mute)"
+            : "var(--tac-dim)",
+          cursor: "pointer",
+          fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+          fontSize: 12.5,
+          letterSpacing: 0,
+          transition: "background 100ms, color 100ms",
+        }}
+        title={item.title}
+      >
+        <Icon
+          size={13}
+          weight="regular"
+          color={
+            isSelected
+              ? "var(--tac-accent)"
+              : isAvailable
+              ? "var(--tac-mute)"
+              : "var(--tac-dim)"
+          }
+        />
+        <span
+          style={{
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            fontWeight: isSelected ? 500 : 400,
+            opacity: isAvailable ? 1 : 0.7,
+          }}
+        >
+          {item.title}
+        </span>
+      </button>
+    </li>
   );
 }
 
@@ -581,14 +926,14 @@ function TranscribeStrip({ analysis }) {
     <div
       style={{
         display: "grid",
-        gap: 8,
+        gap: 10,
         marginBottom: 14,
-        padding: "12px 14px",
-        background: "var(--tac-bg)",
+        padding: "14px 16px",
+        background: "var(--tac-surface)",
         border: "1px solid var(--tac-border)",
-        borderLeft: "3px solid #4f8dfe",
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 11,
+        borderRadius: 10,
+        fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+        fontSize: 12.5,
       }}
     >
       <div
@@ -600,24 +945,19 @@ function TranscribeStrip({ analysis }) {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Microphone size={13} weight="regular" color="#4f8dfe" />
-          <span
-            style={{
-              color: "var(--tac-fg)",
-              fontWeight: 600,
-              letterSpacing: "0.04em",
-            }}
-          >
-            TRANSCRIBING TOP REELS
+          <Microphone size={14} weight="regular" color="var(--tac-accent)" />
+          <span style={{ color: "var(--tac-fg)", fontWeight: 500 }}>
+            Transcribing top reels
           </span>
           {p.model && (
             <span
               style={{
-                fontSize: 9,
+                fontSize: 11,
                 color: "var(--tac-mute)",
-                letterSpacing: "0.1em",
+                background: "var(--tac-surface2)",
                 border: "1px solid var(--tac-border)",
-                padding: "1px 6px",
+                borderRadius: 999,
+                padding: "1px 8px",
               }}
             >
               {p.model}
@@ -626,14 +966,14 @@ function TranscribeStrip({ analysis }) {
         </div>
         <span
           style={{
-            fontSize: 9,
+            fontSize: 12,
             color: "var(--tac-mute)",
-            letterSpacing: "0.08em",
+            fontVariantNumeric: "tabular-nums",
           }}
         >
           {completed}/{total} · {pct}%
           {failed && (
-            <span style={{ color: "#ef4444", marginLeft: 6 }}>
+            <span style={{ color: "var(--tac-danger)", marginLeft: 6 }}>
               · {p.failed} failed
             </span>
           )}
@@ -642,7 +982,8 @@ function TranscribeStrip({ analysis }) {
       <div
         style={{
           height: 4,
-          background: "var(--tac-surface)",
+          background: "var(--tac-surface2)",
+          borderRadius: 2,
           position: "relative",
           overflow: "hidden",
         }}
@@ -654,121 +995,15 @@ function TranscribeStrip({ analysis }) {
             left: 0,
             bottom: 0,
             width: `${pct || 4}%`,
-            background: failed ? "#ef4444" : "#4f8dfe",
+            background: failed ? "var(--tac-danger)" : "var(--tac-accent)",
             transition: "width 240ms ease",
           }}
         />
       </div>
-      <div style={{ color: "var(--tac-mute)", fontSize: 10, lineHeight: 1.5 }}>
-        // groq whisper · {p.strategy || "top engagement"} · transcripts feed
-        the analysis prompt before claude opens the report stream.
+      <div style={{ color: "var(--tac-mute)", fontSize: 11.5, lineHeight: 1.55 }}>
+        Groq Whisper · {p.strategy || "top engagement"} · transcripts feed the
+        analysis prompt before the report stream opens.
       </div>
-    </div>
-  );
-}
-
-function ReportStream({ analysis }) {
-  const text = analysis.text || "";
-  const isRunning = analysis.status === "running";
-  const isTranscribing = analysis.phase === "transcribing";
-  const containerRef = useRef(null);
-  const lastLenRef = useRef(0);
-  const [autoScroll, setAutoScroll] = useState(true);
-
-  useEffect(() => {
-    if (!autoScroll || !containerRef.current) return;
-    if (text.length === lastLenRef.current) return;
-    lastLenRef.current = text.length;
-    containerRef.current.scrollTop = containerRef.current.scrollHeight;
-  }, [text, autoScroll]);
-
-  if (!text && isTranscribing) {
-    return null; // TranscribeStrip is shown above
-  }
-
-  if (!text && !isRunning) {
-    return (
-      <div
-        style={{
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 11,
-          color: "var(--tac-dim)",
-          padding: "16px 0",
-        }}
-      >
-        // no output · run aborted before any deltas arrived
-      </div>
-    );
-  }
-
-  return (
-    <div
-      ref={containerRef}
-      onScroll={(e) => {
-        const el = e.currentTarget;
-        const atBottom =
-          el.scrollHeight - el.scrollTop - el.clientHeight < 24;
-        setAutoScroll(atBottom);
-      }}
-      style={{
-        position: "relative",
-        background: "var(--tac-surface2)",
-        border: "1px solid var(--tac-border)",
-        padding: "16px 18px",
-        maxHeight: "calc(100dvh - 44px - 200px)",
-        overflowY: "auto",
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 12,
-        lineHeight: 1.6,
-        color: "var(--tac-fg)",
-      }}
-      className="tac-report"
-    >
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS}>
-        {text || ""}
-      </ReactMarkdown>
-      {isRunning && (
-        <span
-          style={{
-            display: "inline-block",
-            width: 6,
-            height: 14,
-            background: "#4f8dfe",
-            verticalAlign: "middle",
-            marginLeft: 4,
-            animation: "tac-blink 1s steps(2) infinite",
-          }}
-          aria-hidden
-        />
-      )}
-      {!autoScroll && isRunning && (
-        <button
-          type="button"
-          onClick={() => {
-            setAutoScroll(true);
-            if (containerRef.current) {
-              containerRef.current.scrollTop =
-                containerRef.current.scrollHeight;
-            }
-          }}
-          style={{
-            position: "sticky",
-            bottom: 8,
-            float: "right",
-            background: "#4f8dfe",
-            color: "var(--tac-bg)",
-            border: "1px solid #4f8dfe",
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 9,
-            letterSpacing: "0.1em",
-            padding: "4px 10px",
-            cursor: "pointer",
-            fontWeight: 600,
-          }}
-        >
-          ← JUMP TO LIVE
-        </button>
-      )}
     </div>
   );
 }
@@ -777,14 +1012,13 @@ const MD_COMPONENTS = {
   h1: (p) => (
     <h1
       style={{
-        fontFamily: '"Archivo Black", Impact, sans-serif',
-        fontSize: 18,
+        fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+        fontSize: 19,
+        fontWeight: 600,
         color: "var(--tac-fg)",
-        textTransform: "uppercase",
-        letterSpacing: "-0.02em",
-        margin: "16px 0 8px",
+        margin: "20px 0 10px",
         borderBottom: "1px solid var(--tac-border)",
-        paddingBottom: 4,
+        paddingBottom: 8,
       }}
       {...p}
     />
@@ -792,12 +1026,11 @@ const MD_COMPONENTS = {
   h2: (p) => (
     <h2
       style={{
-        fontFamily: '"Archivo Black", Impact, sans-serif',
-        fontSize: 14,
-        color: "#4f8dfe",
-        textTransform: "uppercase",
-        letterSpacing: "-0.01em",
-        margin: "14px 0 6px",
+        fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+        fontSize: 16,
+        fontWeight: 600,
+        color: "var(--tac-fg)",
+        margin: "18px 0 8px",
       }}
       {...p}
     />
@@ -805,12 +1038,11 @@ const MD_COMPONENTS = {
   h3: (p) => (
     <h3
       style={{
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 12,
+        fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+        fontSize: 14,
+        fontWeight: 600,
         color: "var(--tac-fg)",
-        textTransform: "uppercase",
-        letterSpacing: "0.04em",
-        margin: "12px 0 4px",
+        margin: "14px 0 6px",
       }}
       {...p}
     />
@@ -818,33 +1050,33 @@ const MD_COMPONENTS = {
   h4: (p) => (
     <h4
       style={{
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 11,
+        fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+        fontSize: 13,
+        fontWeight: 600,
         color: "var(--tac-mute)",
-        textTransform: "uppercase",
-        letterSpacing: "0.06em",
-        margin: "10px 0 4px",
+        margin: "12px 0 4px",
       }}
       {...p}
     />
   ),
-  p: (p) => <p style={{ margin: "6px 0", lineHeight: 1.65 }} {...p} />,
-  strong: (p) => <strong style={{ color: "#4f8dfe", fontWeight: 600 }} {...p} />,
-  em: (p) => <em style={{ color: "#7aaeff" }} {...p} />,
+  p: (p) => <p style={{ margin: "8px 0", lineHeight: 1.65 }} {...p} />,
+  strong: (p) => <strong style={{ color: "var(--tac-fg)", fontWeight: 600 }} {...p} />,
+  em: (p) => <em style={{ color: "var(--tac-fg)" }} {...p} />,
   ul: (p) => (
-    <ul style={{ margin: "6px 0 6px 18px", paddingLeft: 4 }} {...p} />
+    <ul style={{ margin: "8px 0 8px 20px", paddingLeft: 4 }} {...p} />
   ),
   ol: (p) => (
-    <ol style={{ margin: "6px 0 6px 18px", paddingLeft: 4 }} {...p} />
+    <ol style={{ margin: "8px 0 8px 20px", paddingLeft: 4 }} {...p} />
   ),
-  li: (p) => <li style={{ margin: "2px 0", lineHeight: 1.55 }} {...p} />,
+  li: (p) => <li style={{ margin: "3px 0", lineHeight: 1.6 }} {...p} />,
   blockquote: (p) => (
     <blockquote
       style={{
-        margin: "8px 0",
-        padding: "6px 12px",
-        borderLeft: "2px solid #4f8dfe",
-        background: "var(--tac-bg)",
+        margin: "10px 0",
+        padding: "8px 14px",
+        borderLeft: "3px solid var(--tac-accent)",
+        background: "var(--tac-surface2)",
+        borderRadius: 4,
         color: "var(--tac-fg)",
       }}
       {...p}
@@ -854,23 +1086,27 @@ const MD_COMPONENTS = {
     inline ? (
       <code
         style={{
-          background: "var(--tac-bg)",
+          background: "var(--tac-surface2)",
           border: "1px solid var(--tac-border)",
-          padding: "0 4px",
-          color: "#fbbf24",
-          fontSize: 11,
+          borderRadius: 4,
+          padding: "1px 5px",
+          color: "var(--tac-fg)",
+          fontFamily: '"JetBrains Mono", monospace',
+          fontSize: 12,
         }}
         {...p}
       />
     ) : (
       <pre
         style={{
-          margin: "8px 0",
-          padding: "10px 12px",
-          background: "var(--tac-bg)",
+          margin: "10px 0",
+          padding: "12px 14px",
+          background: "var(--tac-surface2)",
           border: "1px solid var(--tac-border)",
+          borderRadius: 6,
           color: "var(--tac-fg)",
-          fontSize: 11,
+          fontFamily: '"JetBrains Mono", monospace',
+          fontSize: 12,
           overflow: "auto",
         }}
       >
@@ -882,7 +1118,7 @@ const MD_COMPONENTS = {
       style={{
         border: "none",
         borderTop: "1px solid var(--tac-border)",
-        margin: "12px 0",
+        margin: "16px 0",
       }}
     />
   ),
@@ -891,8 +1127,8 @@ const MD_COMPONENTS = {
       style={{
         borderCollapse: "collapse",
         width: "100%",
-        margin: "8px 0",
-        fontSize: 11,
+        margin: "12px 0",
+        fontSize: 13,
       }}
       {...p}
     />
@@ -901,11 +1137,12 @@ const MD_COMPONENTS = {
     <th
       style={{
         textAlign: "left",
-        padding: "6px 8px",
-        background: "var(--tac-bg)",
-        color: "#4f8dfe",
+        padding: "8px 10px",
+        background: "var(--tac-surface2)",
+        color: "var(--tac-mute)",
         borderBottom: "1px solid var(--tac-border)",
-        fontWeight: 600,
+        fontWeight: 500,
+        fontSize: 12,
       }}
       {...p}
     />
@@ -913,8 +1150,8 @@ const MD_COMPONENTS = {
   td: (p) => (
     <td
       style={{
-        padding: "6px 8px",
-        borderBottom: "1px solid var(--tac-surface)",
+        padding: "8px 10px",
+        borderBottom: "1px solid var(--tac-border)",
         color: "var(--tac-fg)",
         verticalAlign: "top",
       }}
@@ -929,19 +1166,19 @@ function Tab({ active, onClick, children, indicator }) {
       type="button"
       onClick={onClick}
       style={{
-        background: active ? "var(--tac-bg)" : "var(--tac-surface2)",
+        background: active ? "var(--tac-bg)" : "transparent",
         border: "none",
-        borderTop: active ? "2px solid #4f8dfe" : "2px solid transparent",
         color: active ? "var(--tac-fg)" : "var(--tac-mute)",
-        padding: "8px 14px",
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 10,
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
+        padding: "6px 14px",
+        fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+        fontSize: 12.5,
+        fontWeight: active ? 500 : 400,
+        borderRadius: 6,
         cursor: "pointer",
         display: "inline-flex",
         alignItems: "center",
         gap: 8,
+        transition: "background 120ms, color 120ms",
       }}
     >
       {children}
@@ -951,7 +1188,6 @@ function Tab({ active, onClick, children, indicator }) {
 }
 
 function RunMeta({ analysis }) {
-  const ms = Date.now() - (analysis.startedAt || Date.now());
   const status = analysis.status;
   const Icon =
     status === "running"
@@ -963,12 +1199,20 @@ function RunMeta({ analysis }) {
       : XCircle;
   const color =
     status === "running"
-      ? "#4f8dfe"
+      ? "var(--tac-accent)"
       : status === "done"
-      ? "#4AF626"
+      ? "var(--tac-success)"
       : status === "stopped"
-      ? "#fbbf24"
-      : "#ef4444";
+      ? "var(--tac-warning)"
+      : "var(--tac-danger)";
+  const label =
+    status === "running"
+      ? "Running"
+      : status === "done"
+      ? "Done"
+      : status === "stopped"
+      ? "Stopped"
+      : "Error";
 
   return (
     <div
@@ -976,17 +1220,20 @@ function RunMeta({ analysis }) {
         display: "inline-flex",
         alignItems: "center",
         gap: 6,
-        padding: "4px 8px",
-        border: `1px solid ${color}`,
-        background: "var(--tac-bg)",
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 9,
-        letterSpacing: "0.1em",
+        padding: "4px 10px",
+        background: "var(--tac-surface2)",
+        border: "1px solid var(--tac-border)",
+        borderRadius: 999,
+        fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+        fontSize: 11,
         color,
       }}
     >
-      <Icon size={10} weight="regular" />
-      {status.toUpperCase()} · {fmtChars(analysis.text.length)}
+      <Icon size={11} weight="regular" />
+      <span style={{ fontWeight: 500 }}>{label}</span>
+      <span style={{ color: "var(--tac-mute)" }}>
+        · {fmtChars(analysis.text.length)}
+      </span>
       {status === "done" && analysis.usage && (
         <span style={{ color: "var(--tac-mute)" }}>
           · {analysis.usage.input_tokens?.toLocaleString() || 0}/
@@ -999,10 +1246,10 @@ function RunMeta({ analysis }) {
 
 function RunStatusDot({ status }) {
   const map = {
-    running: "#4f8dfe",
-    done: "#4AF626",
-    stopped: "#fbbf24",
-    error: "#ef4444",
+    running: "var(--tac-accent)",
+    done: "var(--tac-success)",
+    stopped: "var(--tac-warning)",
+    error: "var(--tac-danger)",
   };
   const color = map[status] || "var(--tac-mute)";
   return (
@@ -1020,89 +1267,13 @@ function RunStatusDot({ status }) {
   );
 }
 
-function Editor({ body }) {
-  const lines = body.split("\n");
-  return (
-    <pre
-      style={{
-        margin: 0,
-        padding: "12px 0",
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 12,
-        lineHeight: 1.7,
-        color: "var(--tac-fg)",
-        background: "var(--tac-surface2)",
-        border: "1px solid var(--tac-border)",
-      }}
-    >
-      {lines.map((line, i) => (
-        <div
-          key={i}
-          style={{ display: "grid", gridTemplateColumns: "44px 1fr" }}
-        >
-          <span
-            style={{
-              color: "var(--tac-dim)",
-              textAlign: "right",
-              paddingRight: 14,
-              userSelect: "none",
-              borderRight: "1px solid var(--tac-surface)",
-            }}
-          >
-            {String(i + 1).padStart(2, "0")}
-          </span>
-          <code
-            style={{
-              paddingLeft: 14,
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-            }}
-          >
-            {syntaxHighlight(line)}
-          </code>
-        </div>
-      ))}
-    </pre>
-  );
-}
-
-function syntaxHighlight(line) {
-  if (line.trim().startsWith("//")) {
-    return <span style={{ color: "var(--tac-mute)" }}>{line}</span>;
-  }
-  return line.split(/(\s+|"[^"]*"|true|false|\d+)/).map((part, i) => {
-    if (/^"[^"]*"$/.test(part))
-      return (
-        <span key={i} style={{ color: "#4AF626" }}>
-          {part}
-        </span>
-      );
-    if (/^(true|false)$/.test(part))
-      return (
-        <span
-          key={i}
-          style={{ color: part === "true" ? "#4AF626" : "#ef4444" }}
-        >
-          {part}
-        </span>
-      );
-    if (/^\d+$/.test(part))
-      return (
-        <span key={i} style={{ color: "#fbbf24" }}>
-          {part}
-        </span>
-      );
-    return <span key={i}>{part}</span>;
-  });
-}
-
 function AnalyzeEmpty() {
   return <EmptyHint />;
 }
 
 function useBaseName(filename, creator) {
   return useMemo(() => {
-    const base = (filename || "swh-framework").replace(/\.csv$/i, "");
+    const base = (filename || "chiqo").replace(/\.csv$/i, "");
     const handle = creator?.handle ? `-${creator.handle}` : "";
     return `${base}${handle}`;
   }, [filename, creator]);

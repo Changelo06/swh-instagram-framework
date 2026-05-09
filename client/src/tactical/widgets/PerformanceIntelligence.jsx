@@ -1,5 +1,12 @@
 import { memo, useMemo } from "react";
-import { ArrowSquareOut, Warning } from "@phosphor-icons/react";
+import {
+  ArrowSquareOut,
+  Warning,
+  Lightning,
+  TrendDown,
+  Target,
+  ShareNetwork,
+} from "@phosphor-icons/react";
 import WidgetFrame from "./WidgetFrame.jsx";
 import {
   performanceDistribution,
@@ -13,7 +20,7 @@ import {
   deleteCandidateStats,
 } from "../../lib/insights.js";
 
-function PerformanceIntelligence({ rows = [] }) {
+function PerformanceIntelligence({ rows = [], hideHeader = false }) {
   const dist = useMemo(() => performanceDistribution(rows), [rows]);
   const hist = useMemo(() => viewsHistogram(rows, 7), [rows]);
   const rolling = useMemo(() => rollingWindowComparison(rows, 30), [rows]);
@@ -26,11 +33,16 @@ function PerformanceIntelligence({ rows = [] }) {
 
   if (!rows.length) {
     return (
-      <WidgetFrame name="Performance intelligence">
-        <EmptyState>Not enough posts yet.</EmptyState>
+      <WidgetFrame name={hideHeader ? null : "Performance intelligence"}>
+        <EmptyState>Add more posts to unlock this view.</EmptyState>
       </WidgetFrame>
     );
   }
+
+  // Flop rate gets a warning tone only when it crosses a threshold; below
+  // ~30 % it's just a fact about the dataset, not a problem to surface.
+  const flopTone =
+    dist.available && dist.flopRate >= 30 ? "warn" : "default";
 
   return (
     <section
@@ -39,52 +51,34 @@ function PerformanceIntelligence({ rows = [] }) {
         gap: 16,
       }}
     >
-      <header
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          gap: 12,
-        }}
-      >
-        <div>
-          <div
-            style={{
-              fontFamily:
-                '"Inter", ui-sans-serif, system-ui, sans-serif',
-              fontSize: 16,
-              fontWeight: 600,
-              color: "var(--tac-fg)",
-            }}
-          >
-            Performance intelligence
+      {!hideHeader && (
+        <header
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <div>
+            <div className="tac-section-title">
+              Performance intelligence
+            </div>
+            <div className="tac-section-copy">
+              Distribution, consistency, and pruning signals from this dataset.
+            </div>
           </div>
-          <div
-            style={{
-              fontSize: 12,
-              color: "var(--tac-mute)",
-              marginTop: 2,
-            }}
-          >
-            Distribution, consistency, and pruning signals from this dataset.
-          </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Row 1 — KPIs */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: shareInfo.available
-            ? "repeat(4, 1fr)"
-            : "repeat(3, 1fr)",
-          gap: 16,
-        }}
-      >
+      <div className={shareInfo.available ? "tac-grid-4" : "tac-grid-3"}>
         <KpiCard
           label="Hit rate"
+          icon={Lightning}
+          iconTone="accent"
           value={dist.available ? `${dist.hitRate}%` : "—"}
-          helper="Posts above 2× median views"
+          helper="Posts above 2x median views"
           secondary={
             dist.available ? `${dist.hitCount} of ${dist.total} posts` : null
           }
@@ -92,17 +86,27 @@ function PerformanceIntelligence({ rows = [] }) {
         />
         <KpiCard
           label="Flop rate"
+          icon={TrendDown}
+          iconTone={flopTone === "warn" ? "warning" : "default"}
           value={dist.available ? `${dist.flopRate}%` : "—"}
-          helper="Posts below 0.5× median views"
+          helper="Posts below 0.5x median views"
           secondary={
             dist.available ? `${dist.flopCount} of ${dist.total} posts` : null
           }
-          tone="warn"
+          tone={flopTone}
         />
         <KpiCard
           label="Consistency"
+          icon={Target}
+          iconTone={
+            dist.available && dist.cv >= 2.0
+              ? "warning"
+              : dist.available && dist.cv >= 1.0
+              ? "default"
+              : "accent"
+          }
           value={dist.available ? `${dist.consistencyScore}` : "—"}
-          helper="Lower variance means steadier reach"
+          helper="Volatility of post views"
           secondary={dist.available ? dist.consistencyLabel : null}
           tone={
             dist.available && dist.cv >= 2.0
@@ -115,6 +119,8 @@ function PerformanceIntelligence({ rows = [] }) {
         {shareInfo.available && (
           <KpiCard
             label="Share rate"
+            icon={ShareNetwork}
+            iconTone="cyan"
             value={`${shareInfo.avgShareRate}%`}
             helper="Shares per view"
             secondary={`${shareInfo.totalShares.toLocaleString()} total shares`}
@@ -123,49 +129,91 @@ function PerformanceIntelligence({ rows = [] }) {
         )}
       </div>
 
-      {/* Row 2 — Distribution + Rolling window */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 16,
-        }}
-      >
+      {/* Row 2 — Distribution (wide) + Rolling window */}
+      <div className="tac-pi-row">
         <ViewsDistribution hist={hist} />
         <RollingWindow data={rolling} />
       </div>
 
-      {/* Row 3 — Caption length + Posting time + Posting gaps */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr",
-          gap: 16,
-        }}
-      >
-        <CaptionLength data={captionStats} />
-        <PostingHeatmap data={heatmap} />
-        <PostingGaps data={gapStats} />
-      </div>
-
-      {/* Row 4 — Personal bests + Prune candidates */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 16,
-        }}
-      >
+      {/* Row 3 — Personal bests + Review candidates */}
+      <div className="tac-grid-2">
         <PersonalBests data={personalBest} />
         <PruneCandidates data={deleteCands} />
       </div>
+
+      {/* Lower-priority diagnostics, collapsed by default */}
+      <MoreDiagnostics
+        captionStats={captionStats}
+        heatmap={heatmap}
+        gapStats={gapStats}
+      />
     </section>
+  );
+}
+
+function MoreDiagnostics({ captionStats, heatmap, gapStats }) {
+  return (
+    <details
+      style={{
+        background: "var(--tac-surface)",
+        border: "1px solid var(--tac-border)",
+        borderRadius: 10,
+      }}
+    >
+      <summary
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          padding: "12px 18px",
+          cursor: "pointer",
+          listStyle: "none",
+          fontSize: 13,
+          fontWeight: 500,
+          color: "var(--tac-fg)",
+          fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+        }}
+      >
+        <span>More diagnostics</span>
+        <span
+          style={{
+            fontSize: 12,
+            color: "var(--tac-mute)",
+            fontWeight: 400,
+          }}
+        >
+          Caption length · Posting time · Posting gaps
+        </span>
+      </summary>
+      <div
+        style={{
+          padding: "0 18px 18px",
+          display: "grid",
+          gap: 16,
+        }}
+      >
+        <div className="tac-grid-3">
+          <CaptionLength data={captionStats} />
+          <PostingHeatmap data={heatmap} />
+          <PostingGaps data={gapStats} />
+        </div>
+      </div>
+    </details>
   );
 }
 
 // ---------------- KPI card ----------------
 
-function KpiCard({ label, value, helper, secondary, tone = "default" }) {
+function KpiCard({
+  label,
+  value,
+  helper,
+  secondary,
+  tone = "default",
+  icon,
+  iconTone = "default",
+}) {
   const valueColor =
     tone === "ok"
       ? "var(--tac-success)"
@@ -173,19 +221,11 @@ function KpiCard({ label, value, helper, secondary, tone = "default" }) {
       ? "var(--tac-warning)"
       : "var(--tac-fg)";
   return (
-    <WidgetFrame name={label}>
+    <WidgetFrame name={label} iconBadge={icon} iconTone={iconTone}>
       <div style={{ display: "grid", gap: 6 }}>
         <div
-          style={{
-            fontFamily:
-              '"Inter", ui-sans-serif, system-ui, sans-serif',
-            fontSize: 28,
-            fontWeight: 600,
-            color: valueColor,
-            fontVariantNumeric: "tabular-nums",
-            letterSpacing: "-0.01em",
-            lineHeight: 1.05,
-          }}
+          className="tac-kpi-value"
+          style={{ color: valueColor, fontSize: 26 }}
         >
           {value}
         </div>
@@ -270,7 +310,8 @@ function ViewsDistribution({ hist }) {
                       height: "100%",
                       background: isMedian
                         ? "var(--tac-accent)"
-                        : "rgba(79, 141, 254, 0.45)",
+                        : "var(--tac-accent-soft-strong)",
+                      borderRadius: 4,
                       transition: "width 240ms ease",
                     }}
                   />
@@ -508,8 +549,8 @@ function DayRow({ day, cells, max }) {
       {cells.map((c) => {
         const intensity = max ? c.avgViews / max : 0;
         const bg = c.count
-          ? `rgba(79, 141, 254, ${0.1 + intensity * 0.7})`
-          : "var(--tac-surface2)";
+          ? `rgba(33, 208, 122, ${0.1 + intensity * 0.65})`
+          : "var(--tac-surface-inner)";
         return (
           <div
             key={c.block}
@@ -798,9 +839,10 @@ function PruneCandidates({ data }) {
         >
           <Warning size={14} weight="regular" color="var(--tac-warning)" />
           <span>
-            {data.count} post{data.count === 1 ? "" : "s"} fell below the
-            bottom {fmtNum(data.p10Views)} views with weak engagement. Review
-            before considering deletion — context may matter.
+            {data.count} low-performing post
+            {data.count === 1 ? "" : "s"} (under {fmtNum(data.p10Views)} views
+            with weak engagement). Worth reviewing before future strategy
+            decisions — context still matters.
           </span>
         </div>
         <table className="tac-table">

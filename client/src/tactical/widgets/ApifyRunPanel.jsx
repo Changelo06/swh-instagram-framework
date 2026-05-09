@@ -1,4 +1,4 @@
-import {
+﻿import {
   CheckCircle,
   XCircle,
   Clock,
@@ -195,8 +195,8 @@ export default function ApifyRunPanel() {
             fontSize: 12,
             lineHeight: 1.5,
             wordBreak: "break-word",
-            background: "rgba(245, 158, 11, 0.08)",
-            border: "1px solid rgba(245, 158, 11, 0.3)",
+            background: "rgba(245, 184, 46, 0.1)",
+            border: "1px solid rgba(245, 184, 46, 0.25)",
             borderRadius: 6,
             padding: "8px 12px",
           }}

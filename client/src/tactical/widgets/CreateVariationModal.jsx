@@ -1,20 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X as XIcon,
-  Crosshair,
-  Eye,
-  Heart,
-  ChatCircle,
-  ArrowSquareOut,
-  Sparkle,
-  Lightning,
   Check,
   Dna,
   Upload,
-  Microphone,
-  CheckCircle,
-  Users,
 } from "@phosphor-icons/react";
 import { useCsv } from "../state/CsvContext.jsx";
 import { rowHandle } from "../../lib/datasetClassifier.js";
@@ -27,8 +17,8 @@ const CREATOR_HUES = [
   "#6366F1",
   "#3B82F6",
   "#F97316",
-  "#FBBF24",
-  "#EF4444",
+  "var(--tac-warning)",
+  "var(--tac-danger)",
   "#D946EF",
   "#7C3AED",
   "#F43F5E",
@@ -82,7 +72,6 @@ export default function CreateVariationModal({ open, onClose, onCreated, slotsAv
   const [selectedIdxs, setSelectedIdxs] = useState(() => new Set());
   const [count, setCount] = useState(3);
   const [name, setName] = useState("");
-  const [phase, setPhase] = useState("config"); // config | preconfirm
   const [search, setSearch] = useState("");
   const [dna, setDna] = useState(null); // { filename, text, size } | null
   const [dnaError, setDnaError] = useState("");
@@ -93,7 +82,6 @@ export default function CreateVariationModal({ open, onClose, onCreated, slotsAv
     setSelectedIdxs(new Set());
     setCount(3);
     setName("");
-    setPhase("config");
     setSearch("");
     setDna(null);
     setDnaError("");
@@ -160,9 +148,6 @@ export default function CreateVariationModal({ open, onClose, onCreated, slotsAv
       return next;
     });
   };
-
-  const proceed = () => setPhase("preconfirm");
-  const back = () => setPhase("config");
 
   const fire = () => {
     if (!canProceed) return;
@@ -239,14 +224,17 @@ export default function CreateVariationModal({ open, onClose, onCreated, slotsAv
             <div
               style={{
                 pointerEvents: "auto",
-                background: "var(--tac-surface2)",
+                background: "var(--tac-surface)",
                 border: "1px solid var(--tac-border)",
+                borderRadius: 12,
                 width: "min(720px, 100%)",
                 maxHeight: "calc(100dvh - 80px)",
                 display: "grid",
                 gridTemplateRows: "auto 1fr auto",
-                fontFamily: '"JetBrains Mono", monospace',
+                fontFamily:
+                  '"Inter", ui-sans-serif, system-ui, sans-serif',
                 position: "relative",
+                boxShadow: "0 24px 60px -20px rgba(0, 0, 0, 0.6)",
               }}
             >
               <header
@@ -260,172 +248,106 @@ export default function CreateVariationModal({ open, onClose, onCreated, slotsAv
                 }}
               >
                 <div>
-                  <div className="tac-label">
-                    SCRIPT FORGE /{" "}
-                    {isBatch ? `BATCH × ${selectedCount}` : "NEW PAGE"}
+                  <div className="tac-section-title" style={{ fontSize: 17 }}>
+                    Create scripts
                   </div>
-                  <div
-                    className="tac-display"
-                    style={{ fontSize: 18, color: "var(--tac-fg)", marginTop: 4 }}
-                  >
-                    {phase === "config" ? "FORGE VARIATION" : "PRE-CONFIRM"}
+                  <div className="tac-section-copy">
+                    {isBatch
+                      ? `${selectedCount} reels selected — generate ${count} script${count === 1 ? "" : "s"} from each.`
+                      : "Choose a source reel and generate record-ready script variations."}
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={onClose}
                   aria-label="Close"
-                  style={{
-                    background: "transparent",
-                    border: "1px solid var(--tac-border)",
-                    color: "var(--tac-mute)",
-                    padding: 6,
-                    cursor: "pointer",
-                    transition: "color 120ms, border-color 120ms",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = "var(--tac-fg)";
-                    e.currentTarget.style.borderColor = "#4f8dfe";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = "var(--tac-mute)";
-                    e.currentTarget.style.borderColor = "var(--tac-border)";
-                  }}
+                  className="tac-btn"
+                  style={{ padding: 6 }}
                 >
-                  <XIcon size={13} weight="regular" />
+                  <XIcon size={14} weight="regular" />
                 </button>
               </header>
 
-              {phase === "config" ? (
-                <ConfigBody
-                  visible={visible}
-                  fullCount={ranked.length}
-                  selectedIdxs={selectedIdxs}
-                  toggleSelected={toggleSelected}
-                  clearSelection={clearSelection}
-                  selectVisibleTop={selectVisibleTop}
-                  selectedCount={selectedCount}
-                  hiddenSelected={hiddenSelected}
-                  isBatch={isBatch}
-                  count={count}
-                  setCount={setCount}
-                  name={name}
-                  setName={setName}
-                  search={search}
-                  setSearch={setSearch}
-                  filename={filename}
-                  dna={dna}
-                  setDna={setDna}
-                  dnaError={dnaError}
-                  setDnaError={setDnaError}
-                  creators={creators}
-                  creatorFilter={creatorFilter}
-                  setCreatorFilter={setCreatorFilter}
-                  multiCreator={multiCreator}
-                  slotCap={slotCap}
-                  overSlotCap={overSlotCap}
-                />
-              ) : (
-                <PreconfirmBody
-                  selectedRanked={selectedRanked}
-                  count={count}
-                  isBatch={isBatch}
-                  name={name}
-                  filename={filename}
-                  dna={dna}
-                  multiCreator={multiCreator}
-                />
-              )}
+              <ConfigBody
+                visible={visible}
+                fullCount={ranked.length}
+                selectedIdxs={selectedIdxs}
+                toggleSelected={toggleSelected}
+                clearSelection={clearSelection}
+                selectVisibleTop={selectVisibleTop}
+                selectedCount={selectedCount}
+                hiddenSelected={hiddenSelected}
+                isBatch={isBatch}
+                count={count}
+                setCount={setCount}
+                name={name}
+                setName={setName}
+                search={search}
+                setSearch={setSearch}
+                filename={filename}
+                dna={dna}
+                setDna={setDna}
+                dnaError={dnaError}
+                setDnaError={setDnaError}
+                creators={creators}
+                creatorFilter={creatorFilter}
+                setCreatorFilter={setCreatorFilter}
+                multiCreator={multiCreator}
+                slotCap={slotCap}
+                overSlotCap={overSlotCap}
+              />
 
               <footer
                 style={{
-                  padding: "12px 20px",
+                  padding: "14px 20px",
                   borderTop: "1px solid var(--tac-border)",
+                  background: "var(--tac-surface2)",
+                  borderBottomLeftRadius: 12,
+                  borderBottomRightRadius: 12,
                   display: "flex",
                   justifyContent: "space-between",
                   gap: 8,
                   alignItems: "center",
                 }}
               >
-                {phase === "config" ? (
-                  <>
-                    <span
-                      style={{
-                        fontSize: 9,
-                        color: overSlotCap
-                          ? "#ef4444"
-                          : selectedCount === 0
-                          ? "var(--tac-mute)"
-                          : "#4f8dfe",
-                        letterSpacing: "0.1em",
-                      }}
-                    >
-                      {overSlotCap
-                        ? `// ${selectedCount} picked · only ${slotCap} notepad slot${slotCap > 1 ? "s" : ""} free`
-                        : selectedCount === 0
-                        ? "// pick at least one reel — click rows to toggle"
-                        : isBatch
-                        ? `BATCH READY · ${selectedCount} pages will spawn`
-                        : "READY · click PRE-CONFIRM"}
-                    </span>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button
-                        type="button"
-                        onClick={onClose}
-                        className="tac-btn"
-                        style={{ padding: "8px 14px", fontSize: 11 }}
-                      >
-                        CANCEL
-                      </button>
-                      <button
-                        type="button"
-                        onClick={proceed}
-                        disabled={!canProceed}
-                        className="tac-btn tac-btn-accent"
-                        style={{
-                          padding: "8px 16px",
-                          fontSize: 11,
-                          opacity: canProceed ? 1 : 0.4,
-                          cursor: canProceed ? "pointer" : "not-allowed",
-                        }}
-                      >
-                        PRE-CONFIRM
-                        <Check size={11} weight="bold" />
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <span
-                      style={{
-                        fontSize: 9,
-                        color: "#fbbf24",
-                        letterSpacing: "0.1em",
-                      }}
-                    >
-                      // confirm to dispatch run · stream begins immediately
-                    </span>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button
-                        type="button"
-                        onClick={back}
-                        className="tac-btn"
-                        style={{ padding: "8px 14px", fontSize: 11 }}
-                      >
-                        ← EDIT
-                      </button>
-                      <button
-                        type="button"
-                        onClick={fire}
-                        className="tac-btn tac-btn-accent"
-                        style={{ padding: "8px 16px", fontSize: 11 }}
-                      >
-                        {isBatch ? `FIRE × ${selectedCount}` : "FIRE RUN"}
-                        <Sparkle size={11} weight="fill" />
-                      </button>
-                    </div>
-                  </>
-                )}
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: overSlotCap ? "var(--tac-danger)" : "var(--tac-mute)",
+                  }}
+                >
+                  {overSlotCap
+                    ? `${selectedCount} picked — only ${slotCap} session slot${slotCap > 1 ? "s" : ""} free`
+                    : selectedCount === 0
+                    ? "Pick at least one reel to continue"
+                    : isBatch
+                    ? `${selectedCount} reels selected — one session per reel`
+                    : `Ready to generate ${count} script${count === 1 ? "" : "s"}`}
+                </span>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="tac-btn"
+                    style={{ padding: "8px 14px", fontSize: 13 }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={fire}
+                    disabled={!canProceed}
+                    className="tac-btn tac-btn-accent"
+                    style={{
+                      padding: "8px 18px",
+                      fontSize: 13,
+                      opacity: canProceed ? 1 : 0.4,
+                      cursor: canProceed ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    Generate scripts
+                  </button>
+                </div>
               </footer>
             </div>
           </motion.div>
@@ -471,46 +393,19 @@ function ConfigBody({
   return (
     <div
       style={{
-        padding: "16px 20px",
+        padding: "20px 22px",
         overflowY: "auto",
         display: "grid",
-        gap: 16,
+        gap: 22,
       }}
     >
       <Section
-        label="01 / PAGE NAME"
-        sub={
-          nameDisabled
-            ? "auto-named per page in batch mode"
-            : "optional · leave blank for auto-naming"
-        }
-      >
-        <input
-          className="tac-input"
-          placeholder={
-            nameDisabled
-              ? "auto: {CREATOR}_{SHORTCODE}"
-              : "e.g. MORNING_HOOKS_v1"
-          }
-          value={nameDisabled ? "" : name}
-          onChange={(e) => setName(e.target.value.toUpperCase())}
-          disabled={nameDisabled}
-          maxLength={40}
-          style={{
-            fontSize: 11,
-            padding: "8px 10px",
-            letterSpacing: "0.04em",
-            opacity: nameDisabled ? 0.5 : 1,
-          }}
-        />
-      </Section>
-
-      <Section
-        label="02 / SOURCE REELS"
+        step={1}
+        label="Choose source reels"
         sub={
           multiCreator
-            ? "click rows to toggle · ALL creators by default"
-            : "click rows to toggle · multi-select supported"
+            ? "Click rows to toggle. Filter by creator if needed."
+            : "Click rows to toggle. Multi-select supported."
         }
       >
         {multiCreator && (
@@ -523,20 +418,21 @@ function ConfigBody({
 
         <input
           className="tac-input"
-          placeholder="search caption or url..."
+          placeholder="Search caption or URL"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{
-            fontSize: 11,
-            padding: "6px 10px",
-            margin: "8px 0 6px",
+            fontSize: 13,
+            padding: "8px 12px",
+            margin: "10px 0 8px",
           }}
         />
 
         <div
           style={{
             border: "1px solid var(--tac-border)",
-            background: "var(--tac-bg)",
+            borderRadius: 8,
+            background: "var(--tac-surface-inner)",
             maxHeight: 260,
             overflowY: "auto",
           }}
@@ -544,13 +440,13 @@ function ConfigBody({
           {visible.length === 0 && (
             <div
               style={{
-                padding: 16,
-                color: "var(--tac-dim)",
-                fontSize: 10,
+                padding: 20,
+                color: "var(--tac-mute)",
+                fontSize: 13,
                 textAlign: "center",
               }}
             >
-              // no rows match the current filter
+              No reels match this filter.
             </div>
           )}
           {visible.slice(0, 80).map((item, i) => (
@@ -571,21 +467,24 @@ function ConfigBody({
             justifyContent: "space-between",
             alignItems: "center",
             gap: 12,
-            marginTop: 6,
-            fontSize: 9,
-            color: "var(--tac-dim)",
-            letterSpacing: "0.04em",
+            marginTop: 8,
+            fontSize: 12,
+            color: "var(--tac-mute)",
             flexWrap: "wrap",
           }}
         >
           <span>
-            {visible.length} of {fullCount} visible · sorted by views desc
+            {visible.length} of {fullCount} reels · sorted by views
           </span>
-          <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+          <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
             <span
               style={{
-                color: overSlotCap ? "#ef4444" : selectedCount > 0 ? "#4f8dfe" : "var(--tac-dim)",
-                fontWeight: 600,
+                color: overSlotCap
+                  ? "var(--tac-danger)"
+                  : selectedCount > 0
+                  ? "var(--tac-accent)"
+                  : "var(--tac-mute)",
+                fontWeight: 500,
               }}
             >
               {selectedCount} selected
@@ -599,74 +498,49 @@ function ConfigBody({
               <button
                 type="button"
                 onClick={clearSelection}
-                style={{
-                  background: "transparent",
-                  border: "1px solid var(--tac-border)",
-                  color: "var(--tac-mute)",
-                  fontFamily: '"JetBrains Mono", monospace',
-                  fontSize: 9,
-                  letterSpacing: "0.06em",
-                  padding: "1px 6px",
-                  cursor: "pointer",
-                }}
+                className="tac-btn"
+                style={{ padding: "3px 10px", fontSize: 12 }}
               >
-                CLEAR
+                Clear
               </button>
             )}
             {visible.length > 0 && selectedCount < Math.min(slotCap, visible.length) && (
               <button
                 type="button"
                 onClick={() => selectVisibleTop(Math.min(slotCap, visible.length, 5))}
-                title="Add the top reels in the current view to the batch"
-                style={{
-                  background: "transparent",
-                  border: "1px solid var(--tac-border)",
-                  color: "#4f8dfe",
-                  fontFamily: '"JetBrains Mono", monospace',
-                  fontSize: 9,
-                  letterSpacing: "0.06em",
-                  padding: "1px 6px",
-                  cursor: "pointer",
-                }}
+                title="Add the top reels in this view"
+                className="tac-btn"
+                style={{ padding: "3px 10px", fontSize: 12 }}
               >
-                + TOP {Math.min(slotCap, visible.length, 5)}
+                + Top {Math.min(slotCap, visible.length, 5)}
               </button>
             )}
           </span>
         </div>
 
         {overSlotCap && (
-          <div
-            style={{
-              marginTop: 6,
-              padding: "8px 10px",
-              background: "#1f1212",
-              border: "1px solid #ef4444",
-              color: "#ef4444",
-              fontSize: 10,
-              letterSpacing: "0.04em",
-              lineHeight: 1.5,
-            }}
-          >
-            // {selectedCount - slotCap} pick{selectedCount - slotCap > 1 ? "s" : ""} over notepad capacity. Remove pages or trim selection.
+          <div className="tac-error-banner" style={{ marginTop: 8 }}>
+            {selectedCount - slotCap} pick{selectedCount - slotCap > 1 ? "s" : ""} over the available session slots. Remove a page or trim the selection.
           </div>
         )}
       </Section>
 
       <Section
-        label="03 / VARIATION COUNT"
+        step={2}
+        label="Choose script count"
         sub={
           isBatch
-            ? `applies to all ${selectedCount} pages in the batch`
-            : "how many script blueprints to generate"
+            ? `Generate this many scripts from each of the ${selectedCount} selected reels.`
+            : "Generate 1–5 script options from this reel."
         }
       >
         <CountChips value={count} onChange={setCount} />
       </Section>
 
       <Section
-        label="04 / DNA OVERRIDE"
-        sub="optional · upload .md / .txt / .json to reshape variations"
+        step={3}
+        label="Add brand voice"
+        sub="Optional. Upload a brief so scripts match your tone, style, and constraints."
       >
         <DnaUpload
           dna={dna}
@@ -690,16 +564,13 @@ function CreatorFilterChips({ creators, value, onChange }) {
         display: "flex",
         flexWrap: "wrap",
         gap: 6,
-        padding: 6,
-        background: "rgba(79, 141, 254, 0.06)",
-        border: "1px dashed #4f8dfe",
       }}
     >
       <FilterChip
-        label="ALL"
+        label="All creators"
         count={creators.reduce((s, c) => s + (c.count || 0), 0)}
         active={value === ALL_CREATORS}
-        hue="#4f8dfe"
+        hue="var(--tac-accent)"
         onClick={() => onChange(ALL_CREATORS)}
       />
       {creators.map((c, idx) => {
@@ -729,32 +600,29 @@ function FilterChip({ label, count, active, hue, onClick }) {
         display: "inline-flex",
         alignItems: "center",
         gap: 6,
-        padding: "4px 10px",
-        background: active ? `${hue}1f` : "var(--tac-bg)",
+        padding: "5px 10px",
+        background: active ? `${hue}1f` : "var(--tac-surface2)",
         border: `1px solid ${active ? hue : "var(--tac-border)"}`,
+        borderRadius: 999,
         color: active ? "var(--tac-fg)" : "var(--tac-mute)",
         cursor: "pointer",
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 10,
-        letterSpacing: "0.04em",
+        fontSize: 12,
         transition: "background 120ms, border-color 120ms, color 120ms",
       }}
     >
       <span
         style={{
-          width: 5,
-          height: 5,
+          width: 6,
+          height: 6,
+          borderRadius: 999,
           background: hue,
         }}
       />
       <span style={{ fontWeight: active ? 600 : 500 }}>{label}</span>
       <span
         style={{
-          fontSize: 8,
-          color: active ? "var(--tac-fg)" : "var(--tac-dim)",
-          background: active ? `${hue}33` : "var(--tac-surface)",
-          padding: "1px 5px",
-          letterSpacing: "0.06em",
+          fontSize: 11,
+          color: "var(--tac-mute)",
           fontVariantNumeric: "tabular-nums",
         }}
       >
@@ -793,19 +661,19 @@ function DnaUpload({ dna, setDna, dnaError, setDnaError }) {
           gridTemplateColumns: "auto 1fr auto",
           alignItems: "center",
           gap: 12,
-          padding: "10px 12px",
-          background: "rgba(79, 141, 254, 0.06)",
-          border: "1px dashed #4f8dfe",
+          padding: "12px 14px",
+          background: "var(--tac-surface2)",
+          border: "1px solid var(--tac-border)",
+          borderRadius: 8,
         }}
       >
-        <Dna size={16} weight="regular" color="#4f8dfe" />
+        <Dna size={18} weight="regular" color="var(--tac-accent)" />
         <div style={{ minWidth: 0 }}>
           <div
             style={{
-              fontSize: 11,
+              fontSize: 13,
               color: "var(--tac-fg)",
               fontWeight: 600,
-              letterSpacing: "0.04em",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -816,10 +684,9 @@ function DnaUpload({ dna, setDna, dnaError, setDnaError }) {
           </div>
           <div
             style={{
-              fontSize: 9,
+              fontSize: 12,
               color: "var(--tac-mute)",
               marginTop: 2,
-              letterSpacing: "0.06em",
             }}
           >
             {fmtBytes(dna.size)} · {dna.text.split(/\s+/).length} tokens · loaded
@@ -828,40 +695,18 @@ function DnaUpload({ dna, setDna, dnaError, setDnaError }) {
         <button
           type="button"
           onClick={() => setDna(null)}
-          aria-label="Remove DNA"
-          style={{
-            background: "transparent",
-            border: "1px solid var(--tac-border)",
-            color: "var(--tac-mute)",
-            padding: "3px 8px",
-            cursor: "pointer",
-            fontSize: 9,
-            letterSpacing: "0.1em",
-            fontFamily: '"JetBrains Mono", monospace',
-            transition: "color 120ms, border-color 120ms",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = "var(--tac-fg)";
-            e.currentTarget.style.borderColor = "#ef4444";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = "var(--tac-mute)";
-            e.currentTarget.style.borderColor = "var(--tac-border)";
-          }}
+          aria-label="Remove brand voice brief"
+          className="tac-btn"
+          style={{ padding: "5px 12px", fontSize: 12 }}
         >
-          REMOVE
+          Remove
         </button>
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gap: 6,
-      }}
-    >
+    <div style={{ display: "grid", gap: 8 }}>
       <button
         type="button"
         onClick={onPick}
@@ -870,18 +715,20 @@ function DnaUpload({ dna, setDna, dnaError, setDnaError }) {
           gridTemplateColumns: "auto 1fr auto",
           alignItems: "center",
           gap: 12,
-          padding: "12px 14px",
-          background: "var(--tac-bg)",
-          border: "1px dashed var(--tac-border)",
+          padding: "14px 16px",
+          background: "var(--tac-surface2)",
+          border: "1px solid var(--tac-border)",
+          borderRadius: 8,
           color: "var(--tac-mute)",
           cursor: "pointer",
           textAlign: "left",
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 11,
-          transition: "border-color 120ms, color 120ms",
+          fontFamily:
+            '"Inter", ui-sans-serif, system-ui, sans-serif',
+          fontSize: 13,
+          transition: "border-color 120ms, color 120ms, background 120ms",
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = "#4f8dfe";
+          e.currentTarget.style.borderColor = "var(--tac-accent)";
           e.currentTarget.style.color = "var(--tac-fg)";
         }}
         onMouseLeave={(e) => {
@@ -889,31 +736,29 @@ function DnaUpload({ dna, setDna, dnaError, setDnaError }) {
           e.currentTarget.style.color = "var(--tac-mute)";
         }}
       >
-        <Upload size={14} weight="regular" color="#4f8dfe" />
+        <Upload size={16} weight="regular" color="var(--tac-accent)" />
         <div>
           <div style={{ color: "var(--tac-fg)", fontWeight: 600 }}>
-            Upload DNA brief
+            Upload a brand voice brief
           </div>
           <div
             style={{
-              fontSize: 9,
+              fontSize: 12,
               color: "var(--tac-mute)",
               marginTop: 2,
-              letterSpacing: "0.04em",
             }}
           >
-            voice / style / constraints · max 200KB · funnel into variation
-            context window
+            Voice, style, offers, constraints. Up to 200KB.
           </div>
         </div>
         <span
           style={{
-            fontSize: 9,
+            fontSize: 11,
             color: "var(--tac-dim)",
-            letterSpacing: "0.1em",
+            letterSpacing: "0.05em",
           }}
         >
-          .MD .TXT .JSON
+          .md  ·  .txt  ·  .json
         </span>
       </button>
       <input
@@ -927,29 +772,10 @@ function DnaUpload({ dna, setDna, dnaError, setDnaError }) {
         }}
       />
       {dnaError && (
-        <div
-          style={{
-            fontSize: 10,
-            color: "#ef4444",
-            letterSpacing: "0.04em",
-          }}
-        >
-          // {dnaError}
+        <div style={{ fontSize: 12, color: "var(--tac-danger)" }}>
+          {dnaError}
         </div>
       )}
-      <div
-        style={{
-          fontSize: 9,
-          color: "var(--tac-dim)",
-          letterSpacing: "0.04em",
-          lineHeight: 1.6,
-        }}
-      >
-        // when a DNA brief is attached, the source video&apos;s emotional
-        weights + creator dna are funneled into a variation context window
-        and reshaped against your uploaded voice. without it, variations
-        clone the source style as-is.
-      </div>
     </div>
   );
 }
@@ -960,223 +786,8 @@ function fmtBytes(n) {
   return `${(n / 1024 / 1024).toFixed(1)}MB`;
 }
 
-function PreconfirmBody({ selectedRanked, count, isBatch, name, filename, dna, multiCreator }) {
-  if (!selectedRanked || selectedRanked.length === 0) return null;
-  const single = selectedRanked[0];
-  // Per-creator tally for the batch summary line. Stable hue from the
-  // creator's index in the global creators array (already attached to each
-  // ranked item) so the dot color matches what the operator saw on the row.
-  const creatorTally = selectedRanked.reduce((acc, s) => {
-    const key = s.creator.handle;
-    if (!acc[key]) acc[key] = { creator: s.creator, idx: s.creatorIdx, count: 0 };
-    acc[key].count++;
-    return acc;
-  }, {});
-
-  return (
-    <div
-      style={{
-        padding: "20px",
-        overflowY: "auto",
-        display: "grid",
-        gap: 14,
-      }}
-    >
-      <div
-        style={{
-          padding: "12px 14px",
-          background: "var(--tac-bg)",
-          border: "1px solid var(--tac-border)",
-          borderLeft: "3px solid #fbbf24",
-          color: "var(--tac-fg)",
-          fontSize: 11,
-          lineHeight: 1.6,
-        }}
-      >
-        {isBatch ? (
-          <>
-            Forge will dispatch{" "}
-            <span style={{ color: "#4f8dfe" }}>{selectedRanked.length} parallel runs</span>{" "}
-            to /api/analyze · scripts-only — one streaming page per selected reel.
-          </>
-        ) : (
-          <>
-            Forge will dispatch a streaming run to{" "}
-            <span style={{ color: "#4f8dfe" }}>/api/analyze · scripts-only</span>{" "}
-            with the selected source video at the head of the payload.
-          </>
-        )}
-        <br />
-        <span style={{ color: "var(--tac-mute)" }}>
-          // streaming starts immediately on FIRE — you can stop each page
-          mid-run from its tab.
-        </span>
-      </div>
-
-      <div style={{ display: "grid", gap: 1, background: "var(--tac-border)" }}>
-        <KV
-          k={isBatch ? "PAGES" : "PAGE NAME"}
-          v={
-            isBatch
-              ? `${selectedRanked.length} pages · auto-named per reel`
-              : name.trim() || autoNameFromItem(single)
-          }
-          accent
-        />
-        {multiCreator && (
-          <KV
-            k="CREATORS"
-            v={
-              <span
-                style={{
-                  display: "inline-flex",
-                  flexWrap: "wrap",
-                  gap: 8,
-                }}
-              >
-                {Object.values(creatorTally).map((t) => {
-                  const hue = CREATOR_HUES[t.idx % CREATOR_HUES.length];
-                  return (
-                    <span
-                      key={t.creator.handle}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 5,
-                        fontSize: 11,
-                      }}
-                    >
-                      <span
-                        style={{ width: 6, height: 6, background: hue }}
-                      />
-                      <span style={{ color: "var(--tac-fg)" }}>
-                        @{t.creator.displayHandle || t.creator.handle}
-                      </span>
-                      <span style={{ color: "var(--tac-mute)" }}>· {t.count}</span>
-                    </span>
-                  );
-                })}
-              </span>
-            }
-          />
-        )}
-        <KV
-          k="VARIATIONS / PAGE"
-          v={`${count} blueprint${count > 1 ? "s" : ""} × ${selectedRanked.length} page${selectedRanked.length > 1 ? "s" : ""} = ${count * selectedRanked.length} total`}
-        />
-        <KV k="DATASET" v={filename || "—"} />
-        <KV
-          k="DNA OVERRIDE"
-          v={
-            dna ? (
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  color: "#4f8dfe",
-                }}
-              >
-                <Dna size={11} weight="regular" />
-                {dna.filename} · {fmtBytes(dna.size)}
-              </span>
-            ) : (
-              <span style={{ color: "var(--tac-mute)" }}>none · clone source style as-is</span>
-            )
-          }
-        />
-      </div>
-
-      <div style={{ display: "grid", gap: 6 }}>
-        <div
-          style={{
-            fontSize: 9,
-            color: "#4f8dfe",
-            letterSpacing: "0.18em",
-            fontWeight: 600,
-          }}
-        >
-          {isBatch ? `BATCH MANIFEST · ${selectedRanked.length}` : "SOURCE REEL"}
-        </div>
-        <div
-          style={{
-            border: "1px solid var(--tac-border)",
-            background: "var(--tac-bg)",
-            maxHeight: 200,
-            overflowY: "auto",
-          }}
-        >
-          {selectedRanked.map((item, i) => {
-            const hue = CREATOR_HUES[item.creatorIdx % CREATOR_HUES.length];
-            const cap = String(item.row.caption || "").trim().replace(/\s+/g, " ");
-            return (
-              <div
-                key={item.rowIdx}
-                style={{
-                  padding: "8px 12px",
-                  borderBottom:
-                    i === selectedRanked.length - 1
-                      ? "none"
-                      : "1px solid var(--tac-surface)",
-                  display: "grid",
-                  gridTemplateColumns: "auto 1fr auto",
-                  alignItems: "center",
-                  gap: 10,
-                  fontSize: 10,
-                }}
-              >
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 5,
-                    color: "var(--tac-fg)",
-                    fontWeight: 600,
-                  }}
-                >
-                  <span style={{ width: 5, height: 5, background: hue }} />
-                  @{item.creator.displayHandle || item.creator.handle}
-                </span>
-                <span
-                  style={{
-                    color: "var(--tac-mute)",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    minWidth: 0,
-                  }}
-                  title={cap || item.row.url}
-                >
-                  {cap || (item.row.url ? shortenUrl(item.row.url) : "(no caption)")}
-                </span>
-                <span
-                  style={{
-                    display: "inline-flex",
-                    gap: 8,
-                    color: "var(--tac-dim)",
-                    fontSize: 9,
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  <Stat icon={Eye} label="VWS" value={fmt(item.views)} />
-                  <Stat icon={Heart} label="LKS" value={fmt(item.likes)} />
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function SourceRow({ item, rank, selected, showCreator, onClick }) {
   const cap = String(item.row.caption || "").trim().replace(/\s+/g, " ");
-  const url = item.row.url || "";
-  const hasAudio = !!item.row._audioUrl;
-  const hasTranscript = !!(
-    item.row["reel-transcript"] && String(item.row["reel-transcript"]).trim()
-  );
   const creatorHue = CREATOR_HUES[item.creatorIdx % CREATOR_HUES.length];
   const creatorLabel = item.creator?.displayHandle || item.creator?.handle || "";
   return (
@@ -1187,31 +798,31 @@ function SourceRow({ item, rank, selected, showCreator, onClick }) {
       style={{
         width: "100%",
         textAlign: "left",
-        background: selected ? "var(--tac-surface)" : "transparent",
+        background: selected ? "var(--tac-surface2)" : "transparent",
         borderLeft: selected
-          ? `2px solid ${creatorHue}`
-          : "2px solid transparent",
-        borderTop: rank === 1 ? "none" : "1px solid var(--tac-surface)",
-        border: rank === 1 ? "2px solid transparent" : undefined,
-        boxShadow: selected ? `inset 0 0 0 1px ${creatorHue}33` : "none",
-        padding: "10px 12px",
+          ? `3px solid ${creatorHue}`
+          : "3px solid transparent",
+        borderTop: rank === 1 ? "none" : "1px solid var(--tac-border)",
+        padding: "10px 14px",
         display: "grid",
-        gridTemplateColumns: "20px 32px 1fr auto",
-        gap: 10,
+        gridTemplateColumns: "20px 28px 1fr auto",
+        gap: 12,
         alignItems: "center",
         color: selected ? "var(--tac-fg)" : "var(--tac-mute)",
         cursor: "pointer",
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 10,
+        fontFamily:
+          '"Inter", ui-sans-serif, system-ui, sans-serif',
+        fontSize: 13,
         transition: "background 120ms, color 120ms",
       }}
     >
       <span
         style={{
-          width: 14,
-          height: 14,
-          border: `1px solid ${selected ? creatorHue : "var(--tac-border)"}`,
+          width: 16,
+          height: 16,
+          border: `1.5px solid ${selected ? creatorHue : "var(--tac-border-strong)"}`,
           background: selected ? creatorHue : "transparent",
+          borderRadius: 4,
           display: "grid",
           placeItems: "center",
           color: "var(--tac-bg)",
@@ -1219,26 +830,28 @@ function SourceRow({ item, rank, selected, showCreator, onClick }) {
         }}
         aria-hidden
       >
-        {selected && <Check size={9} weight="bold" />}
+        {selected && <Check size={10} weight="bold" />}
       </span>
       <span
         style={{
-          color: "var(--tac-dim)",
+          color: "var(--tac-mute)",
           fontVariantNumeric: "tabular-nums",
+          fontSize: 12,
         }}
       >
-        #{String(rank).padStart(2, "0")}
+        {String(rank).padStart(2, "0")}
       </span>
       <div style={{ minWidth: 0 }}>
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 6,
+            gap: 8,
             color: "var(--tac-fg)",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
+            fontWeight: 500,
           }}
           title={cap}
         >
@@ -1247,68 +860,25 @@ function SourceRow({ item, rank, selected, showCreator, onClick }) {
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                gap: 3,
-                fontSize: 8,
+                gap: 4,
+                fontSize: 11,
                 color: creatorHue,
-                border: `1px solid ${creatorHue}`,
-                padding: "0 4px",
-                letterSpacing: "0.08em",
-                fontWeight: 700,
+                background: `${creatorHue}1f`,
+                padding: "2px 8px",
+                borderRadius: 999,
+                fontWeight: 500,
                 flexShrink: 0,
               }}
             >
-              <span style={{ width: 4, height: 4, background: creatorHue }} />
+              <span
+                style={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: 999,
+                  background: creatorHue,
+                }}
+              />
               @{creatorLabel}
-            </span>
-          )}
-          {hasTranscript ? (
-            <span
-              title="Groq transcript already captured"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 3,
-                fontSize: 8,
-                color: "#4AF626",
-                border: "1px solid #4AF626",
-                padding: "0 4px",
-                letterSpacing: "0.1em",
-                fontWeight: 700,
-              }}
-            >
-              <CheckCircle size={8} weight="fill" />
-              CACHED
-            </span>
-          ) : hasAudio ? (
-            <span
-              title="Has audio URL — Groq Whisper will transcribe on RUN"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 3,
-                fontSize: 8,
-                color: "#4f8dfe",
-                border: "1px solid #4f8dfe",
-                padding: "0 4px",
-                letterSpacing: "0.1em",
-                fontWeight: 700,
-              }}
-            >
-              <Microphone size={8} weight="regular" />
-              MIC
-            </span>
-          ) : (
-            <span
-              title="No audio URL detected — analysis runs on caption only"
-              style={{
-                fontSize: 8,
-                color: "var(--tac-dim)",
-                border: "1px solid var(--tac-border)",
-                padding: "0 4px",
-                letterSpacing: "0.1em",
-              }}
-            >
-              NO AUDIO
             </span>
           )}
           {cap || <span style={{ color: "var(--tac-dim)" }}>(no caption)</span>}
@@ -1316,60 +886,78 @@ function SourceRow({ item, rank, selected, showCreator, onClick }) {
         <div
           style={{
             display: "flex",
-            gap: 10,
+            gap: 8,
             color: "var(--tac-mute)",
-            marginTop: 3,
-            fontSize: 9,
+            marginTop: 4,
+            fontSize: 12,
+            fontVariantNumeric: "tabular-nums",
           }}
         >
-          <Stat icon={Eye} label="VWS" value={fmt(item.views)} />
-          <Stat icon={Heart} label="LKS" value={fmt(item.likes)} />
-          <Stat icon={ChatCircle} label="CMT" value={fmt(item.comments)} />
+          <span>{fmt(item.views)} views</span>
+          <span style={{ color: "var(--tac-dim)" }}>·</span>
+          <span>{fmt(item.likes)} likes</span>
+          <span style={{ color: "var(--tac-dim)" }}>·</span>
+          <span>{fmt(item.comments)} comments</span>
         </div>
       </div>
-      {url && (
-        <span
-          style={{
-            color: "var(--tac-dim)",
-            fontSize: 9,
-            border: "1px solid var(--tac-border)",
-            padding: "2px 6px",
-            letterSpacing: "0.08em",
-          }}
-        >
-          {shortenUrl(url)}
-        </span>
-      )}
     </button>
   );
 }
 
-function Section({ label, sub, children }) {
+function Section({ step, label, sub, children }) {
   return (
     <div>
       <div
         style={{
           display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          marginBottom: 6,
+          alignItems: "center",
+          gap: 10,
+          marginBottom: 4,
         }}
       >
+        {step != null && (
+          <span
+            style={{
+              display: "inline-grid",
+              placeItems: "center",
+              width: 22,
+              height: 22,
+              borderRadius: 999,
+              background: "var(--tac-accent-soft)",
+              color: "var(--tac-accent)",
+              fontSize: 12,
+              fontWeight: 600,
+              fontVariantNumeric: "tabular-nums",
+              flexShrink: 0,
+            }}
+          >
+            {step}
+          </span>
+        )}
         <span
           style={{
-            fontSize: 9,
-            color: "#4f8dfe",
-            letterSpacing: "0.18em",
+            fontSize: 14,
+            color: "var(--tac-fg)",
             fontWeight: 600,
           }}
         >
           {label}
         </span>
-        {sub && (
-          <span style={{ fontSize: 9, color: "var(--tac-dim)" }}>{sub}</span>
-        )}
       </div>
-      {children}
+      {sub && (
+        <div
+          style={{
+            fontSize: 12,
+            color: "var(--tac-mute)",
+            marginLeft: step != null ? 32 : 0,
+            marginBottom: 10,
+            lineHeight: 1.5,
+          }}
+        >
+          {sub}
+        </div>
+      )}
+      <div style={{ marginLeft: step != null ? 32 : 0 }}>{children}</div>
     </div>
   );
 }
@@ -1379,11 +967,8 @@ function CountChips({ value, onChange }) {
   return (
     <div
       style={{
-        display: "flex",
-        gap: 4,
-        padding: 6,
-        background: "rgba(79, 141, 254, 0.06)",
-        border: "1px dashed #4f8dfe",
+        display: "inline-flex",
+        gap: 6,
       }}
     >
       {options.map((n) => {
@@ -1394,14 +979,16 @@ function CountChips({ value, onChange }) {
             type="button"
             onClick={() => onChange(n)}
             style={{
-              flex: 1,
-              minWidth: 24,
-              height: 28,
-              background: active ? "#4f8dfe" : "transparent",
-              border: active ? "1px solid #4f8dfe" : "1px solid var(--tac-border)",
-              color: active ? "var(--tac-bg)" : "var(--tac-mute)",
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 11,
+              minWidth: 38,
+              height: 36,
+              padding: "0 12px",
+              background: active ? "var(--tac-accent)" : "var(--tac-surface2)",
+              border: active
+                ? "1px solid var(--tac-accent)"
+                : "1px solid var(--tac-border)",
+              borderRadius: 8,
+              color: active ? "var(--tac-bg)" : "var(--tac-fg)",
+              fontSize: 14,
               fontWeight: active ? 700 : 500,
               cursor: "pointer",
               transition: "color 100ms, border-color 100ms, background 100ms",
@@ -1409,14 +996,12 @@ function CountChips({ value, onChange }) {
             }}
             onMouseEnter={(e) => {
               if (!active) {
-                e.currentTarget.style.borderColor = "#4f8dfe";
-                e.currentTarget.style.color = "var(--tac-fg)";
+                e.currentTarget.style.borderColor = "var(--tac-accent)";
               }
             }}
             onMouseLeave={(e) => {
               if (!active) {
                 e.currentTarget.style.borderColor = "var(--tac-border)";
-                e.currentTarget.style.color = "var(--tac-mute)";
               }
             }}
           >
@@ -1425,50 +1010,6 @@ function CountChips({ value, onChange }) {
         );
       })}
     </div>
-  );
-}
-
-function KV({ k, v, accent }) {
-  return (
-    <div
-      style={{
-        background: "var(--tac-surface)",
-        padding: "10px 14px",
-        display: "grid",
-        gridTemplateColumns: "140px 1fr",
-        gap: 10,
-        alignItems: "center",
-      }}
-    >
-      <span
-        style={{
-          fontSize: 9,
-          color: "var(--tac-mute)",
-          letterSpacing: "0.1em",
-        }}
-      >
-        {k}
-      </span>
-      <span
-        style={{
-          fontSize: 11,
-          color: accent ? "#4f8dfe" : "var(--tac-fg)",
-          fontWeight: accent ? 600 : 400,
-        }}
-      >
-        {v || "—"}
-      </span>
-    </div>
-  );
-}
-
-function Stat({ icon: Icon, label, value }) {
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
-      <Icon size={9} weight="regular" />
-      <span style={{ fontVariantNumeric: "tabular-nums" }}>{value}</span>
-      <span style={{ color: "var(--tac-dim)" }}>{label}</span>
-    </span>
   );
 }
 
@@ -1482,16 +1023,6 @@ function fmt(n) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return n.toLocaleString();
-}
-
-function shortenUrl(u) {
-  try {
-    const url = new URL(u);
-    const tail = url.pathname.split("/").filter(Boolean).pop() || "";
-    return tail ? `…/${tail.slice(0, 10)}` : url.host.replace("www.", "");
-  } catch {
-    return String(u).slice(0, 18);
-  }
 }
 
 function untitledFromSelected(item) {

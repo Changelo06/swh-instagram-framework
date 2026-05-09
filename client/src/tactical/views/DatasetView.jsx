@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { ArrowUp, ArrowDown, Plus, Trash } from "@phosphor-icons/react";
 import { useCsv, STAGE, ALL_HANDLE } from "../state/CsvContext.jsx";
@@ -53,7 +53,7 @@ export default function DatasetView() {
       : selectedCreator?.handle
       ? `-${selectedCreator.handle}`
       : "";
-  const baseName = `${(filename || "swh-dataset").replace(/\.csv$/i, "")}${handleSuffix}`;
+  const baseName = `${(filename || "chiqo-dataset").replace(/\.csv$/i, "")}${handleSuffix}`;
 
   return (
     <DatasetTable
@@ -151,51 +151,45 @@ function DatasetTable({ rows, parsed, search, baseName }) {
       <header
         style={{
           background: "var(--tac-bg)",
-          padding: "16px 24px",
+          padding: "12px 24px",
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: "flex-end",
+          gap: 10,
+          flexWrap: "wrap",
         }}
       >
-        <div>
-          <div className="tac-label">SECTION D-02 / DATASET</div>
-          <div
-            className="tac-display"
-            style={{ fontSize: 22, color: "var(--tac-fg)", marginTop: 4 }}
-          >
-            CRUD TABLE
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button
-            type="button"
-            onClick={onAddRow}
-            className="tac-btn"
-            style={{ padding: "6px 10px", fontSize: 10 }}
-          >
-            <Plus size={11} weight="regular" />
-            ADD ROW
-          </button>
-          <ExportMenu
-            disabled={!working.length}
-            onExport={(fmt) => exportDataset(fmt, working, baseName)}
-          />
-          <span
-            style={{
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 10,
-              color: "var(--tac-mute)",
-              letterSpacing: "0.1em",
-            }}
-          >
-            {sorted.length.toLocaleString()} / {working.length.toLocaleString()} ROWS
-          </span>
-        </div>
+        <span
+          style={{
+            fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+            fontSize: 12,
+            color: "var(--tac-mute)",
+            fontVariantNumeric: "tabular-nums",
+            marginRight: "auto",
+          }}
+        >
+          {sorted.length.toLocaleString()} of{" "}
+          {working.length.toLocaleString()} rows
+        </span>
+        <button
+          type="button"
+          onClick={onAddRow}
+          className="tac-btn"
+          style={{ padding: "6px 12px", fontSize: 12 }}
+        >
+          <Plus size={12} weight="regular" />
+          Add row
+        </button>
+        <ExportMenu
+          disabled={!working.length}
+          onExport={(fmt) => exportDataset(fmt, working, baseName)}
+        />
       </header>
 
-      <CreatorTabs allowAll allLabel="ALL · UNIFIED" label="DATASET // FILTER" />
+      <CreatorTabs allowAll allLabel="All creators" label="Filter" />
 
       <div
+        className="tac-dataset-scroll"
         style={{
           background: "var(--tac-bg)",
           overflow: "auto",
@@ -208,15 +202,16 @@ function DatasetTable({ rows, parsed, search, baseName }) {
             width: "max-content",
             minWidth: "100%",
             borderCollapse: "collapse",
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 11,
+            fontFamily:
+              '"Inter", ui-sans-serif, system-ui, sans-serif',
+            fontSize: 13,
           }}
         >
           <thead
             style={{
               position: "sticky",
               top: 0,
-              background: "var(--tac-surface2)",
+              background: "var(--tac-surface)",
               zIndex: 1,
             }}
           >
@@ -224,52 +219,57 @@ function DatasetTable({ rows, parsed, search, baseName }) {
               <th
                 style={{
                   ...thStyle,
-                  width: 50,
+                  width: 56,
                   textAlign: "right",
                   color: "var(--tac-dim)",
                 }}
               >
                 #
               </th>
-              {columns.map((col) => (
-                <th
-                  key={col.key}
-                  onClick={() => cycleSort(col.key)}
-                  style={{
-                    ...thStyle,
-                    width: COL_WIDTHS[col.type] || COL_WIDTHS.default,
-                    cursor: "pointer",
-                    userSelect: "none",
-                  }}
-                  title={`${col.key} · ${col.type}`}
-                >
-                  <div
+              {columns.map((col) => {
+                const isNumeric = col.type === "number";
+                return (
+                  <th
+                    key={col.key}
+                    onClick={() => cycleSort(col.key)}
                     style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
+                      ...thStyle,
+                      width: COL_WIDTHS[col.type] || COL_WIDTHS.default,
+                      cursor: "pointer",
+                      userSelect: "none",
+                      textAlign: isNumeric ? "right" : "left",
                     }}
+                    title={`${col.key} · ${col.type}`}
                   >
-                    <span style={{ color: "var(--tac-fg)" }}>{col.key}</span>
-                    <span
+                    <div
                       style={{
-                        fontSize: 9,
-                        color: "#4f8dfe",
-                        border: "1px solid var(--tac-border)",
-                        padding: "0px 4px",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        justifyContent: isNumeric ? "flex-end" : "flex-start",
                       }}
                     >
-                      {col.type.toUpperCase()}
-                    </span>
-                    {sort.key === col.key && sort.dir === "asc" && (
-                      <ArrowUp size={10} weight="bold" color="#4f8dfe" />
-                    )}
-                    {sort.key === col.key && sort.dir === "desc" && (
-                      <ArrowDown size={10} weight="bold" color="#4f8dfe" />
-                    )}
-                  </div>
-                </th>
-              ))}
+                      <span style={{ color: "var(--tac-mute)" }}>
+                        {col.key}
+                      </span>
+                      {sort.key === col.key && sort.dir === "asc" && (
+                        <ArrowUp
+                          size={11}
+                          weight="bold"
+                          color="var(--tac-accent)"
+                        />
+                      )}
+                      {sort.key === col.key && sort.dir === "desc" && (
+                        <ArrowDown
+                          size={11}
+                          weight="bold"
+                          color="var(--tac-accent)"
+                        />
+                      )}
+                    </div>
+                  </th>
+                );
+              })}
               <th style={{ ...thStyle, width: 50 }} />
             </tr>
           </thead>
@@ -277,16 +277,19 @@ function DatasetTable({ rows, parsed, search, baseName }) {
             {sorted.map((row, rowIdx) => (
               <tr
                 key={row._local || rowIdx}
-                style={{ borderBottom: "1px solid var(--tac-surface)" }}
+                className="tac-dataset-row"
+                style={{ borderBottom: "1px solid var(--tac-border)" }}
               >
                 <td
                   style={{
                     ...tdStyle,
                     color: "var(--tac-dim)",
                     textAlign: "right",
+                    fontVariantNumeric: "tabular-nums",
+                    fontSize: 12,
                   }}
                 >
-                  {String(rowIdx + 1).padStart(3, "0")}
+                  {rowIdx + 1}
                 </td>
                 {columns.map((col) => {
                   const value = row[col.key];
@@ -296,18 +299,24 @@ function DatasetTable({ rows, parsed, search, baseName }) {
                     search &&
                     value != null &&
                     String(value).toLowerCase().includes(search.toLowerCase());
+                  const isNumeric = col.type === "number";
                   return (
                     <td
                       key={col.key}
-                      onClick={() => !editing && beginEdit(rowIdx, col.key, value)}
+                      onClick={() =>
+                        !editing && beginEdit(rowIdx, col.key, value)
+                      }
                       style={{
                         ...tdStyle,
                         cursor: "text",
                         position: "relative",
+                        textAlign: isNumeric ? "right" : "left",
+                        fontVariantNumeric: isNumeric ? "tabular-nums" : "normal",
                         ...(editing
                           ? {
-                              outline: "2px solid #4f8dfe",
+                              outline: "2px solid var(--tac-accent)",
                               outlineOffset: -2,
+                              background: "var(--tac-surface2)",
                             }
                           : {}),
                       }}
@@ -324,17 +333,23 @@ function DatasetTable({ rows, parsed, search, baseName }) {
                           }}
                           style={{
                             width: "100%",
-                            background: "var(--tac-bg)",
+                            background: "transparent",
                             border: "none",
                             outline: "none",
                             color: "var(--tac-fg)",
-                            fontFamily: '"JetBrains Mono", monospace',
-                            fontSize: 11,
+                            fontFamily:
+                              '"Inter", ui-sans-serif, system-ui, sans-serif',
+                            fontSize: 13,
                             padding: 0,
+                            textAlign: isNumeric ? "right" : "left",
                           }}
                         />
                       ) : (
-                        <CellValue value={value} matched={matched} type={col.type} />
+                        <CellValue
+                          value={value}
+                          matched={matched}
+                          type={col.type}
+                        />
                       )}
                     </td>
                   );
@@ -349,19 +364,22 @@ function DatasetTable({ rows, parsed, search, baseName }) {
                       border: "none",
                       color: "var(--tac-dim)",
                       cursor: "pointer",
-                      padding: 2,
+                      padding: 4,
                       display: "grid",
                       placeItems: "center",
-                      transition: "color 120ms",
+                      borderRadius: 4,
+                      transition: "color 120ms, background 120ms",
                     }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.color = "#4f8dfe")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.color = "var(--tac-dim)")
-                    }
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "var(--tac-danger)";
+                      e.currentTarget.style.background = "var(--tac-surface2)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = "var(--tac-dim)";
+                      e.currentTarget.style.background = "transparent";
+                    }}
                   >
-                    <Trash size={11} weight="regular" />
+                    <Trash size={12} weight="regular" />
                   </button>
                 </td>
               </tr>
@@ -375,7 +393,17 @@ function DatasetTable({ rows, parsed, search, baseName }) {
 
 function CellValue({ value, matched, type }) {
   if (value == null || value === "") {
-    return <span style={{ color: "var(--tac-dim)" }}>—</span>;
+    return (
+      <span
+        style={{
+          color: "var(--tac-dim)",
+          fontStyle: "italic",
+          fontSize: 12,
+        }}
+      >
+        —
+      </span>
+    );
   }
   let str = String(value);
   if (type === "number") {
@@ -390,9 +418,10 @@ function CellValue({ value, matched, type }) {
     <span
       style={{
         color: "var(--tac-fg)",
-        textDecoration: matched ? "underline" : "none",
-        textDecorationColor: "#4f8dfe",
-        textDecorationThickness: matched ? 1 : 0,
+        backgroundColor: matched ? "var(--tac-accent-soft)" : "transparent",
+        padding: matched ? "1px 4px" : 0,
+        borderRadius: matched ? 3 : 0,
+        transition: "background-color 120ms",
       }}
     >
       {str}
@@ -439,21 +468,20 @@ function buildColumns(rows, parsed) {
 
 const thStyle = {
   textAlign: "left",
-  padding: "10px 12px",
+  padding: "12px 14px",
   borderBottom: "1px solid var(--tac-border)",
-  fontFamily: '"JetBrains Mono", monospace',
-  fontSize: 10,
+  fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+  fontSize: 12,
   color: "var(--tac-mute)",
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
   fontWeight: 500,
   whiteSpace: "nowrap",
 };
 
 const tdStyle = {
-  padding: "8px 12px",
+  padding: "11px 14px",
   whiteSpace: "nowrap",
   overflow: "hidden",
   textOverflow: "ellipsis",
-  verticalAlign: "top",
+  verticalAlign: "middle",
+  fontSize: 13,
 };

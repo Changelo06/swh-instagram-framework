@@ -2,306 +2,60 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   Body baseline — Inter on a near-black analytics console.
+   ============================================================ */
 @layer base {
   html, body, #root {
     height: 100%;
   }
   body {
-    @apply bg-navy-950 text-slate-100 font-sans antialiased;
-    background-image:
-      radial-gradient(circle at 15% -10%, rgba(212, 175, 55, 0.08), transparent 50%),
-      radial-gradient(circle at 90% 110%, rgba(39, 77, 122, 0.35), transparent 55%);
-    background-attachment: fixed;
+    background: #080a0a;
+    color: #f3f7f5;
+    font-family: "Inter", ui-sans-serif, system-ui, -apple-system,
+      BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 }
-
-@layer components {
-  .gold-text {
-    @apply text-gold-500;
-  }
-  .gold-border {
-    @apply border-gold-500/40;
-  }
-  .eyebrow {
-    @apply inline-block text-[11px] font-medium uppercase tracking-[0.22em] text-gold-500;
-  }
-  .gold-rule {
-    @apply h-px w-full bg-gold-rule;
-  }
-  .card {
-    @apply bg-navy-900/70 border border-gold-500/15 rounded-xl backdrop-blur-sm;
-    box-shadow: 0 1px 0 rgba(212, 175, 55, 0.06) inset, 0 8px 24px -12px rgba(0, 0, 0, 0.6);
-  }
-  .btn-gold {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
-           bg-gold-500 text-navy-950 font-semibold rounded-lg text-sm
-           hover:bg-gold-400 disabled:opacity-40 disabled:cursor-not-allowed
-           transition-all;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 6px 16px -8px rgba(212, 175, 55, 0.5);
-  }
-  .btn-gold:hover:not(:disabled) {
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 8px 20px -6px rgba(212, 175, 55, 0.6);
-    transform: translateY(-1px);
-  }
-  .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2
-           border border-gold-500/30 text-gold-500 rounded-lg text-sm
-           hover:bg-gold-500/10 hover:border-gold-500/50
-           disabled:opacity-40 disabled:cursor-not-allowed
-           transition-colors;
-  }
-}
-
-/* Markdown report styling */
-.report h1, .report h2, .report h3, .report h4 {
-  @apply font-serif text-gold-500 mt-8 mb-3;
-}
-.report h1 { @apply text-3xl border-b border-gold-500/30 pb-2; }
-.report h2 { @apply text-2xl; }
-.report h3 { @apply text-xl text-gold-400; }
-.report h4 { @apply text-lg text-gold-400; }
-.report p  { @apply text-slate-200 leading-relaxed mb-4; }
-.report ul { @apply list-disc list-inside mb-4 space-y-1 text-slate-200; }
-.report ol { @apply list-decimal list-inside mb-4 space-y-1 text-slate-200; }
-.report li { @apply leading-relaxed; }
-.report strong { @apply text-gold-400 font-semibold; }
-.report em { @apply text-slate-300; }
-.report blockquote {
-  @apply border-l-2 border-gold-500/50 pl-4 my-4 italic text-slate-300;
-}
-.report code {
-  @apply font-mono text-sm bg-navy-800 px-1.5 py-0.5 rounded text-gold-400;
-}
-.report pre {
-  @apply bg-navy-800/80 border border-gold-500/20 rounded-lg p-4 overflow-x-auto my-4;
-}
-.report pre code {
-  @apply bg-transparent p-0 text-slate-200;
-}
-.report table {
-  @apply w-full my-4 text-sm border-collapse;
-}
-.report th {
-  @apply text-left bg-navy-800 text-gold-400 font-semibold px-3 py-2 border border-gold-500/20;
-}
-.report td {
-  @apply px-3 py-2 border border-gold-500/15 text-slate-200;
-}
-.report hr {
-  @apply border-gold-500/20 my-8;
-}
-.report a {
-  @apply text-gold-400 underline hover:text-gold-300;
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { @apply bg-navy-950; }
-::-webkit-scrollbar-thumb { @apply bg-navy-700 rounded; }
-::-webkit-scrollbar-thumb:hover { @apply bg-gold-700; }
 
 /* ============================================================
-   DASHBOARD ("/app") STYLE LAYER
-   Pure black surface + vibrant rainbow accents.
-   These classes are scoped to .dash-root so the landing page
-   stays untouched. Components on /app must reference them
-   directly (.panel, .btn-vibe, etc.).
+   Custom scrollbar (page-level fallback for non-tac-root areas).
    ============================================================ */
-
-.dash-root {
-  background: #000;
-  color: #f1f5f9;
-  min-height: 100vh;
-  position: relative;
-}
-/* Subtle vibrant ambient glow at top-center and bottom-right */
-.dash-root::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(168, 85, 247, 0.10), transparent 70%),
-    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(236, 72, 153, 0.06), transparent 60%);
-  z-index: 0;
-}
-.dash-root > * {
-  position: relative;
-  z-index: 1;
-}
-/* Override the body's scrollbar track on dashboard */
-.dash-root::-webkit-scrollbar-track,
-.dash-root *::-webkit-scrollbar-track {
-  background: #0a0a0a;
-}
-.dash-root *::-webkit-scrollbar-thumb {
-  background: #262626;
-}
-.dash-root *::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #ec4899, #a855f7);
-}
-
-/* Panels — flat dark cards used on the dashboard */
-.panel {
-  @apply bg-ink-900 border border-white/[0.08] rounded-xl;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 8px 32px -16px rgba(0, 0, 0, 0.8);
-}
-.panel-elevated {
-  @apply bg-ink-800 border border-white/10 rounded-xl;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.04) inset,
-    0 24px 48px -24px rgba(168, 85, 247, 0.15),
-    0 8px 24px -12px rgba(0, 0, 0, 0.8);
-}
-.panel-hover {
-  transition: border-color 200ms ease, transform 200ms ease, background 200ms ease;
-}
-.panel-hover:hover {
-  border-color: rgba(236, 72, 153, 0.35);
-  background: #141414;
-}
-
-/* Vibrant buttons */
-.btn-vibe {
-  @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 font-semibold rounded-lg text-sm
-         text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all;
-  background: linear-gradient(135deg, #ec4899 0%, #a855f7 100%);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.2) inset,
-    0 8px 24px -8px rgba(168, 85, 247, 0.5);
-}
-.btn-vibe:hover:not(:disabled) {
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.25) inset,
-    0 12px 32px -8px rgba(236, 72, 153, 0.6);
-  transform: translateY(-1px);
-}
-.btn-vibe-ghost {
-  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm
-         text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors;
-  border: 1px solid rgba(168, 85, 247, 0.35);
-  background: rgba(168, 85, 247, 0.08);
-}
-.btn-vibe-ghost:hover:not(:disabled) {
-  background: rgba(168, 85, 247, 0.15);
-  border-color: rgba(168, 85, 247, 0.6);
-  color: #fff;
-}
-
-/* Vibrant text utilities */
-.vibe-text {
-  background: linear-gradient(90deg, #ec4899, #a855f7, #6366f1);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-.vibe-text-sunset {
-  background: linear-gradient(90deg, #fbbf24, #f97316, #ef4444);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Medal styles for top-3 reel boxes */
-.medal-tile {
-  position: relative;
-  border-radius: 14px;
-  padding: 1px;
-  background: linear-gradient(160deg, var(--medal-from), var(--medal-to));
-  box-shadow: 0 12px 32px -16px var(--medal-glow, rgba(0, 0, 0, 0.8));
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
-.medal-tile:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 40px -18px var(--medal-glow, rgba(0, 0, 0, 0.8));
-}
-.medal-tile-inner {
-  background: linear-gradient(180deg, #0e0e0e 0%, #050505 100%);
-  border-radius: 13px;
-  padding: 16px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.medal-gold {
-  --medal-from: #fde68a;
-  --medal-to: #b45309;
-  --medal-glow: rgba(251, 191, 36, 0.45);
-}
-.medal-silver {
-  --medal-from: #f1f5f9;
-  --medal-to: #64748b;
-  --medal-glow: rgba(203, 213, 225, 0.35);
-}
-.medal-bronze {
-  --medal-from: #fdba74;
-  --medal-to: #7c2d12;
-  --medal-glow: rgba(217, 119, 6, 0.4);
-}
-
-/* Tiles 4-10: vibrant rainbow gradient slices */
-.rank-tile {
-  position: relative;
-  border-radius: 12px;
-  padding: 1px;
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
-.rank-tile:hover {
-  transform: translateY(-2px);
-}
-.rank-tile-inner {
-  background: #0e0e0e;
-  border-radius: 11px;
-  padding: 14px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* Inputs / form-ish elements on dashboard */
-.dash-input {
-  @apply bg-ink-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-100
-         placeholder:text-slate-500 focus:outline-none focus:border-vibe-purple/60
-         transition-colors;
-}
-
-/* Dashboard tab indicators */
-.dash-tab-indicator {
-  background: linear-gradient(90deg, #ec4899, #a855f7);
-  height: 2px;
-  border-radius: 2px;
-}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #080a0a; }
+::-webkit-scrollbar-thumb { background: #202828; border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: #2d3838; }
 
 /* ============================================================
-   TACTICAL TELEMETRY LAYER (.tac-*)
-   Industrial-brutalist, dark substrate, hazard-red accent.
-   Active design system for the entire app.
-   Rules:
-   - border-radius: 0 — never overridden inside .tac-root
-   - No drop shadows, no glows, no gradient fills
-   - Depth comes from border contrast + background offset
-   - Animate transform/opacity only — never w/h/top/left
+   Tactical telemetry layer (.tac-*) — the active design system.
    ============================================================ */
 
 .tac-root {
-  /* Apify-console-style lifted dark palette.
-     Brand accent + semantic status colors stay constant across themes. */
-  --tac-bg: #14151a;
-  --tac-surface: #1c1d22;
-  --tac-surface2: #25272d; /* elevated/hover */
-  --tac-border: #2c2e35;
-  --tac-dim: #6c6e75;
-  --tac-mute: #a1a3aa;
-  --tac-fg: #ebecef;
+  /* Premium dark analytics console palette. */
+  --tac-bg: #080a0a;
+  --tac-surface: #101414;       /* primary panel */
+  --tac-surface2: #151a1a;      /* raised / hover */
+  --tac-surface-inner: #0c0f0f; /* chart wells, table interiors */
+  --tac-border: #202828;
+  --tac-border-strong: #2d3838;
+  --tac-dim: #5f6b67;           /* muted/empty/disabled */
+  --tac-mute: #9aa6a2;          /* secondary text */
+  --tac-fg: #f3f7f5;            /* primary text */
 
-  /* Brand + semantic */
-  --tac-accent: #4f8dfe;
-  --tac-accent-hover: #7aaeff;
-  --tac-success: #22c55e;
-  --tac-warning: #f59e0b;
-  --tac-danger: #ef4444;
+  /* Primary brand accent — green, used for positive metrics, focus, primary CTAs. */
+  --tac-accent: #21d07a;
+  --tac-accent-hover: #3fe28e;
+  --tac-accent-soft: rgba(33, 208, 122, 0.14);
+  --tac-accent-soft-strong: rgba(33, 208, 122, 0.28);
+
+  /* Semantic + data-series accents. */
+  --tac-success: #21d07a;
+  --tac-warning: #f5b82e;
+  --tac-danger: #f0445e;
+  --tac-cyan: #2ed3ff;
+  --tac-pink: #f03b9f;
+  --tac-purple: #7c5cff;
 
   background: var(--tac-bg);
   color: var(--tac-fg);
@@ -315,52 +69,24 @@
   transition: background 180ms ease;
 }
 
-/* Light / low-cortisol gray mode. Lifts the substrate; brand colors keep hex. */
+/* Light theme is currently disabled in the UI (toggle hidden in
+   SettingsDrawer). The token set is kept here so re-enabling it is a
+   one-line render change. Warm off-white + clean white cards + restrained
+   borders to match the chiqo direction when it ships. */
 .tac-root.tac-theme-light {
-  --tac-bg: #f4f5f7;
-  --tac-surface: #ffffff;
-  --tac-surface2: #eceef2;
-  --tac-border: #d8dade;
-  --tac-dim: #8a8d94;
-  --tac-mute: #54575f;
-  --tac-fg: #1a1c20;
+  --tac-bg: #f7f6f2;             /* warm off-white page */
+  --tac-surface: #ffffff;        /* clean white cards */
+  --tac-surface2: #f0efe9;       /* hover / raised */
+  --tac-surface-inner: #faf9f5;  /* table interior */
+  --tac-border: #e3e1d9;         /* subtle hairlines */
+  --tac-border-strong: #c9c6bb;
+  --tac-dim: #8c8a82;            /* tertiary text */
+  --tac-mute: #5a5953;           /* secondary text — meets contrast */
+  --tac-fg: #1c1d1a;             /* primary text */
 }
 
-.tac-root.tac-theme-light .tac-scanlines {
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0.03) 0px,
-    rgba(0, 0, 0, 0.03) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-  mix-blend-mode: multiply;
-}
+/* ---------- Typography ---------- */
 
-/* The brutalist `border-radius: 0 !important` reset has been removed.
-   Phase 3 widgets opt into rounded corners via .tac-panel / .tac-btn /
-   .tac-input. Inline-styled `borderRadius: 0` declarations from the old
-   tactical era still win on the components that haven't been migrated yet. */
-
-/* Legacy CRT scanline overlay — kept defined for backwards compatibility
-   but no longer applied by AnalyticsShell. Safe to delete in Phase 4. */
-.tac-scanlines {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(255, 255, 255, 0.045) 0px,
-    rgba(255, 255, 255, 0.045) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-  mix-blend-mode: overlay;
-  z-index: 1;
-}
-
-/* Display type — Inter SemiBold/Bold for KPI numbers and page titles.
-   Sentence case; no uppercase, no decorative tracking. */
 .tac-display {
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   font-weight: 600;
@@ -381,46 +107,484 @@
   font-size: 12px;
   color: var(--tac-mute);
 }
-/* Mono is reserved for: row IDs, JSON, code blocks, timestamps,
-   and numeric cells inside .tac-table. Use this class deliberately. */
 .tac-mono {
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
 }
 
-/* Panels — lifted surface, soft borders, gentle rounding */
+/* ---------- Page + section layout primitives ---------- */
+
+.tac-page {
+  padding: 20px 24px 28px;
+}
+
+.tac-section {
+  display: grid;
+  gap: 14px;
+}
+
+.tac-section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tac-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tac-fg);
+  line-height: 1.25;
+  letter-spacing: -0.005em;
+}
+
+.tac-section-copy {
+  font-size: 12px;
+  color: var(--tac-mute);
+  margin-top: 2px;
+  line-height: 1.5;
+}
+
+/* ---------- Cards ---------- */
+
+.tac-card {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.035),
+      rgba(255, 255, 255, 0.01)
+    ),
+    var(--tac-surface);
+  border: 1px solid var(--tac-border);
+  border-radius: 12px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 40px -30px rgba(0, 0, 0, 0.85);
+}
+.tac-root.tac-theme-light .tac-card {
+  background: var(--tac-surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.tac-card--raised {
+  background:
+    linear-gradient(180deg, var(--tac-surface2), var(--tac-surface)),
+    var(--tac-surface);
+  border: 1px solid var(--tac-border-strong);
+  border-radius: 12px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 24px 48px -32px rgba(0, 0, 0, 0.85);
+}
+
+.tac-card-header {
+  padding: 14px 18px 10px;
+}
+.tac-card-body {
+  padding: 0 18px 18px;
+}
+.tac-card-body--first {
+  padding: 18px;
+}
+
+.tac-kpi-value {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--tac-fg);
+}
+
+/* Legacy alias — kept while inline styles still reference it. */
 .tac-panel {
   background: var(--tac-surface);
   border: 1px solid var(--tac-border);
-  border-radius: 10px;
+  border-radius: 12px;
 }
 .tac-panel-inset {
-  background: var(--tac-surface2);
+  background: var(--tac-surface-inner);
   border: 1px solid var(--tac-border);
   border-radius: 10px;
 }
 .tac-panel-active {
-  border: 1px solid var(--tac-accent);
-  box-shadow: 0 0 0 1px var(--tac-accent);
+  border-color: var(--tac-accent);
+  box-shadow:
+    inset 0 1px 0 rgba(33, 208, 122, 0.18),
+    0 24px 48px -28px rgba(33, 208, 122, 0.4),
+    0 18px 40px -30px rgba(0, 0, 0, 0.85);
 }
 
-/* Compartmentalized grid (gap method). Use only where structurally needed.
-   Default gap dropped from 1px to 16px so children breathe. */
-.tac-grid-divider {
+/* ---------- Responsive grid utilities ---------- */
+
+.tac-grid-2,
+.tac-grid-3,
+.tac-grid-4 {
   display: grid;
   gap: 16px;
-  background: transparent;
 }
-.tac-grid-divider > * {
-  background: var(--tac-surface);
-}
-/* Opt back into the old razor-thin look with .tac-grid-divider--hairline */
-.tac-grid-divider--hairline {
-  gap: 1px;
-  background: var(--tac-border);
+.tac-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tac-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tac-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+/* KPI hero grid: first card slightly wider than the others. */
+.tac-grid-hero {
+  display: grid;
+  grid-template-columns: 1.4fr minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
 }
 
-/* Buttons — sentence case, Inter, rounded */
+/* Wide-narrow split (e.g. scatter + cadence). */
+.tac-grid-2-wide {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 3fr);
+  gap: 16px;
+}
+
+/* PI distribution + rolling-window split. */
+.tac-pi-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+/* ================================================================
+   File-explorer-style grid for the script folder overview.
+   Each tile is a chunky icon + monospace filename, modeled after
+   Windows / macOS file-explorer icon view so the page feels familiar.
+   ================================================================ */
+.file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+.file-box {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--tac-surface);
+  border: 1px solid var(--tac-border);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  align-items: center;
+  transition: background 120ms, border-color 120ms, transform 80ms;
+  position: relative;
+  user-select: none;
+  min-width: 0;
+  overflow: hidden;
+}
+.file-box > * {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.file-box:hover {
+  background: var(--tac-surface2);
+  border-color: var(--tac-border-strong);
+}
+.file-box:focus-visible {
+  outline: none;
+  border-color: var(--tac-accent);
+  box-shadow: 0 0 0 3px var(--tac-accent-soft-strong);
+}
+.file-box:active {
+  transform: translateY(1px);
+}
+.file-box[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.55;
+}
+.file-box[aria-disabled="true"]:hover {
+  background: var(--tac-surface);
+  border-color: var(--tac-border);
+}
+.file-box[data-pending="true"] {
+  cursor: default;
+  border-style: dashed;
+  background: var(--tac-surface-inner);
+}
+.file-box[data-pending="true"]:hover {
+  background: var(--tac-surface-inner);
+  border-color: var(--tac-border);
+}
+.file-box__icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  background: var(--tac-surface-inner);
+  border-radius: 10px;
+}
+.file-box__name {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--tac-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.file-box__sub {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  color: var(--tac-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+.file-box[data-pending="true"] .file-box__name,
+.file-box[data-pending="true"] .file-box__sub {
+  color: var(--tac-dim);
+}
+
+/* ================================================================
+   Script document — record-ready surface for a single generated script.
+   Visual hierarchy:
+     h1/h2  — script title (hidden by renderer; the tab strip shows it)
+     h3     — section eyebrow ("Hook", "Full Script", "Shot Notes", …)
+     h4     — beat label ("Beat 1: Setup")
+     .script-shot   — bracketed shot direction line, calm + italic
+     .script-spoken — quoted spoken line, prominent + accented bar
+     blockquote     — caption box at the bottom of the script
+   ================================================================ */
+.script-document {
+  max-width: 820px;
+  margin: 0 auto;
+  background: var(--tac-surface);
+  border: 1px solid var(--tac-border);
+  border-radius: 14px;
+  padding: 28px 32px;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  color: var(--tac-fg);
+  font-size: 14.5px;
+  line-height: 1.65;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 24px 48px -32px rgba(0, 0, 0, 0.85);
+}
+
+/* The script title comes through as h1/h2; we hide it in the renderer
+   because the tab strip already shows it, but if a fallback render reaches
+   it we want a refined treatment. */
+.script-document h1,
+.script-document h2 {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--tac-fg);
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  margin: 0 0 4px;
+}
+
+/* Section eyebrow — the major sections (Context Brief, Hook, Full Script…). */
+.script-document h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--tac-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  margin: 28px 0 14px;
+  padding-bottom: 0;
+  border: 0;
+}
+.script-document h3::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--tac-border);
+}
+.script-document > h3:first-child {
+  margin-top: 4px;
+}
+
+/* Beat label — sits inside Full Script, smaller than the section eyebrow
+   and accent-tinted so beats are visually counted. */
+.script-document h4 {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tac-accent);
+  letter-spacing: -0.005em;
+  text-transform: none;
+  margin: 22px 0 8px;
+  padding: 4px 10px;
+  display: inline-block;
+  background: var(--tac-accent-soft);
+  border-radius: 999px;
+}
+
+.script-document p {
+  margin: 0 0 14px;
+  color: var(--tac-fg);
+}
+
+/* Generic lists — used for On-screen Text + Shot Notes + Context Brief. */
+.script-document ul,
+.script-document ol {
+  margin: 0 0 14px;
+  padding-left: 22px;
+}
+.script-document li {
+  margin-bottom: 6px;
+  color: var(--tac-fg);
+}
+.script-document li::marker {
+  color: var(--tac-mute);
+}
+
+/* Context Brief uses bold-prefixed bullets — make the prefix subtly
+   accented so the four labels read as a definition list. */
+.script-document strong {
+  color: var(--tac-fg);
+  font-weight: 600;
+}
+.script-document li > strong:first-child {
+  color: var(--tac-mute);
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+/* Caption box — markdown blockquote at the bottom of each script. */
+.script-document blockquote {
+  border-left: 3px solid var(--tac-accent);
+  background: var(--tac-surface-inner);
+  border-radius: 0 10px 10px 0;
+  padding: 12px 16px;
+  margin: 14px 0;
+  color: var(--tac-fg);
+  font-style: normal;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.script-document blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* Code + pre — used for any IDs, URLs, or rare code blocks. */
+.script-document code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12.5px;
+  background: var(--tac-surface-inner);
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: var(--tac-fg);
+}
+.script-document pre {
+  background: var(--tac-surface-inner);
+  border: 1px solid var(--tac-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin: 14px 0;
+}
+.script-document pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 12.5px;
+}
+
+/* ----- Custom paragraph variants emitted by the renderer ----- */
+
+/* Shot direction — bracketed line. Calm, italic, smaller than body, indented
+   slightly so the eye reads it as stage direction rather than narration. */
+.script-document .script-shot {
+  display: block;
+  margin: 14px 0 6px;
+  padding: 6px 12px;
+  border-left: 2px solid var(--tac-border);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--tac-mute);
+  line-height: 1.55;
+}
+
+/* Spoken line — the actual line the creator records. Prominent, slightly
+   larger, accent left bar so it visually reads as the deliverable. */
+.script-document .script-spoken {
+  display: block;
+  margin: 6px 0 14px;
+  padding: 8px 14px;
+  border-left: 3px solid var(--tac-accent);
+  background: var(--tac-surface2);
+  border-radius: 0 8px 8px 0;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.55;
+  color: var(--tac-fg);
+}
+
+/* Print-quality variant used by the PDF exporter. Mirrors the on-screen
+   look, with literal hex colors so html2canvas doesn't have to resolve
+   CSS custom properties (which it can't reliably do). */
+.script-document--print {
+  background: #101414;
+  color: #f3f7f5;
+  border: 1px solid #202828;
+  box-shadow: none;
+}
+.script-document--print h3 {
+  color: #9aa6a2;
+}
+.script-document--print h3::after {
+  background: #202828;
+}
+.script-document--print h4 {
+  color: #21d07a;
+  background: rgba(33, 208, 122, 0.14);
+}
+.script-document--print .script-shot {
+  border-left-color: #202828;
+  color: #9aa6a2;
+}
+.script-document--print .script-spoken {
+  border-left-color: #21d07a;
+  background: #151a1a;
+  color: #f3f7f5;
+}
+.script-document--print blockquote {
+  border-left-color: #21d07a;
+  background: #0c0f0f;
+  color: #f3f7f5;
+}
+.script-document--print code,
+.script-document--print pre {
+  background: #0c0f0f;
+  border-color: #202828;
+  color: #f3f7f5;
+}
+.script-document--print li > strong:first-child {
+  color: #9aa6a2;
+}
+
+@media (max-width: 1180px) {
+  .tac-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 1100px) {
+  .tac-grid-2-wide { grid-template-columns: 1fr; }
+  .tac-grid-hero { grid-template-columns: 1fr 1fr; }
+  .tac-pi-row { grid-template-columns: 1fr; }
+}
+@media (max-width: 980px) {
+  .tac-grid-3 { grid-template-columns: 1fr; }
+  .tac-grid-4 { grid-template-columns: 1fr; }
+  .tac-grid-hero { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .tac-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ---------- Buttons ---------- */
+
 .tac-btn {
   display: inline-flex;
   align-items: center;
@@ -428,7 +592,7 @@
   padding: 8px 14px;
   background: var(--tac-surface);
   border: 1px solid var(--tac-border);
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--tac-fg);
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
@@ -436,35 +600,38 @@
   text-transform: none;
   letter-spacing: 0;
   cursor: pointer;
-  transition: border-color 120ms ease, background 120ms ease, transform 80ms ease;
+  transition: border-color 120ms ease, background 120ms ease,
+    transform 80ms ease, box-shadow 120ms ease;
   user-select: none;
 }
 .tac-btn:hover {
   background: var(--tac-surface2);
-  border-color: var(--tac-mute);
+  border-color: var(--tac-border-strong);
 }
 .tac-btn:focus-visible {
   outline: none;
   border-color: var(--tac-accent);
-  box-shadow: 0 0 0 3px rgba(79, 141, 254, 0.25);
+  box-shadow: 0 0 0 3px var(--tac-accent-soft-strong);
 }
 .tac-btn:active {
   transform: translateY(1px);
 }
-.tac-btn:disabled {
+.tac-btn:disabled,
+.tac-btn[aria-disabled="true"] {
   opacity: 0.4;
   cursor: not-allowed;
 }
-.tac-btn:disabled:hover {
+.tac-btn:disabled:hover,
+.tac-btn[aria-disabled="true"]:hover {
   background: var(--tac-surface);
   border-color: var(--tac-border);
 }
 
-/* Accent button — primary action */
 .tac-btn-accent {
   background: var(--tac-accent);
   border-color: var(--tac-accent);
-  color: #ffffff;
+  color: #052010;
+  font-weight: 600;
 }
 .tac-btn-accent:hover {
   background: var(--tac-accent-hover);
@@ -472,25 +639,35 @@
 }
 .tac-btn-accent:focus-visible {
   border-color: var(--tac-accent-hover);
-  box-shadow: 0 0 0 3px rgba(79, 141, 254, 0.35);
+  box-shadow: 0 0 0 3px var(--tac-accent-soft-strong);
 }
 
-/* Danger button — destructive only */
 .tac-btn-danger {
   background: var(--tac-surface);
-  border-color: rgba(239, 68, 68, 0.45);
+  border-color: rgba(240, 68, 94, 0.45);
   color: var(--tac-danger);
 }
 .tac-btn-danger:hover {
-  background: rgba(239, 68, 68, 0.08);
+  background: rgba(240, 68, 94, 0.08);
   border-color: var(--tac-danger);
 }
+.tac-btn-danger:focus-visible {
+  border-color: var(--tac-danger);
+  box-shadow: 0 0 0 3px rgba(240, 68, 94, 0.3);
+}
 
-/* Inputs */
+/* Standalone focus-ring helper for non-button interactive elements. */
+.tac-focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--tac-accent-soft-strong);
+}
+
+/* ---------- Inputs ---------- */
+
 .tac-input {
-  background: var(--tac-surface);
+  background: var(--tac-surface-inner);
   border: 1px solid var(--tac-border);
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--tac-fg);
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
@@ -500,41 +677,18 @@
   transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 .tac-input:hover {
-  border-color: var(--tac-mute);
+  border-color: var(--tac-border-strong);
 }
 .tac-input:focus {
   border-color: var(--tac-accent);
-  box-shadow: 0 0 0 3px rgba(79, 141, 254, 0.2);
+  box-shadow: 0 0 0 3px var(--tac-accent-soft);
 }
 .tac-input::placeholder {
   color: var(--tac-dim);
 }
 
-/* Status indicators */
-.tac-dot-status {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 9999px;
-  background: var(--tac-success);
-  animation: tac-pulse 1.6s ease-in-out infinite;
-}
-.tac-dot-error {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 9999px;
-  background: var(--tac-danger);
-}
-.tac-dot-mute {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 9999px;
-  background: var(--tac-mute);
-}
-
 /* ---------- Status pills ---------- */
+
 .tac-pill {
   display: inline-flex;
   align-items: center;
@@ -551,45 +705,59 @@
   white-space: nowrap;
 }
 .tac-pill--ok {
-  background: rgba(34, 197, 94, 0.12);
+  background: rgba(33, 208, 122, 0.13);
   color: var(--tac-success);
-  border-color: rgba(34, 197, 94, 0.3);
+  border-color: rgba(33, 208, 122, 0.3);
 }
 .tac-pill--warn {
-  background: rgba(245, 158, 11, 0.12);
+  background: rgba(245, 184, 46, 0.13);
   color: var(--tac-warning);
-  border-color: rgba(245, 158, 11, 0.3);
+  border-color: rgba(245, 184, 46, 0.3);
 }
 .tac-pill--err {
-  background: rgba(239, 68, 68, 0.12);
+  background: rgba(240, 68, 94, 0.13);
   color: var(--tac-danger);
-  border-color: rgba(239, 68, 68, 0.3);
+  border-color: rgba(240, 68, 94, 0.3);
 }
 .tac-pill--accent {
-  background: rgba(79, 141, 254, 0.12);
+  background: var(--tac-accent-soft);
   color: var(--tac-accent);
-  border-color: rgba(79, 141, 254, 0.3);
+  border-color: var(--tac-accent-soft-strong);
+}
+.tac-pill--cyan {
+  background: rgba(46, 211, 255, 0.13);
+  color: var(--tac-cyan);
+  border-color: rgba(46, 211, 255, 0.3);
+}
+.tac-pill--pink {
+  background: rgba(240, 59, 159, 0.13);
+  color: var(--tac-pink);
+  border-color: rgba(240, 59, 159, 0.3);
+}
+.tac-pill--purple {
+  background: rgba(124, 92, 255, 0.14);
+  color: var(--tac-purple);
+  border-color: rgba(124, 92, 255, 0.3);
 }
 
-/* ---------- Empty / placeholder grid texture ----------
-   Apply as a className on any empty-state card to get a faint graph-paper
-   background. Sits on top of var(--tac-surface2). The grid lines are intentionally
-   a hair above invisible — they read as "no data yet" without competing with text. */
-.tac-empty-grid {
-  background-color: var(--tac-surface2);
-  background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 16px 16px;
-  background-position: -1px -1px;
-}
-.tac-root.tac-theme-light .tac-empty-grid {
-  background-image:
-    linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+/* ---------- Status dots ---------- */
+
+.tac-dot-status {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--tac-success);
+  animation: tac-pulse 1.6s ease-in-out infinite;
 }
 
 /* ---------- Shared data table ---------- */
+
+.tac-table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
 .tac-table {
   width: 100%;
   border-collapse: collapse;
@@ -616,6 +784,9 @@
 .tac-table tbody tr:last-child td {
   border-bottom: 0;
 }
+.tac-table tbody tr {
+  transition: background 100ms ease;
+}
 .tac-table tbody tr:hover td {
   background: var(--tac-surface2);
 }
@@ -631,80 +802,33 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ASCII bracket framing for empty / upload / instruction states */
-.tac-frame {
-  position: relative;
-  border: 1px dashed var(--tac-border);
-  padding: 48px;
+/* ---------- Dataset table row hover ---------- */
+
+.tac-dataset-row {
+  transition: background-color 100ms ease;
 }
-.tac-frame::before,
-.tac-frame::after {
-  content: "";
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border: 1.5px solid #4f8dfe;
-}
-.tac-frame::before {
-  top: -1px;
-  left: -1px;
-  border-right: 0;
-  border-bottom: 0;
-}
-.tac-frame::after {
-  top: -1px;
-  right: -1px;
-  border-left: 0;
-  border-bottom: 0;
-}
-.tac-frame > .tac-frame-corner-bl,
-.tac-frame > .tac-frame-corner-br {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border: 1.5px solid #4f8dfe;
-}
-.tac-frame > .tac-frame-corner-bl {
-  bottom: -1px;
-  left: -1px;
-  border-right: 0;
-  border-top: 0;
-}
-.tac-frame > .tac-frame-corner-br {
-  bottom: -1px;
-  right: -1px;
-  border-left: 0;
-  border-top: 0;
+.tac-dataset-row:hover > td {
+  background-color: var(--tac-surface2);
 }
 
-/* Crosshair marker (corner / overlay decoration) */
-.tac-crosshair {
-  position: relative;
-  width: 12px;
-  height: 12px;
+/* ---------- Empty / placeholder grid texture ---------- */
+
+.tac-empty-grid {
+  background-color: var(--tac-surface-inner);
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-position: -1px -1px;
 }
-.tac-crosshair::before,
-.tac-crosshair::after {
-  content: "";
-  position: absolute;
-  background: #4f8dfe;
-}
-.tac-crosshair::before {
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 1px;
-  transform: translateY(-50%);
-}
-.tac-crosshair::after {
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  transform: translateX(-50%);
+.tac-root.tac-theme-light .tac-empty-grid {
+  background-image:
+    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
 }
 
-/* Skeleton — shimmer via background-position on transform (never w/h) */
+/* ---------- Skeleton + sparkline marquee ---------- */
+
 .tac-skeleton {
   background: linear-gradient(
     90deg,
@@ -716,31 +840,40 @@
   animation: tac-shimmer 1.6s ease-in-out infinite;
 }
 
-/* Active row / cell highlight */
-.tac-active-cell {
-  position: relative;
-}
-.tac-active-cell::after {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border: 2px solid #4f8dfe;
-  pointer-events: none;
+.tac-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: tac-marquee 32s linear infinite;
+  will-change: transform;
 }
 
-/* Inline error banner — soft red surface with left accent bar */
+/* ---------- Inline error banner ---------- */
+
 .tac-error-banner {
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: rgba(240, 68, 94, 0.08);
+  border: 1px solid rgba(240, 68, 94, 0.25);
   border-left: 3px solid var(--tac-danger);
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 12px 16px;
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
   color: var(--tac-fg);
 }
 
-/* Custom scrollbar (tactical) — applies inside .tac-root */
+/* ---------- Color text utilities ---------- */
+
+.tac-accent { color: var(--tac-accent); }
+.tac-status { color: var(--tac-success); }
+.tac-warning { color: var(--tac-warning); }
+.tac-danger { color: var(--tac-danger); }
+.tac-cyan { color: var(--tac-cyan); }
+.tac-pink { color: var(--tac-pink); }
+.tac-purple { color: var(--tac-purple); }
+.tac-mute { color: var(--tac-mute); }
+.tac-fg { color: var(--tac-fg); }
+
+/* ---------- Scrollbars + selection inside the app shell ---------- */
+
 .tac-root *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -750,55 +883,49 @@
 }
 .tac-root *::-webkit-scrollbar-thumb {
   background: var(--tac-border);
+  border-radius: 6px;
 }
 .tac-root *::-webkit-scrollbar-thumb:hover {
-  background: var(--tac-mute);
+  background: var(--tac-border-strong);
 }
-
-/* Selection */
 .tac-root ::selection {
-  background: rgba(79, 141, 254, 0.35);
+  background: var(--tac-accent-soft-strong);
   color: var(--tac-fg);
 }
 
-/* Text color utilities */
-.tac-accent { color: var(--tac-accent); }
-.tac-status { color: var(--tac-success); }
-.tac-warning { color: var(--tac-warning); }
-.tac-danger { color: var(--tac-danger); }
-.tac-mute   { color: var(--tac-mute); }
-.tac-fg     { color: var(--tac-fg); }
+/* ---------- Animations ---------- */
 
-/* Marquee track for sparkline carousels (seamless x-loop) */
-.tac-marquee-track {
-  display: flex;
-  width: max-content;
-  animation: tac-marquee 32s linear infinite;
-  will-change: transform;
-}
-
-/* Loader spin (used by settings recheck + connection probe icons) */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
-
-/* Typewriter / blinking cursor */
-.tac-cursor::after {
-  content: "_";
-  display: inline-block;
-  margin-left: 2px;
-  color: #4f8dfe;
-  animation: tac-blink 1s steps(2) infinite;
+@keyframes tac-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+@keyframes tac-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes tac-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* Recharts: align with the new palette + Inter typography */
+/* ---------- Recharts overrides ---------- */
+
 .recharts-tooltip-wrapper { outline: none; }
 .recharts-default-tooltip {
   background-color: var(--tac-surface2) !important;
-  border: 1px solid var(--tac-border) !important;
-  border-radius: 8px !important;
-  box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.6) !important;
+  border: 1px solid var(--tac-border-strong) !important;
+  border-radius: 10px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 18px 36px -18px rgba(0, 0, 0, 0.85) !important;
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif !important;
 }
 .recharts-default-tooltip .recharts-tooltip-label {
@@ -826,15 +953,150 @@
   stroke-opacity: 0.6;
 }
 
-/* Subtle entrance for cards / panels */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.card { animation: fadeUp 240ms ease-out; }
+/* ============================================================
+   Markdown report — used by AnalyzeView's streamed output and
+   the html2pdf export path. Quarantined under .tac-report.
+   ============================================================ */
 
-/* Reveal-on-scroll: applied via <Reveal> wrapper.
-   Hidden until data-revealed flips to true. */
+.tac-report {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  color: var(--tac-fg);
+  line-height: 1.65;
+}
+.tac-report h1,
+.tac-report h2,
+.tac-report h3,
+.tac-report h4 {
+  color: var(--tac-fg);
+  font-weight: 600;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  letter-spacing: -0.005em;
+}
+.tac-report h1 {
+  font-size: 22px;
+  border-bottom: 1px solid var(--tac-border);
+  padding-bottom: 6px;
+}
+.tac-report h2 {
+  font-size: 18px;
+  color: var(--tac-accent);
+}
+.tac-report h3 {
+  font-size: 15px;
+  color: var(--tac-fg);
+}
+.tac-report h4 {
+  font-size: 14px;
+  color: var(--tac-mute);
+}
+.tac-report p { margin: 0 0 12px; }
+.tac-report ul,
+.tac-report ol {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+.tac-report li { margin-bottom: 4px; }
+.tac-report strong { color: var(--tac-fg); font-weight: 600; }
+.tac-report em { color: var(--tac-fg); font-style: italic; }
+.tac-report blockquote {
+  border-left: 3px solid var(--tac-accent);
+  padding: 4px 12px;
+  margin: 12px 0;
+  background: var(--tac-surface2);
+  border-radius: 0 6px 6px 0;
+  color: var(--tac-mute);
+  font-style: italic;
+}
+.tac-report code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  background: var(--tac-surface2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: var(--tac-fg);
+}
+.tac-report pre {
+  background: var(--tac-surface2);
+  border: 1px solid var(--tac-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+.tac-report pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+}
+.tac-report table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 13px;
+}
+.tac-report th {
+  text-align: left;
+  background: var(--tac-surface2);
+  color: var(--tac-fg);
+  font-weight: 600;
+  padding: 8px 12px;
+  border: 1px solid var(--tac-border);
+}
+.tac-report td {
+  padding: 8px 12px;
+  border: 1px solid var(--tac-border);
+  color: var(--tac-fg);
+}
+.tac-report hr {
+  border: 0;
+  border-top: 1px solid var(--tac-border);
+  margin: 24px 0;
+}
+.tac-report a {
+  color: var(--tac-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.tac-report a:hover { color: var(--tac-accent-hover); }
+
+/* PDF export variant — html2pdf renders this branch with a fixed
+   light-on-dark layout regardless of the active theme. */
+.tac-report.pdf-export {
+  background: #14151a;
+  color: #ebecef;
+  padding: 24px;
+}
+
+/* Compact markdown variant — used inside expandable cards. */
+.tac-report.report-compact h1,
+.tac-report.report-compact h2,
+.tac-report.report-compact h3,
+.tac-report.report-compact h4 {
+  margin-top: 12px;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+.tac-report.report-compact h1 {
+  font-size: 16px;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.tac-report.report-compact p,
+.tac-report.report-compact li {
+  font-size: 13px;
+}
+
+/* Tab content scroll body — slim scrollbar */
+.framework-scroll::-webkit-scrollbar { width: 6px; }
+.framework-scroll::-webkit-scrollbar-thumb {
+  background: var(--tac-border);
+  border-radius: 6px;
+}
+
+/* Reveal-on-scroll utility — used by some legacy wrappers; stays
+   inert until data-revealed flips to true. */
 .reveal {
   opacity: 0;
   transform: translateY(12px);
@@ -847,70 +1109,9 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .reveal { transition: none; transform: none; opacity: 1; }
-}
-
-/* Hero-field ambient gradient — drop-in for hero backdrop */
-.hero-field {
-  background: radial-gradient(ellipse at top, rgba(212, 175, 55, 0.10), transparent 60%);
-}
-
-/* Faux device tilt for sample report preview (desktop only) */
-@media (min-width: 768px) {
-  .device-tilt {
-    transform: perspective(1600px) rotateX(1.5deg);
-    transform-origin: top center;
+  .tac-skeleton,
+  .tac-marquee-track,
+  .tac-dot-status {
+    animation: none !important;
   }
 }
-
-/* Shimmer overlay used sparingly on hero accent + sample-report CTA */
-.gold-shimmer-bg {
-  background-image: linear-gradient(
-    100deg,
-    transparent 30%,
-    rgba(246, 230, 168, 0.45) 50%,
-    transparent 70%
-  );
-  background-size: 250% 100%;
-  background-position: -200% 0;
-  animation: goldShimmerLoop 5s ease-in-out infinite;
-}
-@keyframes goldShimmerLoop {
-  0%, 100% { background-position: -200% 0; }
-  50%      { background-position: 200% 0; }
-}
-
-/* Streaming bar — used as an indeterminate progress indicator while the
-   agent is finalizing its response. Slides a partial-fill segment across
-   the track on a loop. */
-@keyframes progressStream {
-  0%   { left: -33%; }
-  100% { left: 100%; }
-}
-.progress-stream {
-  animation: progressStream 1.4s linear infinite;
-}
-
-/* PDF print path: html2pdf.js renders the .report element. Make sure
-   the dark background and gold text translate cleanly to the PDF page. */
-.report.pdf-export {
-  background: #0a1628;
-  padding: 24px;
-}
-
-/* Compact markdown variant — used inside expandable cards (e.g. top-3 breakdowns) */
-.report.report-compact h1,
-.report.report-compact h2,
-.report.report-compact h3,
-.report.report-compact h4 {
-  @apply mt-3 mb-2 text-base;
-}
-.report.report-compact h1 { @apply text-lg pb-1 border-b-0; }
-.report.report-compact h2 { @apply text-base; }
-.report.report-compact p { @apply mb-2 text-sm; }
-.report.report-compact ul,
-.report.report-compact ol { @apply mb-2 text-sm; }
-.report.report-compact li { @apply text-sm; }
-
-/* Tab content scroll body — slim scrollbar */
-.framework-scroll::-webkit-scrollbar { width: 6px; }
-.framework-scroll::-webkit-scrollbar-thumb { @apply bg-gold-700/40 rounded; }
