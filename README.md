@@ -49,6 +49,33 @@ node scripts/launch.js --dry-run  # banner + checks only, no server spawn
 
 ---
 
+## Ship a copy to someone else
+
+To hand a ready-to-run copy to a teammate or coaching client:
+
+```bash
+npm run dist
+```
+
+That produces `dist/chiqo-ai-<version>/` with:
+
+- launcher files (`chiqo-ai.cmd`, `chiqo-ai.command`, `scripts/`)
+- the **pre-built UI** (`client/dist/`) — no `npm run build` for them
+- **pre-installed runtime deps** (`server/node_modules/`, prod-only) — no
+  `npm install` for them
+- a `SHIP-NOTES.md` with their setup steps
+
+Zip the folder and send it. The recipient still needs **Node.js 18+** on
+their machine and their own `server/.env` (a `.env.example` is included).
+On their end, double-click the launcher → emerald banner → browser opens
+in ~2 seconds.
+
+> A truly standalone executable (`.exe` / `.app` with bundled Node) is a
+> bigger lift — Electron / Tauri / Node SEA — and would need a separate
+> packaging pass.
+
+---
+
 ## Manual / dev mode
 
 For active development you usually want hot-reload on both sides. Run the

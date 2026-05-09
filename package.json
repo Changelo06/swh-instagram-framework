@@ -11,6 +11,7 @@
     "setup": "npm --prefix server install && npm --prefix client install",
     "build": "npm --prefix client run build",
     "start": "node scripts/launch.js",
+    "dist": "node scripts/make-dist.js",
     "dev": "concurrently --kill-others-on-fail --names server,client --prefix-colors blue,magenta \"npm:dev:server\" \"npm:dev:client\"",
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev"

@@ -110,9 +110,17 @@ function runQuiet(cmd, args, opts, logPath, label) {
 // 3. Dependencies ------------------------------------------------------------
 
 async function ensureDependencies() {
+  // Pre-built dist folders ship `client/dist/` already baked, so the client
+  // workspace doesn't need its dev deps installed at all. Only run the
+  // client install when there's no built UI yet (i.e., a fresh dev clone).
+  const distPresent = fs.existsSync(
+    path.join(ROOT, "client", "dist", "index.html")
+  );
   const targets = [
     { dir: path.join(ROOT, "server"), name: "server" },
-    { dir: path.join(ROOT, "client"), name: "client" },
+    ...(distPresent
+      ? []
+      : [{ dir: path.join(ROOT, "client"), name: "client" }]),
   ];
   const missing = targets.filter(
     (t) => !fs.existsSync(path.join(t.dir, "node_modules"))
