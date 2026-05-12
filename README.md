@@ -107,6 +107,38 @@ That copies `server/.env`, `server/users.json`, and `server/.session-secret`
 (if they exist) into the Electron app's userData folder. Re-run any time
 your dev config changes.
 
+### Tier 2.5 — Ship a copy to one specific client (bring-your-own-keys)
+
+For when you want to hand chiqo.ai to one client at a time and let them
+provide their own Anthropic / Groq / Apify keys (so they pay for their
+own AI usage and you never share yours):
+
+```bash
+npm run pack-for-client -- \
+  --name "Sarah Doe" \
+  --email sarah@example.com \
+  --password chiqo-temp-2026
+```
+
+That:
+
+- Pre-seeds a user account with their email + password
+- Bundles it into a fresh Windows build
+- Writes a tailored `SHIP-NOTES.md` inside `dist-electron/win-unpacked/`
+  with their name, login, the SmartScreen heads-up, and step-by-step
+  instructions for getting the 3 API keys
+- Scrubs the temporary credentials from your dev tree afterward
+
+Zip `dist-electron/win-unpacked/` and send it. The client extracts,
+double-clicks `chiqo.ai.exe`, fills in their own keys when prompted,
+and signs in with the credentials in their SHIP-NOTES.md.
+
+> **Security reality:** API calls are made from the client's machine, so
+> any key they paste into `.env` is on their machine. That's why this
+> path is "bring-your-own-keys" — their keys, their bill, their
+> exposure. If you want clients to use **your** keys without seeing
+> them, you need a proxy server (out of scope here).
+
 **Windows quirk:** building the NSIS installer requires symbolic-link
 permission. Either run `npm run electron:build:win` from an Admin
 PowerShell, or enable Developer Mode (Windows Settings → Privacy &

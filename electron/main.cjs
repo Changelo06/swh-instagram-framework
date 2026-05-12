@@ -85,6 +85,19 @@ function revealInFolder(filePath) {
   } catch {}
 }
 
+// If the build bundled a users.json.default (used when shipping pre-
+// provisioned to a specific client), copy it to userData on first
+// launch so the client doesn't have to set up their own login.
+//
+// The defaults file is shipped at resources/server/users.json.default —
+// scripts/pack-for-client.js drops it there before each `electron:build`.
+function seedUsersIfMissing() {
+  if (fs.existsSync(USER_USERS_JSON)) return;
+  const tmpl = resolveBundled(path.join("server", "users.json.default"));
+  if (!fs.existsSync(tmpl)) return;
+  fs.copyFileSync(tmpl, USER_USERS_JSON);
+}
+
 // Bundled .env.example template — copy on first run if no user .env exists.
 function seedEnvIfMissing() {
   if (fs.existsSync(USER_ENV_PATH)) return false;
@@ -294,6 +307,7 @@ app.whenReady().then(async () => {
     Menu.setApplicationMenu(null);
   }
   initUserPaths();
+  seedUsersIfMissing();
   const seeded = seedEnvIfMissing();
 
   if (seeded) {

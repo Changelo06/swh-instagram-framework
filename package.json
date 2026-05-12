@@ -17,10 +17,12 @@
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
     "sync-userdata": "node scripts/sync-userdata.js",
+    "pack-for-client": "node scripts/pack-for-client.js",
     "electron:prep": "npm --prefix server ci --omit=dev --no-audit --no-fund && npm run build",
     "electron:dev": "npm run electron:prep && node scripts/run-electron.cjs",
     "electron:build": "npm run electron:prep && electron-builder",
     "electron:build:win": "npm run electron:prep && electron-builder --win",
+    "electron:build:win:dir": "npm run electron:prep && electron-builder --win --dir",
     "electron:build:mac": "npm run electron:prep && electron-builder --mac"
   },
   "build": {
