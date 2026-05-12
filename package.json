@@ -67,7 +67,10 @@
         "from": "client/dist",
         "to": "client/dist"
       },
-      "SWH_Instagram_Agent_Prompt.md"
+      {
+        "from": "SWH_Instagram_Agent_Prompt.md",
+        "to": "SWH_Instagram_Agent_Prompt.md"
+      }
     ],
     "win": {
       "target": [
