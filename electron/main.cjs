@@ -15,12 +15,14 @@
 //   On Linux:
 //     ~/.config/chiqo.ai/
 
-const { app, BrowserWindow, dialog, shell, Menu } = require("electron");
+const { app, BrowserWindow, dialog, shell, Menu, session } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
 const http = require("node:http");
 const net = require("node:net");
 const { spawn } = require("node:child_process");
+
+const ipcRegistry = require("./ipc/index.cjs");
 
 // --- Paths -----------------------------------------------------------------
 
@@ -121,6 +123,61 @@ function seedEnvIfMissing() {
     );
   }
   return true;
+}
+
+// --- Content-Security-Policy ------------------------------------------------
+
+// Strict CSP installed on the default session BEFORE any window loads.
+// All renderer responses get these headers, regardless of where they
+// came from (local Express today, custom protocol later).
+//
+//   default-src 'self'         — every resource must be same-origin by default
+//   script-src 'self'          — no inline scripts, no eval, no remote scripts
+//   style-src  'self' 'unsafe-inline'
+//                              — Recharts + some Phosphor icons inject inline
+//                                styles; CSP can't see them through React, so
+//                                we accept `'unsafe-inline'` for styles only
+//   connect-src 'self' http://127.0.0.1:*
+//                              — Renderer can fetch the local Express server
+//                                during the migration. Will tighten to
+//                                `connect-src 'none'` in Phase 2.6 when
+//                                Express is removed and the renderer talks
+//                                only to main via IPC.
+//   img-src    'self' data: https: http://127.0.0.1:*
+//                              — Instagram thumbnails come from CDN URLs.
+//   font-src   'self' data:    — Bundled Inter font files.
+//   worker-src 'self' blob:    — Vite emits a Web Worker for some chunks.
+//   object-src 'none'          — No <object>, <embed>, <applet>.
+//   base-uri   'self'          — Locks down <base href>.
+//   frame-ancestors 'none'     — Can't be iframed.
+//   form-action 'self'         — Can't POST forms off-origin.
+function installCsp() {
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "connect-src 'self' http://127.0.0.1:* http://localhost:*",
+    "img-src 'self' data: https: http://127.0.0.1:* http://localhost:*",
+    "font-src 'self' data:",
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+  ].join("; ");
+
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    // Strip any CSP already on the response (Express doesn't send one
+    // today but we want to be the only source of truth) and substitute
+    // ours. We do this case-insensitively because Electron may
+    // normalize the casing.
+    const headers = { ...details.responseHeaders };
+    for (const k of Object.keys(headers)) {
+      if (/^content-security-policy/i.test(k)) delete headers[k];
+    }
+    headers["Content-Security-Policy"] = [csp];
+    callback({ responseHeaders: headers });
+  });
 }
 
 // --- Server spawn ----------------------------------------------------------
@@ -278,6 +335,10 @@ function createWindow(url) {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // The preload runs in a privileged context (limited Node) and
+      // exposes `window.chiqo` to the renderer via contextBridge. It's
+      // the only path the renderer has to privileged operations.
+      preload: path.join(__dirname, "preload.cjs"),
     },
   });
 
@@ -307,6 +368,26 @@ app.whenReady().then(async () => {
     Menu.setApplicationMenu(null);
   }
   initUserPaths();
+
+  // Strict CSP. Installed before the BrowserWindow loads so the first
+  // response is already locked down. `connect-src` allows
+  // http://127.0.0.1:* during the Express → IPC migration; this will
+  // tighten to `connect-src 'none'` once Express is removed in
+  // Phase 2.6 and the renderer talks only to the main process via IPC.
+  //
+  // `style-src` keeps `'unsafe-inline'` because Recharts + some Phosphor
+  // icons emit inline styles. Scripts stay locked to `'self'`.
+  installCsp();
+
+  // Wire the IPC handler registry. Channels listed in
+  // electron/ipc/channels.cjs but not yet implemented return a typed
+  // `NOT_IMPLEMENTED` rejection — the renderer never hangs on a missing
+  // handler.
+  ipcRegistry.register({
+    userDataDir: USER_DATA_DIR,
+    appRoot: APP_ROOT,
+  });
+
   seedUsersIfMissing();
   const seeded = seedEnvIfMissing();
 
