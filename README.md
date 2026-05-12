@@ -90,9 +90,22 @@ Output lands in `dist-electron/`:
 - `dist-electron/chiqo.ai-<version>.dmg` — macOS installer
 
 The Electron app **bundles Node** so the recipient needs nothing
-pre-installed. On first launch the app creates `%APPDATA%\chiqo.ai\.env`
-(or `~/Library/Application Support/chiqo.ai/.env` on macOS) from the
+pre-installed. On first launch the app creates `%APPDATA%\chiqo-ai\.env`
+(or `~/Library/Application Support/chiqo-ai/.env` on macOS) from the
 template and prompts the user to fill in their API keys.
+
+**Already have a working `server/.env` on your dev machine?** The
+packaged app reads from `userData`, not from `server/.env`. To skip the
+fill-in-the-keys-again step, sync your existing config across in one
+command:
+
+```bash
+npm run sync-userdata
+```
+
+That copies `server/.env`, `server/users.json`, and `server/.session-secret`
+(if they exist) into the Electron app's userData folder. Re-run any time
+your dev config changes.
 
 **Windows quirk:** building the NSIS installer requires symbolic-link
 permission. Either run `npm run electron:build:win` from an Admin

@@ -54,6 +54,37 @@ function initUserPaths() {
   fs.mkdirSync(USER_LOG_DIR, { recursive: true });
 }
 
+// Open a file in a sensible plain-text editor. `shell.openPath()` is
+// unreliable for files without a registered handler (a fresh Windows box
+// has no app associated with the .env extension and pops "Windows cannot
+// access the specified device, path, or file"). This routes to the
+// platform's known-good text editor instead, with a folder-reveal fallback.
+function openInEditor(filePath) {
+  try {
+    if (process.platform === "win32") {
+      // notepad.exe is on every Windows install.
+      spawn("notepad.exe", [filePath], { detached: true, stdio: "ignore" }).unref();
+      return true;
+    }
+    if (process.platform === "darwin") {
+      // `open -e` forces TextEdit, which is on every macOS install.
+      spawn("open", ["-e", filePath], { detached: true, stdio: "ignore" }).unref();
+      return true;
+    }
+    // Linux: xdg-open uses the user's default text editor.
+    spawn("xdg-open", [filePath], { detached: true, stdio: "ignore" }).unref();
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function revealInFolder(filePath) {
+  try {
+    shell.showItemInFolder(filePath);
+  } catch {}
+}
+
 // Bundled .env.example template — copy on first run if no user .env exists.
 function seedEnvIfMissing() {
   if (fs.existsSync(USER_ENV_PATH)) return false;
@@ -278,11 +309,15 @@ app.whenReady().then(async () => {
         `A starter file has been created here:\n${USER_ENV_PATH}\n\n` +
         `Open it, paste your keys (ANTHROPIC_API_KEY is required), save it, ` +
         `then re-open chiqo.ai.`,
-      buttons: ["Open the file", "Quit"],
+      buttons: ["Open in editor", "Show in folder", "Quit"],
       defaultId: 0,
-      cancelId: 1,
+      cancelId: 2,
     });
-    if (choice === 0) shell.openPath(USER_ENV_PATH);
+    if (choice === 0) {
+      if (!openInEditor(USER_ENV_PATH)) revealInFolder(USER_ENV_PATH);
+    } else if (choice === 1) {
+      revealInFolder(USER_ENV_PATH);
+    }
     app.quit();
     return;
   }
@@ -297,11 +332,15 @@ app.whenReady().then(async () => {
       detail:
         `Open this file and paste a key on the ANTHROPIC_API_KEY line:\n\n` +
         `${USER_ENV_PATH}`,
-      buttons: ["Open the file", "Quit"],
+      buttons: ["Open in editor", "Show in folder", "Quit"],
       defaultId: 0,
-      cancelId: 1,
+      cancelId: 2,
     });
-    if (choice === 0) shell.openPath(USER_ENV_PATH);
+    if (choice === 0) {
+      if (!openInEditor(USER_ENV_PATH)) revealInFolder(USER_ENV_PATH);
+    } else if (choice === 1) {
+      revealInFolder(USER_ENV_PATH);
+    }
     app.quit();
     return;
   }

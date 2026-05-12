@@ -16,6 +16,7 @@
     "dev": "concurrently --kill-others-on-fail --names server,client --prefix-colors blue,magenta \"npm:dev:server\" \"npm:dev:client\"",
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
+    "sync-userdata": "node scripts/sync-userdata.js",
     "electron:prep": "npm --prefix server ci --omit=dev --no-audit --no-fund && npm run build",
     "electron:dev": "npm run electron:prep && node scripts/run-electron.cjs",
     "electron:build": "npm run electron:prep && electron-builder",
@@ -42,7 +43,24 @@
           "**/*",
           "!.env",
           "!users.json",
-          "!.session-secret"
+          "!.session-secret",
+          "!node_modules/**/*"
+        ]
+      },
+      {
+        "from": "server/node_modules",
+        "to": "server/node_modules",
+        "filter": [
+          "**/*",
+          "!**/test/**",
+          "!**/tests/**",
+          "!**/__tests__/**",
+          "!**/*.md",
+          "!**/*.markdown",
+          "!**/LICENSE",
+          "!**/LICENCE",
+          "!**/CHANGELOG*",
+          "!**/.github/**"
         ]
       },
       {
