@@ -14,6 +14,7 @@ const fs = require("node:fs");
 const crypto = require("./crypto.cjs");
 const meta = require("./meta.cjs");
 const db = require("./db.cjs");
+const keys = require("./keys.cjs");
 
 // State.
 //
@@ -291,6 +292,31 @@ function getDb() {
   return requireUnlocked().db;
 }
 
+// --- API key passthroughs ------------------------------------------------
+//
+// Thin wrappers that gate keys.cjs operations on the vault being
+// unlocked. The IPC handlers in electron/ipc/index.cjs route through
+// these so vault state semantics (LOCKED error) live in one place.
+
+function listApiKeys() {
+  return keys.listKeys(requireUnlocked().db);
+}
+
+function setApiKey(provider, value) {
+  return keys.setKey(requireUnlocked().db, provider, value);
+}
+
+function deleteApiKey(provider) {
+  return keys.deleteKey(requireUnlocked().db, provider);
+}
+
+// Main-process-only. Returns the plaintext key. Used by Phase 2.6's
+// provider-call code (Anthropic SDK, Groq fetch, Apify fetch) — NEVER
+// expose this through IPC.
+function getApiKey(provider) {
+  return keys.getKey(requireUnlocked().db, provider);
+}
+
 module.exports = {
   setUserDataDir,
   isUnlocked,
@@ -303,6 +329,11 @@ module.exports = {
   changePassword,
   wipe,
   getDb,
+  // API keys (provider keys live encrypted in the vault DB)
+  listApiKeys,
+  setApiKey,
+  deleteApiKey,
+  getApiKey, // main-process-only; never expose through IPC
   // Test seam — reset to clean locked state without touching disk.
   // Skips the seal step on purpose; tests want to start fresh, not
   // preserve session-y disk artifacts.

@@ -16,10 +16,8 @@ module.exports = {
     // Phase 1.2 / 1.3 vault channels — all live now (real handlers in
     // electron/ipc/index.cjs).
 
-    // Phase 2.5 — Provider API keys in the vault
-    { channel: "chiqo.keys.list",   phase: "2.5" },
-    { channel: "chiqo.keys.set",    phase: "2.5" },
-    { channel: "chiqo.keys.delete", phase: "2.5" },
+    // Phase 2.5 keys channels — all live now (real handlers in
+    // electron/ipc/index.cjs).
 
     // Phase 2.6 — Anthropic calls move into main
     { channel: "chiqo.anthropic.analyze",     phase: "2.6" },

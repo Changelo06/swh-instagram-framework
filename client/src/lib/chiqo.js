@@ -90,6 +90,31 @@ export async function vaultWipe(confirmText) {
   return c.vault.wipe(confirmText);
 }
 
+// --- Provider keys ---------------------------------------------------------
+//
+// These all require an unlocked vault. The renderer NEVER receives the
+// plaintext key value back — `keysList` returns only provider +
+// fingerprint + last4. The actual value goes into the encrypted vault
+// DB and stays there.
+
+export async function keysList() {
+  const c = bridge();
+  if (!c) throw noBridgeError();
+  return c.keys.list();
+}
+
+export async function keysSet(provider, value) {
+  const c = bridge();
+  if (!c) throw noBridgeError();
+  return c.keys.set(provider, value);
+}
+
+export async function keysDelete(provider) {
+  const c = bridge();
+  if (!c) throw noBridgeError();
+  return c.keys.delete(provider);
+}
+
 // --- App utility ------------------------------------------------------------
 
 export async function appGetPaths() {

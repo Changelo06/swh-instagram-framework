@@ -153,6 +153,30 @@ const MIGRATIONS = [
       stmt.run("vault_created_at", now);
     },
   },
+  {
+    version: 2,
+    up(db) {
+      // Provider API keys (Anthropic, Groq, Apify). The `value` column
+      // holds the actual key in plaintext inside the encrypted DB —
+      // since the DB file is AES-GCM-wrapped at rest, that's the
+      // intended storage. Only the main process ever reads `value`;
+      // the renderer-facing IPC returns fingerprint + last4 only.
+      //
+      // `fingerprint` = first 8 hex chars of sha-256(value), for UX
+      //                 disambiguation when a user rotates a key.
+      // `last4`       = last 4 visible characters, also UX only.
+      db.exec(`
+        CREATE TABLE api_keys (
+          provider     TEXT PRIMARY KEY,
+          value        TEXT NOT NULL,
+          fingerprint  TEXT NOT NULL,
+          last4        TEXT NOT NULL,
+          created_at   TEXT NOT NULL,
+          updated_at   TEXT NOT NULL
+        );
+      `);
+    },
+  },
 ];
 
 function getSchemaVersion(db) {

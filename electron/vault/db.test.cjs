@@ -226,7 +226,9 @@ async function makeVault({ userDataDir, password = "TestPassword2026!", name = "
   await test("db: openDb with right DEK unseals and exposes schema_version", () => {
     const conn = db.openDb(sharedDir, sharedVault.dek);
     try {
-      assert.equal(db.getSchemaVersion(conn), 1);
+      // schema_version equals the last applied migration. Bump this
+      // when db.cjs's MIGRATIONS array grows.
+      assert.equal(db.getSchemaVersion(conn), db.MIGRATIONS.length);
     } finally {
       db.closeAndSeal(conn, sharedDir, sharedVault.dek);
     }
@@ -255,8 +257,8 @@ async function makeVault({ userDataDir, password = "TestPassword2026!", name = "
     try {
       const r = db.runMigrations(conn);
       assert.equal(r.applied, 0);
-      assert.equal(r.from, 1);
-      assert.equal(r.to, 1);
+      assert.equal(r.from, db.MIGRATIONS.length);
+      assert.equal(r.to, db.MIGRATIONS.length);
     } finally {
       db.closeAndSeal(conn, sharedDir, sharedVault.dek);
     }
@@ -439,7 +441,7 @@ async function makeVault({ userDataDir, password = "TestPassword2026!", name = "
       // The DEK opens the DB.
       const conn = db.openDb(dir, recoveredDek);
       try {
-        assert.equal(db.getSchemaVersion(conn), 1);
+        assert.equal(db.getSchemaVersion(conn), db.MIGRATIONS.length);
       } finally {
         db.closeAndSeal(conn, dir, recoveredDek);
       }

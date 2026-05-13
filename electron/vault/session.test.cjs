@@ -151,10 +151,13 @@ function rmDir(p) {
       const s = await session.unlock("PW#2026");
       assert.equal(s.locked, false);
       assert.ok(session.isUnlocked());
-      // We can issue a query through the session's handle.
+      // We can issue a query through the session's handle. The schema
+      // version reflects the latest migration applied — bump this
+      // assertion whenever electron/vault/db.cjs's MIGRATIONS array
+      // gains a new entry.
       const conn = session.getDb();
       const row = conn.prepare("SELECT value FROM _meta WHERE key=?").get("schema_version");
-      assert.equal(row.value, "1");
+      assert.equal(row.value, "2");
     } finally {
       session.__resetForTests();
       rmDir(dir);

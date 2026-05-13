@@ -71,6 +71,23 @@ function register({ userDataDir, appRoot }) {
     vaultSession.wipe(confirmText)
   );
 
+  // ---- Provider API keys (Phase 2.5) -------------------------------
+  // All three require an unlocked vault. SECURITY INVARIANT: the
+  // renderer never receives the plaintext key value back across IPC.
+  // listKeys/setKey return public-safe metadata (provider, fingerprint,
+  // last4, timestamps) only; the value sits inside the encrypted DB.
+
+  safeHandle("chiqo.keys.list", () => vaultSession.listApiKeys());
+
+  safeHandle("chiqo.keys.set", (_e, provider, value) =>
+    vaultSession.setApiKey(provider, value)
+  );
+
+  safeHandle("chiqo.keys.delete", (_e, provider) =>
+    vaultSession.deleteApiKey(provider)
+  );
+
+
   // -------------------------------------------------------------------
   // Liveness check.
   //
