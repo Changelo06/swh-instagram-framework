@@ -17,6 +17,9 @@ const CHANNELS = require("./channels.cjs");
 const vaultSession = require("../vault/session.cjs");
 const runs = require("../runs/index.cjs");
 const anthropicProvider = require("../providers/anthropic.cjs");
+const groqProvider = require("../providers/groq.cjs");
+const apifyProvider = require("../providers/apify.cjs");
+const parseProvider = require("../providers/parse.cjs");
 
 // Wraps a handler so errors travel back to the renderer with the
 // `code` field intact. Anything thrown becomes:
@@ -125,6 +128,73 @@ function register({ userDataDir, appRoot }) {
   );
 
   safeHandle("chiqo.anthropic.stop", (_e, runId) => runs.stop(runId));
+
+  // ---- Groq Whisper (Phase 2.7) -------------------------------------
+  // Same lifecycle envelope as Anthropic — chiqo.groq.transcribe returns
+  // a runId synchronously, then streams `event:start` + `event:progress`
+  // events on chiqo.runs.delta.<runId> and ends with `done` carrying the
+  // enriched rows.
+  safeHandle("chiqo.groq.transcribe", (event, payload) =>
+    groqProvider.startTranscribeRun({
+      payload: payload || {},
+      getApiKey: () => {
+        const key = vaultSession.getApiKey("groq");
+        if (!key) {
+          const e = new Error(
+            "Groq key is not configured. Open Settings → API keys to add one."
+          );
+          e.code = "NO_API_KEY";
+          throw e;
+        }
+        return key;
+      },
+      sender: event.sender,
+    })
+  );
+  safeHandle("chiqo.groq.stop", (_e, runId) => runs.stop(runId));
+
+  // ---- Apify scrape + account (Phase 2.7) ---------------------------
+  safeHandle("chiqo.apify.scrape", (event, payload) =>
+    apifyProvider.startScrapeRun({
+      payload: payload || {},
+      getApiKey: () => {
+        const key = vaultSession.getApiKey("apify");
+        if (!key) {
+          const e = new Error(
+            "Apify token is not configured. Open Settings → API keys to add one."
+          );
+          e.code = "NO_API_KEY";
+          throw e;
+        }
+        return key;
+      },
+      // Optional — scrape can run without a Groq key (transcripts are
+      // skipped with a `warn` event). DO NOT throw NO_API_KEY here.
+      getGroqApiKey: () => vaultSession.getApiKey("groq") || "",
+      sender: event.sender,
+    })
+  );
+  safeHandle("chiqo.apify.stop", (_e, runId) => runs.stop(runId));
+  safeHandle("chiqo.apify.account", () => {
+    const token = vaultSession.getApiKey("apify");
+    if (!token) {
+      const e = new Error(
+        "Apify token is not configured. Open Settings → API keys to add one."
+      );
+      e.code = "NO_API_KEY";
+      throw e;
+    }
+    return apifyProvider.fetchAccount({ token });
+  });
+
+  // ---- Dataset parse (Phase 2.7) ------------------------------------
+  // The renderer hands us an ArrayBuffer + filename. We coerce to a Node
+  // Buffer and run the same pickFields/summarize pipeline the scrape
+  // path uses, so an uploaded CSV and an Apify scrape produce
+  // structurally identical rows.
+  safeHandle("chiqo.parse.file", (_e, buffer, filename) =>
+    parseProvider.parseBuffer({ buffer, filename })
+  );
 
   // Token estimation lands in Phase 4 alongside the cost preview UI.
   // Stub it for now so the channel exists (returns a rough character-

@@ -101,6 +101,14 @@ const chiqo = Object.freeze({
     stop: (runId) => invoke("chiqo.apify.stop", runId),
   }),
 
+  // --- Dataset parse (Phase 2.7) ---------------------------------------
+  // Parses an uploaded CSV or JSON dataset on the main side. The renderer
+  // hands us an ArrayBuffer + filename; we hand back {rows, summary, filename}.
+  // No streaming — synchronous over IPC.
+  parse: Object.freeze({
+    file: (buffer, filename) => invoke("chiqo.parse.file", buffer, filename),
+  }),
+
   // --- Runs (Phase 3) ---------------------------------------------------
   runs: Object.freeze({
     list: (filter) => invoke("chiqo.runs.list", filter),

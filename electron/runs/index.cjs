@@ -13,7 +13,10 @@
 // Payloads emitted on that channel:
 //   { type: "state",  state: "starting" | "streaming" | "done" | "error" | "stopped" }
 //   { type: "delta",  text: string }      // a chunk from the SDK stream
-//   { type: "done",   stopReason, usage, model, durationMs }
+//   { type: "event",  event: string, payload: any } // named progress events
+//                                          // (e.g. "queued", "progress",
+//                                          // "warn" for Apify + Groq runs)
+//   { type: "done",   stopReason, usage, model, durationMs, payload? }
 //   { type: "error",  message, code? }
 //
 // Cancellation:
@@ -103,7 +106,24 @@ function onDelta(runId, text) {
   sendTo(r.sender, deltaChannel(runId), { type: "delta", text });
 }
 
-function onDone(runId, { usage, stopReason }) {
+// Named progress event — used by Apify (start / queued / progress / warn)
+// and Groq (start / progress) to surface mid-run state changes that don't
+// fit the text-delta model. The renderer's IPC adapter translates these
+// to onEvent(event, payload) callbacks.
+function onEvent(runId, event, payload) {
+  const r = runs.get(runId);
+  if (!r) return;
+  sendTo(r.sender, deltaChannel(runId), {
+    type: "event",
+    event,
+    payload: payload ?? null,
+  });
+}
+
+// `payload` is an optional opaque result object that providers without a
+// text-delta stream (Apify scrape, Groq transcribe) use to return their
+// final rows + metadata to the renderer alongside the usual usage info.
+function onDone(runId, { usage, stopReason, payload } = {}) {
   const r = runs.get(runId);
   if (!r) return;
   r.status = "done";
@@ -117,6 +137,7 @@ function onDone(runId, { usage, stopReason }) {
     stopReason,
     model: r.model,
     durationMs,
+    payload: payload ?? null,
   });
 
   // Append usage row for the Account page (Phase 4) to read.
@@ -242,6 +263,7 @@ module.exports = {
   startRun,
   onStreaming,
   onDelta,
+  onEvent,
   onDone,
   onError,
   stop,

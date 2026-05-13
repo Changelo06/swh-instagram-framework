@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { groupByCreator } from "../../lib/datasetClassifier.js";
-import { streamAnalyzeViaIpc } from "../../lib/anthropic-stream.js";
+import { streamRun } from "../../lib/runs-stream.js";
 
 // sessionStorage key — survives F5 within a tab, clears when tab closes.
 const SESSION_KEY = "tac-session-v1";
@@ -307,8 +307,9 @@ export function CsvProvider({ children }) {
   const ingest = useCallback(
     async (file) => {
       if (!file) return;
-      // Accept both Apify CSV exports and the raw JSON dataset format. The
-      // server inspects extension/MIME/content to decide how to parse.
+      // Accept both Apify CSV exports and the raw JSON dataset format —
+      // the main-process parser sniffs extension + content to pick CSV
+      // vs JSON, and an Apify scrape produces the same row shape.
       if (!/\.(csv|json)$/i.test(file.name)) {
         setError("Only .csv or .json files are accepted.");
         setStage(STAGE.ERROR);
@@ -318,16 +319,22 @@ export function CsvProvider({ children }) {
       setFilename(file.name);
       setStage(STAGE.PARSING);
 
-      const fd = new FormData();
-      fd.append("file", file);
+      const c = typeof window !== "undefined" ? window.chiqo : null;
+      if (!c?.parse?.file) {
+        setError(
+          "chiqo.ai bridge unavailable — open this in the chiqo.ai desktop app."
+        );
+        setStage(STAGE.ERROR);
+        return;
+      }
 
       try {
-        const res = await fetch("/api/parse", { method: "POST", body: fd });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || `Parse failed (HTTP ${res.status})`);
+        // structuredClone over IPC moves the buffer without a copy.
+        const buf = await file.arrayBuffer();
+        const data = await c.parse.file(buf, file.name);
         _loadParsedDataset(data, file.name);
       } catch (e) {
-        setError(e.message);
+        setError(e.message || "Parse failed");
         setStage(STAGE.ERROR);
       }
     },
@@ -373,18 +380,25 @@ export function CsvProvider({ children }) {
 
   const cur = isAllSelected ? null : perCreator[selectedHandle] || null;
 
-  // ----- streaming helper for /api/analyze + /api/transcribe -----
+  // ----- streaming helper for analyze / scrape / transcribe -----
   //
-  // Two paths:
-  //   - endpoint === "/api/analyze" → routes through the vault-gated IPC
-  //     bridge (chiqo.anthropic.analyze + chiqo.runs.subscribe). The API
-  //     key never leaves main. /api/analyze in Express is gone.
-  //   - everything else (/api/scrape, /api/transcribe) → stays on the
-  //     existing fetch + SSE path until Phase 2.7 migrates Groq + Apify.
+  // All three providers (Anthropic analyze, Apify scrape, Groq transcribe)
+  // ride the same IPC streaming envelope:
   //
-  // Both paths store an "abort handle" with the same `.abort()` shape in
-  // abortRef.current so stopAnalysis / stopVariation don't need to care
-  // which path they're cancelling.
+  //   chiqo.<provider>.<verb>(payload)  → { runId }
+  //   chiqo.runs.subscribe(runId, ...)  → events on chiqo.runs.delta.<runId>
+  //   chiqo.<provider>.stop(runId)
+  //
+  // The runs-stream helper translates the IPC events
+  // ({type:'delta'|'event'|'done'|'error'|'state'}) into the old
+  // {onDelta, onEvent, onDone, onError} callback shape this context
+  // already speaks. `endpoint` chooses the provider; payloads are
+  // forwarded as-is.
+  //
+  // Tokens (Apify, Groq) live in the vault — main pulls them via the
+  // injected `getApiKey` closure. The renderer's old payload fields
+  // (`token`, `groqToken`) are still accepted but ignored by the
+  // providers; future cleanup can drop them at the call sites.
   const streamAnalyze = useCallback(
     async ({
       endpoint = "/api/analyze",
@@ -395,96 +409,64 @@ export function CsvProvider({ children }) {
       onEvent,
       abortKey,
     }) => {
-      if (endpoint === "/api/analyze") {
-        // IPC path. The helper returns { abort } we can stash so the
-        // existing stopAnalysis()/stopVariation() callsites still work
-        // without knowing which transport they're aborting.
-        let resolveFinished;
-        const finished = new Promise((r) => (resolveFinished = r));
-        const handle = { abort: () => {} };
-        abortRef.current[abortKey] = handle;
-        try {
-          const { abort } = await streamAnalyzeViaIpc(payload, {
-            onDelta,
-            onDone: (p) => {
-              onDone?.(p);
-              resolveFinished();
-            },
-            onError: (p) => {
-              onError?.(p);
-              resolveFinished();
-            },
-          });
-          handle.abort = abort;
-          await finished;
-        } finally {
-          delete abortRef.current[abortKey];
-        }
+      const c =
+        typeof window !== "undefined" && window.chiqo ? window.chiqo : null;
+      if (!c) {
+        onError?.({
+          message:
+            "chiqo.ai bridge unavailable — open this in the chiqo.ai desktop app.",
+          code: "NO_BRIDGE",
+        });
         return;
       }
 
-      const ctrl = new AbortController();
-      abortRef.current[abortKey] = ctrl;
+      // Dispatch table — endpoint name kept for backward compat with the
+      // call sites; under the hood we hit IPC.
+      const transport =
+        endpoint === "/api/analyze"
+          ? { start: () => c.anthropic.analyze(payload), stop: c.anthropic.stop }
+          : endpoint === "/api/scrape"
+          ? { start: () => c.apify.scrape(payload), stop: c.apify.stop }
+          : endpoint === "/api/transcribe"
+          ? { start: () => c.groq.transcribe(payload), stop: c.groq.stop }
+          : null;
+      if (!transport) {
+        onError?.({ message: `Unknown endpoint ${endpoint}`, code: "BAD_ENDPOINT" });
+        return;
+      }
 
-      // Track whether a terminal event was received. If the stream closes
-      // (network blip, proxy idle-out, server crash) without ever emitting
-      // `done` or `error`, the caller would otherwise sit at "running"
-      // forever. We synthesize an error so apifyRun/analysis state can
-      // recover instead.
-      let sawTerminal = false;
+      let resolveFinished;
+      const finished = new Promise((r) => (resolveFinished = r));
+      const handle = { abort: () => {} };
+      abortRef.current[abortKey] = handle;
+
       try {
-        const res = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-          signal: ctrl.signal,
+        const { abort } = await streamRun({
+          start: transport.start,
+          stop: transport.stop,
+          callbacks: {
+            onDelta,
+            onEvent,
+            // The old SSE `done` event delivered the result body directly
+            // (e.g. {rows, summary, filename}); the new IPC envelope wraps
+            // it under `payload`. Existing call sites expect the body
+            // shape — splat both forms so they keep reading
+            // payload.rows / payload.usage uniformly.
+            onDone: (d) => {
+              const body = { ...(d.payload || {}) };
+              if (d.usage) body.usage = d.usage;
+              if (d.stopReason) body.stopReason = d.stopReason;
+              onDone?.(body);
+              resolveFinished();
+            },
+            onError: (e) => {
+              onError?.(e);
+              resolveFinished();
+            },
+          },
         });
-        if (!res.ok || !res.body) {
-          const txt = await res.text().catch(() => "");
-          throw new Error(txt || `HTTP ${res.status}`);
-        }
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const blocks = buffer.split("\n\n");
-          buffer = blocks.pop() || "";
-          for (const block of blocks) {
-            let event = "message";
-            let dataLine = "";
-            for (const line of block.split("\n")) {
-              if (line.startsWith("event:")) event = line.slice(6).trim();
-              else if (line.startsWith("data:")) dataLine += line.slice(5).trim();
-            }
-            if (!dataLine) continue;
-            let parsed;
-            try {
-              parsed = JSON.parse(dataLine);
-            } catch {
-              continue;
-            }
-            if (event === "delta" && parsed.text) onDelta?.(parsed.text);
-            else if (event === "done") {
-              sawTerminal = true;
-              onDone?.(parsed);
-            } else if (event === "error") {
-              sawTerminal = true;
-              throw new Error(parsed.message || "stream error");
-            } else onEvent?.(event, parsed);
-          }
-        }
-        if (!sawTerminal) {
-          onError?.({
-            message:
-              "connection closed before the run finished — check the apify console; if the run actually succeeded, refresh and the data will not have loaded automatically",
-          });
-        }
-      } catch (e) {
-        if (e.name === "AbortError") onError?.({ aborted: true });
-        else onError?.({ message: e.message });
+        handle.abort = abort;
+        await finished;
       } finally {
         delete abortRef.current[abortKey];
       }

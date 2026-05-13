@@ -257,6 +257,11 @@ function AccountSection({ token }) {
   const inflightRef = useRef(0);
 
   const fetchAccount = async (rawToken) => {
+    // The Apify token now lives in the vault; main resolves it via
+    // chiqo.apify.account. The `rawToken` prop is kept only so the
+    // debounced effect below has something to react to (the user
+    // editing the token input still triggers a refresh, after
+    // chiqo.keys.set persists the new value).
     const cleanToken = String(rawToken || "").trim();
     if (!cleanToken) {
       setAccount(null);
@@ -267,20 +272,16 @@ function AccountSection({ token }) {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/apify/account", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: cleanToken }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (stamp !== inflightRef.current) return;
-      if (!res.ok) {
-        setAccount(null);
-        setError(data?.error || `HTTP ${res.status}`);
-      } else {
-        setAccount(data);
-        setRefreshedAt(Date.now());
+      const c = typeof window !== "undefined" ? window.chiqo : null;
+      if (!c?.apify?.account) {
+        throw new Error(
+          "chiqo.ai bridge unavailable — open this in the chiqo.ai desktop app."
+        );
       }
+      const data = await c.apify.account();
+      if (stamp !== inflightRef.current) return;
+      setAccount(data);
+      setRefreshedAt(Date.now());
     } catch (e) {
       if (stamp !== inflightRef.current) return;
       setAccount(null);

@@ -1,6 +1,19 @@
 import { useEffect, useState, useCallback } from "react";
 import { CheckCircle2, AlertCircle, Loader2, RefreshCw } from "lucide-react";
 
+// API readiness indicator.
+//
+// As of Phase 2.7 there is no Express server to probe. Readiness is now
+// purely a function of "are the right keys present in the vault." This
+// hook reads `chiqo.keys.list()` and reports:
+//
+//   ONLINE   — Anthropic + Groq + Apify all configured in the vault
+//   DEGRADED — Anthropic configured, Groq or Apify missing
+//   OFFLINE  — Anthropic missing (or the bridge itself is unavailable)
+//
+// Re-fetches on demand via `recheck()` so SettingsDrawer can ask for a
+// refresh right after a `chiqo.keys.set` / `delete`.
+
 const STATE = {
   CHECKING: "checking",
   ONLINE: "online",
@@ -16,22 +29,31 @@ export function useApiHealth() {
   const check = useCallback(async () => {
     setState(STATE.CHECKING);
     setError(null);
+    const c = typeof window !== "undefined" ? window.chiqo : null;
+    if (!c?.keys?.list) {
+      setError(
+        "chiqo.ai bridge unavailable — open this in the chiqo.ai desktop app."
+      );
+      setState(STATE.OFFLINE);
+      return;
+    }
     try {
-      const res = await fetch("/api/health", { cache: "no-store" });
-      if (!res.ok) throw new Error(`Health check failed (HTTP ${res.status})`);
-      const data = await res.json();
-      setDetails(data);
-      // Anthropic moved into the vault in Phase 2.6 — the server no longer
-      // reports it. When the field is absent, treat Anthropic as managed
-      // elsewhere (Settings → API keys). Legacy server builds still return
-      // it; honour their reading.
-      const anthropicField =
-        data.services?.anthropic?.configured ?? data.anthropicConfigured;
-      const anthropicOk = anthropicField === undefined ? true : anthropicField;
-      const groqOk =
-        data.services?.groq?.configured ?? data.groqConfigured;
-      const apifyOk =
-        data.services?.apify?.configured ?? data.apifyConfigured;
+      const keys = await c.keys.list();
+      const has = (provider) =>
+        Array.isArray(keys) &&
+        keys.some(
+          (k) => k && String(k.provider).toLowerCase() === provider
+        );
+      const anthropicOk = has("anthropic");
+      const groqOk = has("groq");
+      const apifyOk = has("apify");
+      setDetails({
+        services: {
+          anthropic: { configured: anthropicOk, required: true },
+          groq: { configured: groqOk, required: false },
+          apify: { configured: apifyOk, required: false },
+        },
+      });
       if (!anthropicOk) setState(STATE.OFFLINE);
       else if (!groqOk || !apifyOk) setState(STATE.DEGRADED);
       else setState(STATE.ONLINE);
@@ -53,23 +75,27 @@ export default function ApiStatus({ health }) {
 
   const conf = {
     [STATE.CHECKING]: { icon: Loader2, color: "#8892A4", label: "Checking…", spin: true },
-    [STATE.ONLINE]: { icon: CheckCircle2, color: "#2ECC71", label: "All APIs online" },
-    [STATE.DEGRADED]: { icon: AlertCircle, color: "#F39C12", label: "Anthropic OK · Groq missing" },
-    [STATE.OFFLINE]: { icon: AlertCircle, color: "#E74C3C", label: "API offline" },
+    [STATE.ONLINE]: { icon: CheckCircle2, color: "#2ECC71", label: "All keys configured" },
+    [STATE.DEGRADED]: {
+      icon: AlertCircle,
+      color: "#F39C12",
+      label: "Anthropic OK · Groq/Apify missing",
+    },
+    [STATE.OFFLINE]: {
+      icon: AlertCircle,
+      color: "#E74C3C",
+      label: "Anthropic key missing",
+    },
   }[state];
 
   const Icon = conf.icon;
+  const fmt = (svc) =>
+    details?.services?.[svc]?.configured ? "configured" : "missing";
   const tooltipParts = [
     error && `Error: ${error}`,
-    details?.model && `Claude model: ${details.model}`,
-    details?.groqModel && `Groq model: ${details.groqModel}`,
-    details && (() => {
-      const f = details.services?.anthropic?.configured ?? details.anthropicConfigured;
-      return f === undefined
-        ? "Anthropic: managed in vault (Settings → API keys)"
-        : `Anthropic: ${f ? "configured" : "missing"}`;
-    })(),
-    details && `Groq: ${(details.services?.groq?.configured ?? details.groqConfigured) ? "configured" : "missing"}`,
+    details && `Anthropic: ${fmt("anthropic")}`,
+    details && `Groq: ${fmt("groq")}`,
+    details && `Apify: ${fmt("apify")}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -91,7 +117,7 @@ export default function ApiStatus({ health }) {
       <button
         onClick={recheck}
         disabled={state === STATE.CHECKING}
-        title="Re-check API status"
+        title="Re-check key status"
         className="p-1 rounded text-slate-500 hover:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed"
       >
         <RefreshCw size={12} className={state === STATE.CHECKING ? "animate-spin" : ""} />
