@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { groupByCreator } from "../../lib/datasetClassifier.js";
+import { streamAnalyzeViaIpc } from "../../lib/anthropic-stream.js";
 
 // sessionStorage key — survives F5 within a tab, clears when tab closes.
 const SESSION_KEY = "tac-session-v1";
@@ -373,6 +374,17 @@ export function CsvProvider({ children }) {
   const cur = isAllSelected ? null : perCreator[selectedHandle] || null;
 
   // ----- streaming helper for /api/analyze + /api/transcribe -----
+  //
+  // Two paths:
+  //   - endpoint === "/api/analyze" → routes through the vault-gated IPC
+  //     bridge (chiqo.anthropic.analyze + chiqo.runs.subscribe). The API
+  //     key never leaves main. /api/analyze in Express is gone.
+  //   - everything else (/api/scrape, /api/transcribe) → stays on the
+  //     existing fetch + SSE path until Phase 2.7 migrates Groq + Apify.
+  //
+  // Both paths store an "abort handle" with the same `.abort()` shape in
+  // abortRef.current so stopAnalysis / stopVariation don't need to care
+  // which path they're cancelling.
   const streamAnalyze = useCallback(
     async ({
       endpoint = "/api/analyze",
@@ -383,6 +395,34 @@ export function CsvProvider({ children }) {
       onEvent,
       abortKey,
     }) => {
+      if (endpoint === "/api/analyze") {
+        // IPC path. The helper returns { abort } we can stash so the
+        // existing stopAnalysis()/stopVariation() callsites still work
+        // without knowing which transport they're aborting.
+        let resolveFinished;
+        const finished = new Promise((r) => (resolveFinished = r));
+        const handle = { abort: () => {} };
+        abortRef.current[abortKey] = handle;
+        try {
+          const { abort } = await streamAnalyzeViaIpc(payload, {
+            onDelta,
+            onDone: (p) => {
+              onDone?.(p);
+              resolveFinished();
+            },
+            onError: (p) => {
+              onError?.(p);
+              resolveFinished();
+            },
+          });
+          handle.abort = abort;
+          await finished;
+        } finally {
+          delete abortRef.current[abortKey];
+        }
+        return;
+      }
+
       const ctrl = new AbortController();
       abortRef.current[abortKey] = ctrl;
 
