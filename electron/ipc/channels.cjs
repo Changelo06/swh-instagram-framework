@@ -19,10 +19,8 @@ module.exports = {
     // Phase 2.5 keys channels — all live now (real handlers in
     // electron/ipc/index.cjs).
 
-    // Phase 2.6 — Anthropic calls move into main
-    { channel: "chiqo.anthropic.analyze",     phase: "2.6" },
-    { channel: "chiqo.anthropic.countTokens", phase: "2.6" },
-    { channel: "chiqo.anthropic.stop",        phase: "2.6" },
+    // Phase 2.6 Anthropic channels — all live now (real handlers in
+    // electron/ipc/index.cjs).
 
     // Phase 2.7 — Groq + Apify calls move into main
     { channel: "chiqo.groq.transcribe", phase: "2.7" },
@@ -31,10 +29,9 @@ module.exports = {
     { channel: "chiqo.apify.account",   phase: "2.7" },
     { channel: "chiqo.apify.stop",      phase: "2.7" },
 
-    // Phase 3 — Runs as first-class objects
-    { channel: "chiqo.runs.list",   phase: "3" },
-    { channel: "chiqo.runs.get",    phase: "3" },
-    { channel: "chiqo.runs.delete", phase: "3" },
+    // chiqo.runs.{list,get,delete} now have basic in-memory handlers
+    // (Phase 2.6). Phase 3 will swap them for DB-backed persistence
+    // without changing the renderer-facing contract.
 
     // Phase 4 — Account / usage page
     { channel: "chiqo.usage.summary", phase: "4" },

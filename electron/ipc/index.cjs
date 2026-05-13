@@ -15,6 +15,8 @@ const fs = require("node:fs");
 
 const CHANNELS = require("./channels.cjs");
 const vaultSession = require("../vault/session.cjs");
+const runs = require("../runs/index.cjs");
+const anthropicProvider = require("../providers/anthropic.cjs");
 
 // Wraps a handler so errors travel back to the renderer with the
 // `code` field intact. Anything thrown becomes:
@@ -40,6 +42,11 @@ function register({ userDataDir, appRoot }) {
   // Hand the vault session its userData dir so it knows where to read /
   // write `vault-meta.json` and `vault.db`.
   vaultSession.setUserDataDir(userDataDir);
+
+  // The runs domain wants the same userDataDir for usage-log writes.
+  // Anthropic provider needs the appRoot to locate the system prompt.
+  runs.setUserDataDir(userDataDir);
+  anthropicProvider.setAppRoot(appRoot);
 
   // ---- Vault handlers (Phase 1.3) ----------------------------------
   // status is read-only and works whether or not a vault exists. The
@@ -86,6 +93,57 @@ function register({ userDataDir, appRoot }) {
   safeHandle("chiqo.keys.delete", (_e, provider) =>
     vaultSession.deleteApiKey(provider)
   );
+
+  // ---- Anthropic streaming + runs (Phase 2.6) -----------------------
+  // chiqo.anthropic.analyze accepts the same payload shape the old
+  // /api/analyze endpoint did (rows, mode, filename, scriptCount, dna,
+  // dnaFilename). Returns { runId } synchronously; the renderer
+  // subscribes via chiqo.runs.subscribe(runId, callback) to receive
+  // streamed deltas + the final done/error event.
+  //
+  // The API key is pulled from the unlocked vault — never from env,
+  // never from the IPC payload. If the vault is locked, getApiKey
+  // throws LOCKED; if no key is set for Anthropic, providers/anthropic
+  // throws NO_API_KEY. Both surface cleanly on the renderer side.
+
+  safeHandle("chiqo.anthropic.analyze", (event, payload) =>
+    anthropicProvider.startAnalyzeRun({
+      payload: payload || {},
+      getApiKey: () => {
+        const key = vaultSession.getApiKey("anthropic");
+        if (!key) {
+          const e = new Error(
+            "Anthropic key is not configured. Open Settings → API keys to add one."
+          );
+          e.code = "NO_API_KEY";
+          throw e;
+        }
+        return key;
+      },
+      sender: event.sender,
+    })
+  );
+
+  safeHandle("chiqo.anthropic.stop", (_e, runId) => runs.stop(runId));
+
+  // Token estimation lands in Phase 4 alongside the cost preview UI.
+  // Stub it for now so the channel exists (returns a rough character-
+  // based estimate the renderer can ignore).
+  safeHandle("chiqo.anthropic.countTokens", (_e, payload) => {
+    const text =
+      typeof payload === "string"
+        ? payload
+        : JSON.stringify(payload?.rows || payload || "");
+    // ~4 chars per token is the long-standing English rule of thumb.
+    return { tokens: Math.ceil(text.length / 4), method: "char-based-estimate" };
+  });
+
+  // Runs read-only queries. List + get expose the in-memory view; a
+  // delete is allowed for finished runs (in-flight rejects with
+  // IN_FLIGHT).
+  safeHandle("chiqo.runs.list", () => runs.list());
+  safeHandle("chiqo.runs.get", (_e, runId) => runs.get(runId));
+  safeHandle("chiqo.runs.delete", (_e, runId) => runs.remove(runId));
 
 
   // -------------------------------------------------------------------

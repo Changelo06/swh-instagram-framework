@@ -124,6 +124,7 @@
     "electron-builder": "^26.8.1"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.95.2",
     "better-sqlite3": "^12.10.0",
     "hash-wasm": "^4.12.0"
   }

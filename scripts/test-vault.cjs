@@ -36,6 +36,7 @@ const TEST_FILES = [
   "electron/vault/db.test.cjs",
   "electron/vault/session.test.cjs",
   "electron/vault/keys.test.cjs",
+  "electron/runs/runs.test.cjs",
 ];
 
 let totalFailures = 0;
