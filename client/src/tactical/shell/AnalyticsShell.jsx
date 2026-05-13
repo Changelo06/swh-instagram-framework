@@ -6,71 +6,81 @@ import SettingsDrawer from "./SettingsDrawer.jsx";
 import { useApiHealth } from "../../components/ApiStatus.jsx";
 import { CsvProvider, useCsv } from "../state/CsvContext.jsx";
 import ResetConfirmModal from "../widgets/ResetConfirmModal.jsx";
-import LoginView from "../views/LoginView.jsx";
+import VaultGate from "../views/VaultGate.jsx";
+import { hasBridge, vaultStatus } from "../../lib/chiqo.js";
 
 const THEME_STORAGE_KEY = "tac-theme";
 
-// Auth gate. Until /api/me confirms a session, the rest of the shell stays
-// unmounted so the CsvProvider doesn't fire any /api/* requests prematurely.
-// On 401 we show LoginView; on success the form calls back into here and we
-// re-fetch /api/me to confirm + transition.
+// Vault gate (Phase 2.4). Replaces the previous /api/me + LoginView
+// auth flow. Sequence on every boot:
+//
+//   1. Ask the main process whether a vault exists and is unlocked
+//      (chiqo.vault.status() via the preload bridge)
+//   2. If no vault → render VaultGate's onboarding flow
+//   3. If vault exists but locked → render VaultGate's unlock screen
+//   4. If unlocked → render the actual shell (CsvProvider + ShellInner)
+//
+// We don't poll. The vault state only changes through VaultGate's own
+// flows, which call onUnlocked() back into here when they succeed.
 export default function AnalyticsShell() {
-  const [authState, setAuthState] = useState("checking"); // "checking" | "in" | "out"
-  const [user, setUser] = useState(null);
+  const [vaultUnlocked, setVaultUnlocked] = useState(false);
+  const [checked, setChecked] = useState(false);
 
-  const refreshSession = async () => {
-    try {
-      const res = await fetch("/api/me", { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setUser(data.user || null);
-        setAuthState("in");
-      } else {
-        setUser(null);
-        setAuthState("out");
-      }
-    } catch {
-      setUser(null);
-      setAuthState("out");
-    }
-  };
-
+  // Optimistic first-render check: ask the main process directly, and
+  // skip mounting VaultGate at all if we're already unlocked (avoids a
+  // brief flash of the lock screen when the user navigates around the
+  // app while a session is live).
   useEffect(() => {
-    refreshSession();
+    let cancelled = false;
+    (async () => {
+      if (!hasBridge()) {
+        // No Electron bridge — VaultGate will render the BridgeMissing
+        // notice instead of trying to onboard / unlock.
+        if (!cancelled) setChecked(true);
+        return;
+      }
+      try {
+        const s = await vaultStatus();
+        if (cancelled) return;
+        if (s.exists && !s.locked) setVaultUnlocked(true);
+      } catch {
+        // fall through — VaultGate will surface the failure
+      } finally {
+        if (!cancelled) setChecked(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  if (authState === "checking") {
-    // Tiny placeholder so the page isn't blank while /api/me resolves.
+  if (!checked) {
+    // Bridge probe is in flight. Render a featureless placeholder so
+    // we don't briefly show VaultGate before the optimistic check
+    // resolves.
     return (
       <div
         className="tac-root"
         style={{
           minHeight: "100dvh",
-          display: "grid",
-          placeItems: "center",
-          color: "var(--tac-mute)",
-          fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
-          fontSize: 13,
+          background: "var(--tac-bg)",
         }}
-      >
-        Loading…
-      </div>
+      />
     );
   }
 
-  if (authState === "out") {
-    return <LoginView onSignedIn={refreshSession} />;
+  if (!vaultUnlocked) {
+    return <VaultGate onUnlocked={() => setVaultUnlocked(true)} />;
   }
 
   return (
     <CsvProvider>
-      <ShellInner currentUser={user} />
+      <ShellInner />
     </CsvProvider>
   );
 }
 
-// eslint-disable-next-line no-unused-vars
-function ShellInner({ currentUser }) {
+function ShellInner() {
   const health = useApiHealth();
   const [collapsed, setCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
