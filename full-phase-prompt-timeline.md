@@ -222,38 +222,74 @@ clean (no missing-key warnings). Client builds clean.
 
 ---
 
-## Phase 2.7 — Groq + Apify move into main — PENDING
+## Phase 2.7 — Groq + Apify move into main; Express dies — DONE ([270085d](https://github.com/Changelo06/swh-instagram-framework/commit/270085d))
 
-**Goal.** The Express server loses every remaining provider call.
-`/api/transcribe`, `/api/scrape`, `/api/parse` and the auth routes all
-migrate to vault-gated IPC. After this phase the Express server is gone.
+**Goal.** Every privileged operation goes through vault-gated IPC. The
+Express server stops existing. After this phase main is the only
+network surface; the renderer never makes an HTTP request.
 
-**Channels (already exposed in preload, currently stubbed
-`NOT_IMPLEMENTED`).**
-- `chiqo.groq.transcribe` / `chiqo.groq.stop`
-- `chiqo.apify.scrape` / `chiqo.apify.account` / `chiqo.apify.stop`
+**Delivered.**
+- [electron/providers/dataset.cjs](electron/providers/dataset.cjs) —
+  shared `FIELD_ALIASES`, `pickFields`, `summarize`, `normalizeIgUrl`,
+  `synthesizeScrapeFilename`, `engagementScore`, `pMapBounded`. Single
+  source of truth for the row shape every provider produces.
+- [electron/providers/parse.cjs](electron/providers/parse.cjs) — CSV /
+  JSON ingest. Wired as `chiqo.parse.file(arrayBuffer, filename)`.
+- [electron/providers/groq.cjs](electron/providers/groq.cjs) — Whisper
+  transcribe with bounded concurrency, abort-signal chained through
+  each audio download. Wired as `chiqo.groq.transcribe / .stop`.
+- [electron/providers/apify.cjs](electron/providers/apify.cjs) —
+  Instagram scrape (submit → poll → fetch dataset → chain best-effort
+  Groq transcribe). Wired as `chiqo.apify.scrape / .stop / .account`.
+- [electron/runs/index.cjs](electron/runs/index.cjs) extended with
+  `onEvent(runId, name, payload)` for named progress events and an
+  optional `payload` field on `onDone` (Apify + Groq use it to return
+  rows + summary alongside the usual usage envelope).
+- [client/src/lib/runs-stream.js](client/src/lib/runs-stream.js) —
+  single generalized renderer streaming helper. Replaces
+  `anthropic-stream.js` conceptually; all three providers share it.
+- Renderer call sites migrated:
+  - [CsvContext.streamAnalyze](client/src/tactical/state/CsvContext.jsx)
+    dispatch table routes `/api/analyze`, `/api/scrape`, `/api/transcribe`
+    to `chiqo.anthropic`, `.apify`, `.groq` respectively. Same callback
+    shape upstream, no other changes.
+  - `CsvContext.ingest` sends the uploaded file's ArrayBuffer through
+    `chiqo.parse.file` — no multipart upload, no fetch.
+  - [ApifyView.AccountSection](client/src/tactical/views/ApifyView.jsx)
+    reads from `chiqo.apify.account`; no token is threaded through the
+    renderer.
+  - [ApiStatus.useApiHealth](client/src/components/ApiStatus.jsx) reads
+    provider readiness from `chiqo.keys.list()` instead of polling
+    `/api/health`.
+- [electron/main.cjs](electron/main.cjs) rewritten:
+  - No child-process spawn. No port allocation. No `/api/health` wait
+    loop. No `.env` seed flow. No `users.json` copy. No
+    `ANTHROPIC_API_KEY` env check.
+  - Custom `chiqo://app/` protocol (registered standard + secure so
+    fetch and Service Worker semantics work) serves the React bundle
+    from `client/dist/`.
+  - CSP drops `http://127.0.0.1:*` from `connect-src` — no remote
+    network reachable from the renderer at all.
+- [client/vite.config.js](client/vite.config.js): `base: "./"` so
+  assets resolve correctly under `chiqo://app`; the dev-server `/api`
+  proxy is removed.
 
-**Plan sketch.**
-- `electron/providers/groq.cjs` — Whisper transcribe with progress
-  events on the same `chiqo.runs.delta.<runId>` channel shape.
-- `electron/providers/apify.cjs` — scrape submission + polling +
-  console URL surfacing. Same runs envelope.
-- `electron/providers/parse.cjs` — CSV/JSON parse + classify (currently
-  in [server/index.js](server/index.js)).
-- Move runs lifecycle multiplexing: a single run can fan out to
-  transcribe + analyze sub-stages (CsvContext already encodes this).
-- Delete `server/` entirely. `server/auth.js`, `server/.env`,
-  `users.json` all retire.
-- Update [electron/main.cjs](electron/main.cjs) to stop spawning the
-  Express child.
+**Deletions (the whole point).**
+- `server/` directory — `index.js`, `auth.js`, `package.json`,
+  `package-lock.json`, `.gitignore`, `.env.example`.
+- `scripts/launch.js`, `scripts/pack-for-client.js`,
+  `scripts/make-dist.js`, `scripts/sync-userdata.js`,
+  `scripts/add-user.js`, `scripts/lib/banner.js` — server-launch
+  helpers.
+- `chiqo-ai.cmd`, `chiqo-ai.command` — root double-click launchers
+  that invoked the deleted `launch.js`.
 
-**Out of scope.** Anything UI. Anything that touches persistence
-(Phase 3).
-
-**Verification (when it lands).** End-to-end smoke: Apify scrape
-(`resultsLimit: 5`) → Groq transcribe → fast analyze → variation. Same
-flow as today, no `/api/*` requests in DevTools network tab. Express
-process not running.
+**Verification.** `node --check` on every touched main-side module
+passes. The client builds clean. `electron/providers/parse.cjs`
+smoke-tests under Electron's bundled Node — a fixture CSV produces the
+expected row shape and summary. End-to-end smoke (Apify scrape → Groq
+transcribe → fast analyze → variation) requires real keys in the
+vault — left to a user-driven session.
 
 ---
 
@@ -336,41 +372,29 @@ phases.
 └────────────────────────────────────────────────────────────┘
 ```
 
-### After Phase 2.6c (today)
+### After Phase 2.7 (today)
 
 ```
 ┌────────────────────────────────────────────────────────────┐
 │ Electron BrowserWindow (renderer)                           │
-│   No plaintext keys anywhere on disk                        │
-│   chiqo.anthropic.analyze(payload)  ← IPC, vault-gated      │
-│   fetch /api/scrape, /api/transcribe ← remaining server     │
-└─────────────────┬─────────────────────┬──────────────────────┘
-                  │ IPC                 │ HTTP localhost:3001
-┌─────────────────┴───────────┐ ┌───────┴────────────────────┐
-│ Electron main process       │ │ Express server (transient) │
-│   Vault (KDF + AES-GCM)     │ │   /api/scrape (Apify)      │
-│   Anthropic SDK              │ │   /api/transcribe (Groq)   │
-│   Runs registry              │ │   /api/parse (CSV)         │
-│   Usage log (JSONL)          │ │                            │
-└─────────────────────────────┘ └────────────────────────────┘
-```
-
-### After Phase 2.7 (target)
-
-```
-┌────────────────────────────────────────────────────────────┐
-│ Electron BrowserWindow (renderer)                           │
-│   chiqo.* IPC for everything                                │
+│   Bundle loaded from chiqo://app/                           │
+│   chiqo.* IPC for everything (analyze, scrape, transcribe,  │
+│     parse, account, vault, keys, runs)                      │
+│   CSP: connect-src 'self' chiqo:  — no remote network at all│
 └─────────────────────────────┬──────────────────────────────┘
                               │ IPC
 ┌─────────────────────────────┴──────────────────────────────┐
 │ Electron main process                                       │
-│   Vault, Anthropic, Groq, Apify, Parse, Runs, Usage         │
+│   Vault (KDF + AES-GCM)                                     │
+│   Providers: Anthropic, Groq, Apify, Parse                  │
+│   Runs registry + Usage log (JSONL)                         │
+│   chiqo:// asset server (serves client/dist)                │
 └────────────────────────────────────────────────────────────┘
 
-No Express. No server/. No localhost:3001. No .env files. No
-users.json. The on-disk surface is just userData/vault.db.enc +
-vault-meta.json — both useless without the master password.
+No Express. No server/. No localhost. No .env files. No
+users.json. On-disk surface: userData/vault.db.enc +
+vault-meta.json + a JSONL usage log. Both encrypted files
+useless without the master password.
 ```
 
 ---
@@ -387,7 +411,7 @@ vault-meta.json — both useless without the master password.
 | 2.6a  | Anthropic streaming via IPC (main side)     | [00b0583](https://github.com/Changelo06/swh-instagram-framework/commit/00b0583) | ✅ DONE    |
 | 2.6b  | Renderer routes analyze through IPC         | [88d5abb](https://github.com/Changelo06/swh-instagram-framework/commit/88d5abb) | ✅ DONE    |
 | 2.6c  | Delete /api/analyze from Express            | [6a951b1](https://github.com/Changelo06/swh-instagram-framework/commit/6a951b1) | ✅ DONE    |
-| 2.7   | Groq + Apify move into main                 | —         | ⏳ PENDING |
+| 2.7   | Groq + Apify into main; Express dies        | [270085d](https://github.com/Changelo06/swh-instagram-framework/commit/270085d) | ✅ DONE    |
 | 3     | Runs persisted to DB                        | —         | ⏳ PENDING |
 | 4     | Cost preview + Account / usage page         | —         | ⏳ PENDING |
 | 5     | Polish (auto-lock, bundle, signing, …)      | —         | ⏳ PENDING |
