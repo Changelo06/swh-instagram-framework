@@ -11,6 +11,7 @@
   "scripts": {
     "setup": "npm --prefix server install && npm --prefix client install",
     "build": "npm --prefix client run build",
+    "postinstall": "node scripts/fetch-electron-prebuild.cjs",
     "start": "node scripts/launch.js",
     "dist": "node scripts/make-dist.js",
     "dev": "concurrently --kill-others-on-fail --names server,client --prefix-colors blue,magenta \"npm:dev:server\" \"npm:dev:client\"",
@@ -18,7 +19,7 @@
     "dev:client": "npm --prefix client run dev",
     "sync-userdata": "node scripts/sync-userdata.js",
     "pack-for-client": "node scripts/pack-for-client.js",
-    "test:vault": "node electron/vault/crypto.test.cjs",
+    "test:vault": "node scripts/test-vault.cjs",
     "electron:prep": "npm --prefix server ci --omit=dev --no-audit --no-fund && npm run build",
     "electron:dev": "npm run electron:prep && node scripts/run-electron.cjs",
     "electron:build": "npm run electron:prep && electron-builder",
@@ -36,7 +37,15 @@
     },
     "files": [
       "electron/**/*",
-      "package.json"
+      "package.json",
+      "node_modules/better-sqlite3/**/*",
+      "node_modules/bindings/**/*",
+      "node_modules/file-uri-to-path/**/*",
+      "node_modules/hash-wasm/**/*"
+    ],
+    "asarUnpack": [
+      "**/*.node",
+      "node_modules/better-sqlite3/build/**/*"
     ],
     "extraResources": [
       {
@@ -111,10 +120,11 @@
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
-    "electron": "^42.0.1",
+    "electron": "^34.5.8",
     "electron-builder": "^26.8.1"
   },
   "dependencies": {
+    "better-sqlite3": "^12.10.0",
     "hash-wasm": "^4.12.0"
   }
 }

@@ -13,15 +13,8 @@ module.exports = {
   // Channels whose real handlers ship in a later phase. Each gets a
   // typed `NOT_IMPLEMENTED` rejection until the matching phase lands.
   UNIMPLEMENTED: [
-    // Phase 1.2 / 1.3 — Vault crypto + SQLCipher
-    { channel: "chiqo.vault.status",         phase: "1.2" },
-    { channel: "chiqo.vault.create",         phase: "1.2" },
-    { channel: "chiqo.vault.unlock",         phase: "1.2" },
-    { channel: "chiqo.vault.lock",           phase: "1.2" },
-    { channel: "chiqo.vault.setHint",        phase: "1.2" },
-    { channel: "chiqo.vault.getHint",        phase: "1.2" },
-    { channel: "chiqo.vault.changePassword", phase: "1.2" },
-    { channel: "chiqo.vault.wipe",           phase: "4"   },
+    // Phase 1.2 / 1.3 vault channels — all live now (real handlers in
+    // electron/ipc/index.cjs).
 
     // Phase 2.5 — Provider API keys in the vault
     { channel: "chiqo.keys.list",   phase: "2.5" },

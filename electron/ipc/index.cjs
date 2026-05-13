@@ -14,6 +14,7 @@ const path = require("node:path");
 const fs = require("node:fs");
 
 const CHANNELS = require("./channels.cjs");
+const vaultSession = require("../vault/session.cjs");
 
 // Wraps a handler so errors travel back to the renderer with the
 // `code` field intact. Anything thrown becomes:
@@ -36,6 +37,40 @@ function safeHandle(channel, fn) {
 // Registry — declared as a closure so we can lazily add handlers from
 // later phases without rewriting this file's shape.
 function register({ userDataDir, appRoot }) {
+  // Hand the vault session its userData dir so it knows where to read /
+  // write `vault-meta.json` and `vault.db`.
+  vaultSession.setUserDataDir(userDataDir);
+
+  // ---- Vault handlers (Phase 1.3) ----------------------------------
+  // status is read-only and works whether or not a vault exists. The
+  // others either require an existing vault, or require unlock — they
+  // throw typed errors the renderer maps to UI states.
+
+  safeHandle("chiqo.vault.status", () => vaultSession.status());
+
+  safeHandle("chiqo.vault.create", async (_e, password, opts) =>
+    vaultSession.create(password, opts || {})
+  );
+
+  safeHandle("chiqo.vault.unlock", async (_e, password) =>
+    vaultSession.unlock(password)
+  );
+
+  safeHandle("chiqo.vault.lock", () => vaultSession.lock());
+
+  safeHandle("chiqo.vault.getHint", () => ({ hint: vaultSession.getHint() }));
+
+  safeHandle("chiqo.vault.setHint", (_e, hint) => vaultSession.setHint(hint));
+
+  safeHandle(
+    "chiqo.vault.changePassword",
+    async (_e, oldPw, newPw) => vaultSession.changePassword(oldPw, newPw)
+  );
+
+  safeHandle("chiqo.vault.wipe", (_e, confirmText) =>
+    vaultSession.wipe(confirmText)
+  );
+
   // -------------------------------------------------------------------
   // Liveness check.
   //
