@@ -21,8 +21,13 @@ export function useApiHealth() {
       if (!res.ok) throw new Error(`Health check failed (HTTP ${res.status})`);
       const data = await res.json();
       setDetails(data);
-      const anthropicOk =
+      // Anthropic moved into the vault in Phase 2.6 — the server no longer
+      // reports it. When the field is absent, treat Anthropic as managed
+      // elsewhere (Settings → API keys). Legacy server builds still return
+      // it; honour their reading.
+      const anthropicField =
         data.services?.anthropic?.configured ?? data.anthropicConfigured;
+      const anthropicOk = anthropicField === undefined ? true : anthropicField;
       const groqOk =
         data.services?.groq?.configured ?? data.groqConfigured;
       const apifyOk =
@@ -58,7 +63,12 @@ export default function ApiStatus({ health }) {
     error && `Error: ${error}`,
     details?.model && `Claude model: ${details.model}`,
     details?.groqModel && `Groq model: ${details.groqModel}`,
-    details && `Anthropic: ${(details.services?.anthropic?.configured ?? details.anthropicConfigured) ? "configured" : "missing"}`,
+    details && (() => {
+      const f = details.services?.anthropic?.configured ?? details.anthropicConfigured;
+      return f === undefined
+        ? "Anthropic: managed in vault (Settings → API keys)"
+        : `Anthropic: ${f ? "configured" : "missing"}`;
+    })(),
     details && `Groq: ${(details.services?.groq?.configured ?? details.groqConfigured) ? "configured" : "missing"}`,
   ]
     .filter(Boolean)
