@@ -293,59 +293,125 @@ vault — left to a user-driven session.
 
 ---
 
-## Phase 3 — Runs persisted to DB — PENDING
+## Phase 3 — Runs persisted to DB — DONE ([ef6957e](https://github.com/Changelo06/swh-instagram-framework/commit/ef6957e))
 
 **Goal.** `runs.list / get / delete` survive app restarts. The renderer
-gets a "Runs" history page (it already calls `chiqo.runs.list` — Phase
-3 just upgrades the storage backend without renaming a single channel).
+gets a Runs history page. `chiqo.runs.*` IPC contract is unchanged —
+storage backend swap only.
 
-**Plan sketch.**
-- Migration v3: `runs` table (`id`, `provider`, `mode`, `payload_json`,
-  `state`, `started_at`, `finished_at`, `usage_json`, `cost_usd`,
-  `error_message`).
-- [electron/runs/index.cjs](electron/runs/index.cjs) gains a
-  write-through path — every state transition is persisted.
-- [electron/runs/usage-log.cjs](electron/runs/usage-log.cjs) hydrates
-  from DB on boot instead of JSONL.
-- Renderer Runs view (deferred work; existing IPC contract honoured).
+**Delivered.**
+- [electron/vault/db.cjs](electron/vault/db.cjs) — migration v3 adds the
+  `runs` table (id, type, route, status, model, started_at, finished_at,
+  output_length, usage_json, stop_reason, error, cost_usd, payload_json)
+  + indexes on started_at and status.
+- [electron/runs/store.cjs](electron/runs/store.cjs) — DB CRUD:
+  `upsertRun`, `getRun`, `listRuns`, `deleteRun`, `reapInFlight`,
+  `summarize`, `dailyUsage`. `cost_usd` denormalized at write time so
+  the Account page aggregates with a single `SUM()`.
+- [electron/runs/index.cjs](electron/runs/index.cjs) — write-through on
+  every state transition (`startRun` / `onStreaming` / `onDone` /
+  `onError`). `list / get / remove` merge DB rows with in-memory
+  (in-memory wins for live deltas on in-flight runs). New
+  `setVaultDbGetter` + `reapInFlight` injection seams.
+- [electron/ipc/index.cjs](electron/ipc/index.cjs) — passes the vault
+  DB getter to runs; `chiqo.vault.unlock` calls `runs.reapInFlight()`
+  so any rows left mid-stream by a previous process get marked
+  `stopped`.
+- [client/src/tactical/views/RunsView.jsx](client/src/tactical/views/RunsView.jsx) —
+  historical runs table (type / status pill / model / started /
+  duration / cost) at `/runs`.
 
-**Renderer contract guarantee.** `chiqo.runs.list / get / delete` keep
-the exact same shape. No JSX change required.
-
----
-
-## Phase 4 — Cost preview + Account / usage page — PENDING
-
-**Goal.** Users see what a run will cost BEFORE they fire it, and what
-they've already spent. Honest pricing surface.
-
-**Channels (already exposed in preload, currently stubbed
-`NOT_IMPLEMENTED`).**
-- `chiqo.usage.summary` / `chiqo.usage.list`
-
-**Plan sketch.**
-- `chiqo.anthropic.countTokens` graduates from char/4 stub to the real
-  Anthropic `messages.countTokens` call (it exists; we just need to
-  wire it).
-- Account page: per-day / per-week token + USD totals, broken down by
-  provider + mode. Sourced from the runs table (Phase 3).
-- Cost preview tile on Dashboard before "Run analyze" — token estimate
-  × current model price.
+**Verification.** Smoke under Electron's Node: create vault → run with
+usage → cost computed; lock + reset registry + unlock → run still
+there with cost intact; start a second run, kill mid-flight, unlock →
+reaped to `stopped`; delete works.
 
 ---
 
-## Phase 5 — Polish — PENDING
+## Phase 4 — Cost preview + Account / usage page — DONE ([95ead87](https://github.com/Changelo06/swh-instagram-framework/commit/95ead87))
 
-**Goal.** Ship-ready. Surface the rough edges discovered across earlier
-phases.
+**Goal.** Honest pricing surface. Users see what a run will cost BEFORE
+they fire it, and what they've already spent. All numbers come from
+the runs table the renderer can't see directly.
 
-**Plan sketch (non-exhaustive, will firm up after Phase 4).**
-- Auto-lock after idle window (configurable in Settings).
-- Bundle size pass — the `index-*.js` chunk is 1.2MB; `html2pdf` is
-  670KB. Code-split `html2pdf` behind the Export button.
-- Crash diagnostics — capture `unhandledRejection` from main and
-  surface via a quiet toast (not a crash dialog).
-- macOS code-signing + notarization. Windows installer signing.
+**Delivered.**
+- [electron/providers/anthropic.cjs](electron/providers/anthropic.cjs)
+  adds `countTokensForPayload({payload, getApiKey})` — runs the real
+  prompt builder, calls `client.messages.countTokens(...)`, then prices
+  input + max-output via `PRICES_PER_MTOK`.
+- [electron/ipc/index.cjs](electron/ipc/index.cjs) replaces the char/4
+  stub for `chiqo.anthropic.countTokens` with the real call.
+  `chiqo.usage.summary` / `.list` / `.daily` are wired against the
+  runs table.
+- [electron/runs/store.cjs](electron/runs/store.cjs) extended with
+  `summarize({sinceMs})` (returns cost + run counts + per-status
+  counts + token totals parsed from `usage_json`) and
+  `dailyUsage({days})` (zero-filled per-day buckets).
+- [electron/preload.cjs](electron/preload.cjs) exposes
+  `chiqo.usage.daily`.
+- [client/src/tactical/views/AccountView.jsx](client/src/tactical/views/AccountView.jsx) —
+  four time-window tiles (24h / 7d / 30d / all time) showing cost +
+  runs + token totals, plus a per-day spend sparkline over the last
+  30 days. At `/account`.
+- [client/src/tactical/widgets/CostPreview.jsx](client/src/tactical/widgets/CostPreview.jsx) —
+  debounced inline preview ("X tokens · max Y out · ~$Z") rendered
+  next to the Run button in AnalyzeView. Hides itself silently if
+  the bridge is unavailable or the call errors.
+
+**Verification.** Smoke: insert two runs with known usage → `summarize`
+returns correct cost + token totals; `dailyUsage` returns 7 buckets
+with today's count == 2. Client builds.
+
+---
+
+## Phase 5 — Polish — DONE ([dc9b271](https://github.com/Changelo06/swh-instagram-framework/commit/dc9b271))
+
+**Goal.** Surface the rough edges discovered across earlier phases.
+Three independent wins bundled because each is small.
+
+**Delivered.**
+- **Auto-lock after idle.**
+  - [electron/vault/meta.cjs](electron/vault/meta.cjs) accepts an
+    optional `autoLockMinutes` (back-compat: missing or 0 = off).
+  - [electron/vault/session.cjs](electron/vault/session.cjs) adds the
+    idle timer + `getAutoLockMinutes` / `setAutoLockMinutes` /
+    `pokeIdle` + an `onAutoLock` callback. Timer starts on unlock,
+    clears on lock, restarts on every `setAutoLockMinutes` change.
+  - [electron/ipc/index.cjs](electron/ipc/index.cjs) wires
+    `chiqo.vault.getAutoLock / setAutoLock / pokeIdle` and broadcasts
+    `chiqo.vault.locked` to every window when the timer fires.
+  - [electron/preload.cjs](electron/preload.cjs) exposes the three
+    methods + `chiqo.vault.onLocked(cb)`.
+  - [AnalyticsShell.jsx](client/src/tactical/shell/AnalyticsShell.jsx)
+    subscribes to `onLocked` (re-renders VaultGate) and runs an
+    `IdleActivityPoker` that debounces mousemove / keydown / scroll
+    into one IPC call per 10s.
+  - [SettingsDrawer.jsx](client/src/tactical/shell/SettingsDrawer.jsx)
+    adds a "Security" section with an "Auto-lock after" select
+    (off / 5m / 15m / 30m / 1h / 4h).
+- **Crash diagnostics.**
+  - [electron/main.cjs](electron/main.cjs) hooks `uncaughtException`
+    and `unhandledRejection`; each appends to
+    `<userData>/logs/crash.log` and broadcasts `chiqo.app.crash`.
+  - [electron/preload.cjs](electron/preload.cjs) exposes
+    `chiqo.app.onCrash(cb)`.
+  - [client/src/components/CrashToast.jsx](client/src/components/CrashToast.jsx) —
+    dismissable banner pointing users to the on-disk crash log.
+- **Bundle.**
+  - [client/src/App.jsx](client/src/App.jsx) lazy-loads DatasetView /
+    AnalyzeView / ScriptsView / RunsView / AccountView via
+    `React.lazy` + `Suspense`. Main bundle shrinks ~20%
+    (1227KB → 988KB); each view is now its own 4–45KB chunk.
+    `html2pdf` was already dynamically imported in
+    `tactical/lib/exporters.js`.
+
+**Not in scope (deferred).** macOS code-signing + notarization,
+Windows installer signing — both need real CI infrastructure and a
+purchased certificate, neither of which exists yet.
+
+**Verification.** Smoke: `setAutoLockMinutes(15)` persists across
+lock/unlock; getter returns 0 for a fresh vault; lock cleanly clears
+the timer. Client build splits the routes as expected.
 
 ---
 
@@ -412,6 +478,6 @@ useless without the master password.
 | 2.6b  | Renderer routes analyze through IPC         | [88d5abb](https://github.com/Changelo06/swh-instagram-framework/commit/88d5abb) | ✅ DONE    |
 | 2.6c  | Delete /api/analyze from Express            | [6a951b1](https://github.com/Changelo06/swh-instagram-framework/commit/6a951b1) | ✅ DONE    |
 | 2.7   | Groq + Apify into main; Express dies        | [270085d](https://github.com/Changelo06/swh-instagram-framework/commit/270085d) | ✅ DONE    |
-| 3     | Runs persisted to DB                        | —         | ⏳ PENDING |
-| 4     | Cost preview + Account / usage page         | —         | ⏳ PENDING |
-| 5     | Polish (auto-lock, bundle, signing, …)      | —         | ⏳ PENDING |
+| 3     | Runs persisted to DB + Runs view            | [ef6957e](https://github.com/Changelo06/swh-instagram-framework/commit/ef6957e) | ✅ DONE    |
+| 4     | Cost preview + Account / usage page         | [95ead87](https://github.com/Changelo06/swh-instagram-framework/commit/95ead87) | ✅ DONE    |
+| 5     | Auto-lock + crash toast + route splitting   | [dc9b271](https://github.com/Changelo06/swh-instagram-framework/commit/dc9b271) | ✅ DONE    |
