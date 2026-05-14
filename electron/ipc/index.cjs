@@ -51,6 +51,13 @@ function register({ userDataDir, appRoot }) {
   runs.setUserDataDir(userDataDir);
   anthropicProvider.setAppRoot(appRoot);
 
+  // Phase 3: hand runs a getter for the vault DB so write-through
+  // persistence kicks in once the vault is unlocked. Returns null while
+  // the vault is locked — the registry falls back to in-memory only.
+  runs.setVaultDbGetter(() =>
+    vaultSession.isUnlocked() ? vaultSession.getDb() : null
+  );
+
   // ---- Vault handlers (Phase 1.3) ----------------------------------
   // status is read-only and works whether or not a vault exists. The
   // others either require an existing vault, or require unlock — they
@@ -62,9 +69,14 @@ function register({ userDataDir, appRoot }) {
     vaultSession.create(password, opts || {})
   );
 
-  safeHandle("chiqo.vault.unlock", async (_e, password) =>
-    vaultSession.unlock(password)
-  );
+  safeHandle("chiqo.vault.unlock", async (_e, password) => {
+    const result = await vaultSession.unlock(password);
+    // Sweep any rows left mid-stream by a previous process to `stopped`.
+    // Safe to call on every unlock — a no-op when the table has no
+    // in-flight rows. Failure logs internally without breaking unlock.
+    runs.reapInFlight();
+    return result;
+  });
 
   safeHandle("chiqo.vault.lock", () => vaultSession.lock());
 

@@ -4,6 +4,7 @@ import DashboardView from "./tactical/views/DashboardView.jsx";
 import DatasetView from "./tactical/views/DatasetView.jsx";
 import AnalyzeView from "./tactical/views/AnalyzeView.jsx";
 import ScriptsView from "./tactical/views/ScriptsView.jsx";
+import RunsView from "./tactical/views/RunsView.jsx";
 
 // Apify lives in the Settings drawer now. The /apify and /app/apify paths
 // redirect home so old bookmarks don't 404.
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="dataset" element={<DatasetView />} />
         <Route path="analyze" element={<AnalyzeView />} />
         <Route path="scripts" element={<ScriptsView />} />
+        <Route path="runs" element={<RunsView />} />
       </Route>
       {/* Legacy /app/* deep-links continue to work. */}
       <Route path="/app" element={<Navigate to="/" replace />} />

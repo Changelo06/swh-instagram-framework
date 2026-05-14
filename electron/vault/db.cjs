@@ -177,6 +177,45 @@ const MIGRATIONS = [
       `);
     },
   },
+  {
+    version: 3,
+    up(db) {
+      // Persistent runs table. Phase 2.6 introduced runs as an
+      // in-memory registry; Phase 3 swaps the backing store for this
+      // table so history survives lock/unlock and app restart.
+      //
+      // `status` is one of:
+      //   starting | streaming | done | error | stopped
+      // In-flight runs (`starting` / `streaming`) DO get persisted —
+      // if the app is killed while a run is mid-stream we want to be
+      // able to mark it `stopped` on the next unlock rather than
+      // leaving phantom entries.
+      //
+      // `usage_json` is the raw Anthropic usage envelope (input_tokens,
+      // output_tokens, cache_*). `payload_json` is the provider-specific
+      // result body for Apify/Groq (rows, summary, filename). Kept as
+      // TEXT/JSON so the schema is forward-compatible.
+      db.exec(`
+        CREATE TABLE runs (
+          id            TEXT PRIMARY KEY,
+          type          TEXT,
+          route         TEXT,
+          status        TEXT NOT NULL,
+          model         TEXT,
+          started_at    INTEGER NOT NULL,
+          finished_at   INTEGER,
+          output_length INTEGER DEFAULT 0,
+          usage_json    TEXT,
+          stop_reason   TEXT,
+          error         TEXT,
+          cost_usd      REAL DEFAULT 0,
+          payload_json  TEXT
+        );
+        CREATE INDEX runs_started_at ON runs(started_at DESC);
+        CREATE INDEX runs_status     ON runs(status);
+      `);
+    },
+  },
 ];
 
 function getSchemaVersion(db) {

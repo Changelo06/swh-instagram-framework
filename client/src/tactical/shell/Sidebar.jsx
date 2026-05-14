@@ -8,6 +8,7 @@ import {
   CaretLeft,
   CaretRight,
   Gear,
+  ListBullets,
 } from "@phosphor-icons/react";
 import { useCsv } from "../state/CsvContext.jsx";
 
@@ -16,6 +17,7 @@ const NAV = [
   { to: "/dataset", label: "Dataset", icon: Table, key: "dataset" },
   { to: "/analyze", label: "Analyze", icon: Sparkle, key: "analyze" },
   { to: "/scripts", label: "Scripts", icon: NotePencil, key: "scripts" },
+  { to: "/runs", label: "Runs", icon: ListBullets, key: "runs" },
 ];
 
 function Sidebar({ collapsed, onToggleCollapsed, onOpenSettings }) {
