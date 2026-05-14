@@ -9,7 +9,7 @@
 // over the wire (Electron's default error serialization loses extra
 // properties).
 
-const { ipcMain, shell, app } = require("electron");
+const { ipcMain, shell, app, BrowserWindow } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
 
@@ -93,6 +93,34 @@ function register({ userDataDir, appRoot }) {
   safeHandle("chiqo.vault.wipe", (_e, confirmText) =>
     vaultSession.wipe(confirmText)
   );
+
+  // ---- Auto-lock (Phase 5) ------------------------------------------
+  // The renderer pokes us on user activity (mousemove / keydown,
+  // debounced). When the configured idle window elapses without a
+  // poke, the session auto-locks and we broadcast the event to every
+  // window so the renderer pivots back to VaultGate.
+  vaultSession.setOnAutoLock(() => {
+    for (const w of BrowserWindow.getAllWindows()) {
+      if (w.webContents && !w.webContents.isDestroyed()) {
+        try {
+          w.webContents.send("chiqo.vault.locked", { reason: "idle" });
+        } catch {}
+      }
+    }
+  });
+  safeHandle("chiqo.vault.getAutoLock", () => ({
+    autoLockMinutes: vaultSession.getAutoLockMinutes(),
+  }));
+  safeHandle("chiqo.vault.setAutoLock", (_e, minutes) =>
+    vaultSession.setAutoLockMinutes(minutes)
+  );
+  // pokeIdle is a fire-and-forget signal from the renderer's activity
+  // tracker. Return a tiny `{ poked: true }` so the renderer can verify
+  // the call landed (and the bridge is alive). No-op when locked.
+  safeHandle("chiqo.vault.pokeIdle", () => {
+    vaultSession.pokeIdle();
+    return { poked: true };
+  });
 
   // ---- Provider API keys (Phase 2.5) -------------------------------
   // All three require an unlocked vault. SECURITY INVARIANT: the

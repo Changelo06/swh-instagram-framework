@@ -156,6 +156,7 @@ export default function SettingsDrawer({ open, onClose, health, theme, onThemeCh
               }}
             >
               <DisplaySection theme={theme} onThemeChange={onThemeChange} />
+              <SecuritySection />
               <ApiKeysSection />
             </div>
 
@@ -182,6 +183,94 @@ export default function SettingsDrawer({ open, onClose, health, theme, onThemeCh
 
 // Groq Whisper token UI was removed because it cluttered settings —
 // transcript functionality still works server-side via env.
+
+function SecuritySection() {
+  const [minutes, setMinutes] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const c = typeof window !== "undefined" ? window.chiqo : null;
+        if (!c?.vault?.getAutoLock) return;
+        const r = await c.vault.getAutoLock();
+        if (!cancelled) setMinutes(Number(r?.autoLockMinutes) || 0);
+      } catch (e) {
+        if (!cancelled) setError(e.message || String(e));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const update = async (next) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const c = typeof window !== "undefined" ? window.chiqo : null;
+      if (!c?.vault?.setAutoLock) throw new Error("bridge unavailable");
+      const r = await c.vault.setAutoLock(Number(next) || 0);
+      setMinutes(Number(r?.autoLockMinutes) || 0);
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section style={{ display: "grid", gap: 10 }}>
+      <header>
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 600,
+            color: "var(--tac-fg)",
+          }}
+        >
+          Security
+        </div>
+        <div style={{ fontSize: 12, color: "var(--tac-mute)", marginTop: 2 }}>
+          Lock the vault automatically when you walk away.
+        </div>
+      </header>
+
+      <label
+        style={{
+          display: "grid",
+          gap: 6,
+          fontSize: 12,
+          color: "var(--tac-mute)",
+        }}
+      >
+        Auto-lock after
+        <select
+          className="tac-input"
+          disabled={busy || minutes === null}
+          value={minutes ?? 0}
+          onChange={(e) => update(e.target.value)}
+          style={{ width: 220 }}
+        >
+          <option value={0}>Off — only manual lock</option>
+          <option value={5}>5 minutes idle</option>
+          <option value={15}>15 minutes idle</option>
+          <option value={30}>30 minutes idle</option>
+          <option value={60}>1 hour idle</option>
+          <option value={240}>4 hours idle</option>
+        </select>
+      </label>
+
+      {error && (
+        <div className="tac-error-banner" style={{ fontSize: 12 }}>
+          {error}
+        </div>
+      )}
+    </section>
+  );
+}
 
 function DisplaySection({ theme, onThemeChange }) {
   const current = theme === "light" ? "light" : "dark";

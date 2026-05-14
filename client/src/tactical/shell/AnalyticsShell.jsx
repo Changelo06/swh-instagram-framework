@@ -7,6 +7,7 @@ import { useApiHealth } from "../../components/ApiStatus.jsx";
 import { CsvProvider, useCsv } from "../state/CsvContext.jsx";
 import ResetConfirmModal from "../widgets/ResetConfirmModal.jsx";
 import VaultGate from "../views/VaultGate.jsx";
+import CrashToast from "../../components/CrashToast.jsx";
 import { hasBridge, vaultStatus } from "../../lib/chiqo.js";
 
 const THEME_STORAGE_KEY = "tac-theme";
@@ -69,15 +70,61 @@ export default function AnalyticsShell() {
     );
   }
 
+  // Subscribe to the auto-lock broadcast. When the idle timer fires
+  // (Phase 5), main locks the vault and notifies us — we pivot back
+  // to the VaultGate without forcing the user to refresh.
+  useEffect(() => {
+    const c = typeof window !== "undefined" ? window.chiqo : null;
+    if (!c?.vault?.onLocked) return;
+    const unsubscribe = c.vault.onLocked(() => setVaultUnlocked(false));
+    return () => {
+      try { unsubscribe?.(); } catch { /* renderer torn down */ }
+    };
+  }, []);
+
   if (!vaultUnlocked) {
     return <VaultGate onUnlocked={() => setVaultUnlocked(true)} />;
   }
 
   return (
     <CsvProvider>
+      <IdleActivityPoker />
+      <CrashToast />
       <ShellInner />
     </CsvProvider>
   );
+}
+
+// Notifies main about user activity so the auto-lock timer (when
+// configured) resets on mousemove / keydown / scroll. Debounced to
+// ~one IPC call per 10 seconds — the user isn't going to lock the
+// vault by waiting 10s longer than expected.
+function IdleActivityPoker() {
+  useEffect(() => {
+    const c = typeof window !== "undefined" ? window.chiqo : null;
+    if (!c?.vault?.pokeIdle) return;
+    let last = 0;
+    const minIntervalMs = 10_000;
+    const onActivity = () => {
+      const now = Date.now();
+      if (now - last < minIntervalMs) return;
+      last = now;
+      c.vault.pokeIdle().catch(() => {
+        /* bridge unavailable, ignore */
+      });
+    };
+    // Fire one poke on mount so a fresh unlock kicks the timer alive.
+    onActivity();
+    window.addEventListener("mousemove", onActivity, { passive: true });
+    window.addEventListener("keydown", onActivity, { passive: true });
+    window.addEventListener("scroll", onActivity, { passive: true, capture: true });
+    return () => {
+      window.removeEventListener("mousemove", onActivity);
+      window.removeEventListener("keydown", onActivity);
+      window.removeEventListener("scroll", onActivity, true);
+    };
+  }, []);
+  return null;
 }
 
 function ShellInner() {

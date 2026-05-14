@@ -40,6 +40,65 @@ function setUserDataDir(dir) {
   _userDataDir = dir;
 }
 
+// Phase 5: idle auto-lock.
+//
+// `_idleTimer` runs only while the vault is unlocked AND
+// autoLockMinutes > 0. Every renderer-side activity event pokes us,
+// which resets the timer. When the timer fires we call lock() — and
+// notify main via `_onAutoLock` so it can broadcast a
+// `chiqo.vault.locked` event to the UI (renderer pivots back to the
+// VaultGate).
+let _idleTimer = null;
+let _onAutoLock = null;
+function setOnAutoLock(fn) {
+  _onAutoLock = fn;
+}
+
+function clearIdleTimer() {
+  if (_idleTimer) {
+    clearTimeout(_idleTimer);
+    _idleTimer = null;
+  }
+}
+
+function getAutoLockMinutes() {
+  if (!meta.exists(userDataDir())) return 0;
+  try {
+    return Number(meta.read(userDataDir()).autoLockMinutes) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function setAutoLockMinutes(mins) {
+  requireUnlocked();
+  const value = Math.max(0, Math.floor(Number(mins) || 0));
+  const m = meta.read(userDataDir());
+  m.autoLockMinutes = value;
+  m.updatedAt = new Date().toISOString();
+  meta.write(userDataDir(), m);
+  pokeIdle(); // restart timer with the new value (or stop it on 0)
+  return { autoLockMinutes: value };
+}
+
+function pokeIdle() {
+  if (state.kind !== "unlocked") return;
+  clearIdleTimer();
+  const mins = getAutoLockMinutes();
+  if (mins <= 0) return;
+  _idleTimer = setTimeout(() => {
+    _idleTimer = null;
+    lock();
+    if (_onAutoLock) {
+      try {
+        _onAutoLock();
+      } catch (e) {
+        console.warn("[session] onAutoLock callback failed:", e?.message || e);
+      }
+    }
+  }, mins * 60 * 1000);
+}
+
 function isUnlocked() {
   return state.kind === "unlocked";
 }
@@ -156,10 +215,15 @@ async function unlock(password) {
     if (kek) crypto.zeroize(kek);
     if (dek) crypto.zeroize(dek);
   }
+  // Spin up the idle auto-lock timer if the user configured one.
+  pokeIdle();
   return status();
 }
 
 function lock() {
+  // Stop the idle timer first — both manual locks and the timer-fire
+  // path land here, and clearing is idempotent.
+  clearIdleTimer();
   if (state.kind === "unlocked") {
     // Seal the plaintext working file back into vault.db.enc before
     // dropping the DEK. If sealing throws (e.g., disk full), we still
@@ -319,6 +383,7 @@ function getApiKey(provider) {
 
 module.exports = {
   setUserDataDir,
+  setOnAutoLock,
   isUnlocked,
   status,
   create,
@@ -329,6 +394,9 @@ module.exports = {
   changePassword,
   wipe,
   getDb,
+  getAutoLockMinutes,
+  setAutoLockMinutes,
+  pokeIdle,
   // API keys (provider keys live encrypted in the vault DB)
   listApiKeys,
   setApiKey,
@@ -338,6 +406,7 @@ module.exports = {
   // Skips the seal step on purpose; tests want to start fresh, not
   // preserve session-y disk artifacts.
   __resetForTests() {
+    clearIdleTimer();
     if (state.kind === "unlocked") {
       try {
         db.closeDb(state.db);
@@ -346,5 +415,6 @@ module.exports = {
     }
     state = { kind: "locked" };
     _userDataDir = null;
+    _onAutoLock = null;
   },
 };

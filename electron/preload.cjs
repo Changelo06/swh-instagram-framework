@@ -65,6 +65,11 @@ const chiqo = Object.freeze({
     changePassword: (oldPw, newPw) =>
       invoke("chiqo.vault.changePassword", oldPw, newPw),
     wipe: (confirmText) => invoke("chiqo.vault.wipe", confirmText),
+    // Phase 5 auto-lock.
+    getAutoLock: () => invoke("chiqo.vault.getAutoLock"),
+    setAutoLock: (minutes) => invoke("chiqo.vault.setAutoLock", minutes),
+    pokeIdle: () => invoke("chiqo.vault.pokeIdle"),
+    onLocked: (callback) => subscribe("chiqo.vault.locked", callback),
   }),
 
   // --- Provider API keys (Phase 2.5) ------------------------------------
@@ -133,6 +138,9 @@ const chiqo = Object.freeze({
     showInFolder: (filePath) => invoke("chiqo.app.showInFolder", filePath),
     openExternal: (url) => invoke("chiqo.app.openExternal", url),
     getVersion: () => invoke("chiqo.app.getVersion"),
+    // Phase 5 crash channel — main forwards unhandled errors here so
+    // the renderer can show a single user-visible toast.
+    onCrash: (callback) => subscribe("chiqo.app.crash", callback),
   }),
 });
 

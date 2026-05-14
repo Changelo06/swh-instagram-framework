@@ -78,6 +78,17 @@ function validateMeta(meta) {
   if (!isHex(meta.wrappedDek, 61)) {
     throw new Error("vault-meta: wrappedDek must be 122 hex chars (61 bytes)");
   }
+  // Optional Phase 5 field: idle auto-lock minutes (0 = off). Older
+  // vaults predate it; accept their absence and treat as 0.
+  if (
+    meta.autoLockMinutes !== undefined &&
+    meta.autoLockMinutes !== null &&
+    (typeof meta.autoLockMinutes !== "number" ||
+      !Number.isFinite(meta.autoLockMinutes) ||
+      meta.autoLockMinutes < 0)
+  ) {
+    throw new Error("vault-meta: autoLockMinutes must be a non-negative number");
+  }
   return meta;
 }
 

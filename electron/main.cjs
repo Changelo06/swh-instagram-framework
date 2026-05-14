@@ -222,6 +222,46 @@ function createWindow() {
 
 app.isQuitting = false;
 
+// Crash diagnostics (Phase 5).
+//
+// An uncaught exception inside the main process today silently terminates
+// the whole app and orphans the renderer. We can't recover the crashed
+// state, but we CAN: (a) write a diagnostic file the user can attach to
+// a bug report, and (b) forward a single toast to the renderer before
+// exit so the user knows what happened.
+function reportCrash(kind, err) {
+  const stamp = new Date().toISOString();
+  const detail = err?.stack || err?.message || String(err);
+  // eslint-disable-next-line no-console
+  console.error(`[main ${kind}] ${stamp}\n${detail}`);
+  try {
+    if (USER_LOG_DIR && fs.existsSync(USER_LOG_DIR)) {
+      const file = path.join(USER_LOG_DIR, "crash.log");
+      fs.appendFileSync(
+        file,
+        `=== ${kind} @ ${stamp} ===\n${detail}\n\n`
+      );
+    }
+  } catch {
+    /* best-effort */
+  }
+  try {
+    for (const w of BrowserWindow.getAllWindows()) {
+      if (w.webContents && !w.webContents.isDestroyed()) {
+        w.webContents.send("chiqo.app.crash", {
+          kind,
+          message: err?.message || String(err),
+          when: stamp,
+        });
+      }
+    }
+  } catch {
+    /* renderer may be gone */
+  }
+}
+process.on("uncaughtException", (err) => reportCrash("uncaughtException", err));
+process.on("unhandledRejection", (err) => reportCrash("unhandledRejection", err));
+
 app.whenReady().then(async () => {
   if (Menu && typeof Menu.setApplicationMenu === "function") {
     Menu.setApplicationMenu(null);
