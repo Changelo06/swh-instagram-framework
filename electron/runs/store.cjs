@@ -149,8 +149,13 @@ function reapInFlight(db) {
   return { reaped: r.changes };
 }
 
-// Aggregates used by the Account page (Phase 4). Kept here so the SQL
-// lives next to the schema.
+// Aggregates used by the Account page. Kept here so the SQL lives next
+// to the schema.
+//
+// `sinceMs` is an optional inclusive lower bound on started_at. Token
+// totals are summed by parsing usage_json on the fly — fine at the
+// sizes we expect (a year of daily runs is ~5k rows). If this turns
+// into a hot path later, denormalize tokens into their own columns.
 function summarize(db, { sinceMs } = {}) {
   const params = [];
   let where = "WHERE 1=1";
@@ -158,7 +163,7 @@ function summarize(db, { sinceMs } = {}) {
     where += " AND started_at >= ?";
     params.push(sinceMs);
   }
-  const row = db
+  const baseRow = db
     .prepare(
       `SELECT
          COUNT(*)                         AS totalRuns,
@@ -170,14 +175,94 @@ function summarize(db, { sinceMs } = {}) {
        FROM runs ${where}`
     )
     .get(...params);
+
+  // Tokens are inside usage_json. SQLite doesn't have a JSON function
+  // we want to depend on across versions — pull the rows we need and
+  // sum in JS.
+  const usageRows = db
+    .prepare(`SELECT usage_json FROM runs ${where} AND usage_json IS NOT NULL`)
+    .all(...params);
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let cacheReadTokens = 0;
+  let cacheCreateTokens = 0;
+  for (const r of usageRows) {
+    try {
+      const u = JSON.parse(r.usage_json);
+      inputTokens += u?.input_tokens || 0;
+      outputTokens += u?.output_tokens || 0;
+      cacheReadTokens += u?.cache_read_input_tokens || 0;
+      cacheCreateTokens += u?.cache_creation_input_tokens || 0;
+    } catch {
+      /* skip malformed row */
+    }
+  }
+
   return {
-    totalRuns: row?.totalRuns || 0,
-    totalCostUsd: row?.totalCostUsd || 0,
-    distinctModels: row?.distinctModels || 0,
-    doneCount: row?.doneCount || 0,
-    errorCount: row?.errorCount || 0,
-    stoppedCount: row?.stoppedCount || 0,
+    totalRuns: baseRow?.totalRuns || 0,
+    totalCostUsd: baseRow?.totalCostUsd || 0,
+    distinctModels: baseRow?.distinctModels || 0,
+    doneCount: baseRow?.doneCount || 0,
+    errorCount: baseRow?.errorCount || 0,
+    stoppedCount: baseRow?.stoppedCount || 0,
+    inputTokens,
+    outputTokens,
+    cacheReadTokens,
+    cacheCreateTokens,
+    sinceMs: Number.isFinite(sinceMs) ? sinceMs : null,
   };
+}
+
+// Per-day cost breakdown for the Account page sparkline. Returns
+// last `days` days, each with totalCostUsd + runs + outputTokens.
+// Filled in order oldest → newest with zero-buckets for empty days so
+// the renderer doesn't have to gap-fill.
+function dailyUsage(db, { days = 30 } = {}) {
+  const clamped = Math.max(1, Math.min(365, Math.floor(days)));
+  const now = new Date();
+  const startOfTodayUtc = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate()
+  );
+  const dayMs = 24 * 60 * 60 * 1000;
+  const firstBucketMs = startOfTodayUtc - (clamped - 1) * dayMs;
+
+  const rows = db
+    .prepare(
+      `SELECT started_at, cost_usd, usage_json
+         FROM runs
+         WHERE started_at >= ?`
+    )
+    .all(firstBucketMs);
+
+  // Pre-allocate the day buckets so empty days show up as zeros.
+  const buckets = new Array(clamped).fill(0).map((_, i) => {
+    const dayMsStart = firstBucketMs + i * dayMs;
+    return {
+      dayMs: dayMsStart,
+      dayLabel: new Date(dayMsStart).toISOString().slice(0, 10),
+      totalCostUsd: 0,
+      runs: 0,
+      outputTokens: 0,
+    };
+  });
+
+  for (const r of rows) {
+    const idx = Math.floor((r.started_at - firstBucketMs) / dayMs);
+    if (idx < 0 || idx >= clamped) continue;
+    buckets[idx].totalCostUsd += r.cost_usd || 0;
+    buckets[idx].runs += 1;
+    if (r.usage_json) {
+      try {
+        const u = JSON.parse(r.usage_json);
+        buckets[idx].outputTokens += u?.output_tokens || 0;
+      } catch {
+        /* skip */
+      }
+    }
+  }
+  return buckets;
 }
 
 module.exports = {
@@ -187,6 +272,7 @@ module.exports = {
   deleteRun,
   reapInFlight,
   summarize,
+  dailyUsage,
   // exported for tests
   recordToRow,
   rowToRecord,

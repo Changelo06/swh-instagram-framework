@@ -16,6 +16,7 @@ const fs = require("node:fs");
 const CHANNELS = require("./channels.cjs");
 const vaultSession = require("../vault/session.cjs");
 const runs = require("../runs/index.cjs");
+const runsStore = require("../runs/store.cjs");
 const anthropicProvider = require("../providers/anthropic.cjs");
 const groqProvider = require("../providers/groq.cjs");
 const apifyProvider = require("../providers/apify.cjs");
@@ -208,24 +209,57 @@ function register({ userDataDir, appRoot }) {
     parseProvider.parseBuffer({ buffer, filename })
   );
 
-  // Token estimation lands in Phase 4 alongside the cost preview UI.
-  // Stub it for now so the channel exists (returns a rough character-
-  // based estimate the renderer can ignore).
-  safeHandle("chiqo.anthropic.countTokens", (_e, payload) => {
-    const text =
-      typeof payload === "string"
-        ? payload
-        : JSON.stringify(payload?.rows || payload || "");
-    // ~4 chars per token is the long-standing English rule of thumb.
-    return { tokens: Math.ceil(text.length / 4), method: "char-based-estimate" };
-  });
+  // Real token estimation backed by anthropic.messages.countTokens.
+  // Builds the exact prompt the run would use (system + user message)
+  // and returns inputTokens + maxOutputTokens + a USD estimate priced
+  // against the current model.
+  safeHandle("chiqo.anthropic.countTokens", (_e, payload) =>
+    anthropicProvider.countTokensForPayload({
+      payload: payload || {},
+      getApiKey: () => {
+        const key = vaultSession.getApiKey("anthropic");
+        if (!key) {
+          const e = new Error(
+            "Anthropic key is not configured. Open Settings → API keys to add one."
+          );
+          e.code = "NO_API_KEY";
+          throw e;
+        }
+        return key;
+      },
+    })
+  );
 
-  // Runs read-only queries. List + get expose the in-memory view; a
-  // delete is allowed for finished runs (in-flight rejects with
-  // IN_FLIGHT).
+  // Runs read-only queries. List + get + delete go through the runs
+  // module so the in-memory + DB-backed views merge transparently.
   safeHandle("chiqo.runs.list", () => runs.list());
   safeHandle("chiqo.runs.get", (_e, runId) => runs.get(runId));
   safeHandle("chiqo.runs.delete", (_e, runId) => runs.remove(runId));
+
+  // ---- Usage / cost (Phase 4) ---------------------------------------
+  // Aggregates over the vault-DB runs table. Vault must be unlocked.
+  safeHandle("chiqo.usage.summary", (_e, filter) => {
+    const db = vaultSession.getDb();
+    return runsStore.summarize(db, filter || {});
+  });
+  safeHandle("chiqo.usage.daily", (_e, opts) => {
+    const db = vaultSession.getDb();
+    return runsStore.dailyUsage(db, opts || {});
+  });
+  safeHandle("chiqo.usage.list", (_e, filter) => {
+    const db = vaultSession.getDb();
+    return runsStore.listRuns(db, filter || {}).map((r) => ({
+      id: r.id,
+      type: r.type,
+      status: r.status,
+      model: r.model,
+      startedAt: r.startedAt,
+      finishedAt: r.finishedAt,
+      costUsd: r.costUsd || 0,
+      usage: r.usage,
+      route: r.route,
+    }));
+  });
 
 
   // -------------------------------------------------------------------

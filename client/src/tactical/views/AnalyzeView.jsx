@@ -20,6 +20,7 @@ import { useCsv, STAGE, ALL_HANDLE } from "../state/CsvContext.jsx";
 import ExportMenu from "../widgets/ExportMenu.jsx";
 import EmptyHint from "../widgets/EmptyHint.jsx";
 import ConfirmAction from "../widgets/ConfirmAction.jsx";
+import CostPreview from "../widgets/CostPreview.jsx";
 import { exportAnalysis } from "../lib/exporters.js";
 import { parseAnalysisLayers } from "../lib/analysisLayers.js";
 
@@ -355,6 +356,12 @@ export default function AnalyzeView() {
                 ? `@${selectedCreator.displayHandle || selectedCreator.handle}`
                 : ""
             }
+            costPayload={{
+              rows,
+              filename,
+              mode: template.id,
+              scriptCount: 3,
+            }}
           />
         )}
       </div>
@@ -363,7 +370,7 @@ export default function AnalyzeView() {
   );
 }
 
-function TemplatePanel({ template, onRun, rowCount, handleLabel }) {
+function TemplatePanel({ template, onRun, rowCount, handleLabel, costPayload }) {
   return (
     <>
       <header
@@ -383,15 +390,18 @@ function TemplatePanel({ template, onRun, rowCount, handleLabel }) {
             {handleLabel} · {rowCount.toLocaleString()} rows · {template.eta}
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onRun}
-          className="tac-btn tac-btn-accent"
-          style={{ padding: "8px 16px", fontSize: 13 }}
-        >
-          <Play size={13} weight="fill" />
-          Run {template.name.toLowerCase()}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <CostPreview payload={costPayload} />
+          <button
+            type="button"
+            onClick={onRun}
+            className="tac-btn tac-btn-accent"
+            style={{ padding: "8px 16px", fontSize: 13 }}
+          >
+            <Play size={13} weight="fill" />
+            Run {template.name.toLowerCase()}
+          </button>
+        </div>
       </header>
 
       <div

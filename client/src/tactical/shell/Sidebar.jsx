@@ -9,6 +9,7 @@ import {
   CaretRight,
   Gear,
   ListBullets,
+  CreditCard,
 } from "@phosphor-icons/react";
 import { useCsv } from "../state/CsvContext.jsx";
 
@@ -18,6 +19,7 @@ const NAV = [
   { to: "/analyze", label: "Analyze", icon: Sparkle, key: "analyze" },
   { to: "/scripts", label: "Scripts", icon: NotePencil, key: "scripts" },
   { to: "/runs", label: "Runs", icon: ListBullets, key: "runs" },
+  { to: "/account", label: "Account", icon: CreditCard, key: "account" },
 ];
 
 function Sidebar({ collapsed, onToggleCollapsed, onOpenSettings }) {

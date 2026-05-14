@@ -25,12 +25,10 @@ module.exports = {
     // Phase 2.7 Groq + Apify + parse channels — all live now (real
     // handlers in electron/ipc/index.cjs).
 
-    // chiqo.runs.{list,get,delete} now have basic in-memory handlers
-    // (Phase 2.6). Phase 3 will swap them for DB-backed persistence
-    // without changing the renderer-facing contract.
+    // chiqo.runs.{list,get,delete} are DB-backed in Phase 3 — see
+    // electron/runs/store.cjs.
 
-    // Phase 4 — Account / usage page
-    { channel: "chiqo.usage.summary", phase: "4" },
-    { channel: "chiqo.usage.list",    phase: "4" },
+    // Phase 4 chiqo.usage.* channels — all live now (real handlers in
+    // electron/ipc/index.cjs).
   ],
 };

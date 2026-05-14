@@ -124,6 +124,7 @@ const chiqo = Object.freeze({
   usage: Object.freeze({
     summary: (range) => invoke("chiqo.usage.summary", range),
     list: (filter) => invoke("chiqo.usage.list", filter),
+    daily: (opts) => invoke("chiqo.usage.daily", opts),
   }),
 
   // --- App utility (always-available) -----------------------------------

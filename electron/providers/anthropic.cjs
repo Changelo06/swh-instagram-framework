@@ -148,9 +148,57 @@ async function runStreamLoop({
   }
 }
 
+// Real token counter for the cost-preview UI. Builds the same prompt
+// the run would have used, then calls Anthropic's
+// `messages.countTokens(...)` so the renderer can show an honest
+// estimate before the user fires the run.
+//
+// Returns:
+//   {
+//     inputTokens,        // counted via the SDK
+//     maxOutputTokens,    // max_tokens the run would request
+//     model,
+//     estimatedCostUsd,   // input + worst-case-output priced together
+//     method: "anthropic.messages.countTokens",
+//   }
+async function countTokensForPayload({ payload, getApiKey }) {
+  const prompt = require("./prompt.cjs");
+  const { logUsage } = require("../runs/usage-log.cjs"); // lazy — for prices
+  const { computeCostUsd, PRICES_PER_MTOK } = require("../runs/usage-log.cjs");
+
+  const { userMessage, maxTokens } = prompt.buildPrompt(payload);
+  const apiKey = getApiKey();
+  const client = makeClient(apiKey);
+  const systemPrompt = prompt.loadSystemPrompt(_appRoot);
+
+  const result = await client.messages.countTokens({
+    model: DEFAULT_MODEL,
+    system: [{ type: "text", text: systemPrompt }],
+    messages: [{ role: "user", content: userMessage }],
+  });
+
+  const inputTokens = result?.input_tokens || 0;
+  const price = PRICES_PER_MTOK[DEFAULT_MODEL];
+  let estimatedCostUsd = 0;
+  if (price) {
+    estimatedCostUsd =
+      (inputTokens * price.input + maxTokens * price.output) / 1_000_000;
+    estimatedCostUsd = Math.round(estimatedCostUsd * 1e6) / 1e6;
+  }
+
+  return {
+    inputTokens,
+    maxOutputTokens: maxTokens,
+    model: DEFAULT_MODEL,
+    estimatedCostUsd,
+    method: "anthropic.messages.countTokens",
+  };
+}
+
 module.exports = {
   setAppRoot,
   startAnalyzeRun,
+  countTokensForPayload,
   DEFAULT_MODEL,
   // Test seam
   _makeClient: makeClient,
